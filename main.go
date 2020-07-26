@@ -1,59 +1,17 @@
 package main
 
 import (
-	"fmt"
-	"io/ioutil"
+	"flag"
 	"log"
 	"net/http"
-	"path"
-
-	"github.com/google/uuid"
+	"net/url"
 )
-
-func createHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Create entry")
-	body, err := ioutil.ReadAll(r.Body)
-
-	if err != nil {
-		http.Error(w, "Unknown error", http.StatusInternalServerError)
-	}
-
-	uuidString := storage.Create(body)
-
-	fmt.Fprintf(w, "%s", uuidString)
-}
-
-func getUUIDFromPath(urlPath string) (string, error) {
-	_, uuidFromPath := path.Split(urlPath)
-	UUID, err := uuid.Parse(uuidFromPath)
-
-	if err != nil {
-		return "", err
-	}
-	return UUID.String(), nil
-}
-
-func getHandler(w http.ResponseWriter, r *http.Request) {
-
-	UUID, err := getUUIDFromPath(r.URL.Path)
-
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte{})
-		return
-	}
-
-	entry := storage.Get(UUID)
-
-	w.WriteHeader(http.StatusOK)
-	w.Write(entry)
-}
 
 func handleRequest(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
-		createHandler(w, r)
+		handleCreateEntry(w, r)
 	} else if r.Method == "GET" {
-		getHandler(w, r)
+		handleGetEntry(w, r)
 	} else {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Bad request"))
@@ -61,8 +19,22 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 var storage EntryStorage
+var externalURLParam string
+var webExternalURL *url.URL
 
+func init() {
+	flag.StringVar(&externalURLParam, "webExternalURL", "", "Web server external url")
+}
 func main() {
+	flag.Parse()
+
+	extURL, err := url.Parse(externalURLParam)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	webExternalURL = extURL
 	storage = NewMemoryStorage()
 
 	http.HandleFunc("/", handleRequest)
