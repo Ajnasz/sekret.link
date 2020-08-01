@@ -1,4 +1,4 @@
-module github.com/Ajnasz/once.dev
+module github.com/Ajnasz/1note.link
 
 go 1.14
 
