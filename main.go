@@ -20,21 +20,16 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 
 var storage EntryStorage
 var externalURLParam string
-var encryptionKey string
 var databasePath string
 var webExternalURL *url.URL
 
 func init() {
 	flag.StringVar(&externalURLParam, "webExternalURL", "", "Web server external url")
-	flag.StringVar(&encryptionKey, "encryptionKey", "", "Encryption key to encrypt/decrypt data")
 	flag.StringVar(&databasePath, "databasePath", "", "Path to sqlite database file")
 }
+
 func main() {
 	flag.Parse()
-
-	if len(encryptionKey) != 32 {
-		log.Fatal("Encryption key length must be 32 bytes")
-	}
 
 	extURL, err := url.Parse(externalURLParam)
 
@@ -43,9 +38,7 @@ func main() {
 	}
 
 	webExternalURL = extURL
-	sqlStorage := NewSQLiteStorage(databasePath)
-	key := []byte(encryptionKey)
-	storage = &SecretStorage{sqlStorage, &AESEncrypter{key}}
+	storage = NewSQLiteStorage(databasePath)
 
 	http.HandleFunc("/", handleRequest)
 

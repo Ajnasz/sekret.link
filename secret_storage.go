@@ -2,11 +2,11 @@ package main
 
 type SecretStorage struct {
 	internalStorage EntryStorage
-	encrypter       Encrypter
+	Encrypter       Encrypter
 }
 
 func (s *SecretStorage) Create(UUID string, entry []byte) error {
-	encrypted, err := s.encrypter.Encrypt(entry)
+	encrypted, err := s.Encrypter.Encrypt(entry)
 
 	if err != nil {
 		return err
@@ -22,7 +22,7 @@ func (s *SecretStorage) Get(UUID string) ([]byte, error) {
 		return nil, err
 	}
 
-	return s.encrypter.Decrypt(data)
+	return s.Encrypter.Decrypt(data)
 }
 
 func (s *SecretStorage) GetAndDelete(UUID string) ([]byte, error) {
@@ -32,5 +32,5 @@ func (s *SecretStorage) GetAndDelete(UUID string) ([]byte, error) {
 		return nil, err
 	}
 
-	return s.encrypter.Decrypt(data)
+	return s.Encrypter.Decrypt(data)
 }

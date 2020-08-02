@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"net/http/httptest"
@@ -58,12 +59,20 @@ func TestCreateEntry(t *testing.T) {
 			body, _ := ioutil.ReadAll(resp.Body)
 
 			responseURL := string(body)
-			savedUUID, err := getUUIDFromPath(responseURL)
+			savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
 
 			if err != nil {
 				t.Fatal(err)
 			}
-			entry, err := storage.Get(savedUUID)
+
+			key, err := hex.DecodeString(keyString)
+
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			secretStorage := &SecretStorage{storage, &AESEncrypter{key}}
+			entry, err := secretStorage.Get(savedUUID)
 
 			if err != nil {
 				t.Fatal(err)
@@ -94,10 +103,19 @@ func TestGetEntry(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
+			key, err := generateRSAKey()
+			if err != nil {
+				t.Fatal(err)
+			}
 			cleanEntries(t)
-			storage.Create(testCase.UUID, []byte(testCase.Value))
+			encrypter := AESEncrypter{key}
+			encryptedData, err := encrypter.Encrypt([]byte(testCase.Value))
+			if err != nil {
+				t.Fatal(err)
+			}
+			storage.Create(testCase.UUID, encryptedData)
 
-			req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s", testCase.UUID), nil)
+			req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(key)), nil)
 			w := httptest.NewRecorder()
 			handleRequest(w, req)
 
@@ -130,13 +148,13 @@ func TestSetAndGetEntry(t *testing.T) {
 			body, _ := ioutil.ReadAll(resp.Body)
 
 			responseURL := string(body)
-			savedUUID, err := getUUIDFromPath(responseURL)
+			savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
 
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			req = httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s", savedUUID), nil)
+			req = httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", savedUUID, keyString), nil)
 			w = httptest.NewRecorder()
 			handleRequest(w, req)
 

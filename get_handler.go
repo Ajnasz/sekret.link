@@ -1,12 +1,13 @@
 package main
 
 import (
+	"encoding/hex"
 	"log"
 	"net/http"
 )
 
 func handleGetEntry(w http.ResponseWriter, r *http.Request) {
-	UUID, err := getUUIDFromPath(r.URL.Path)
+	UUID, keyString, err := getUUIDAndSecretFromPath(r.URL.Path)
 
 	if err != nil {
 		log.Println(err)
@@ -14,7 +15,15 @@ func handleGetEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entry, err := storage.GetAndDelete(UUID)
+	key, err := hex.DecodeString(keyString)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	secretStorage := &SecretStorage{storage, &AESEncrypter{key}}
+	entry, err := secretStorage.GetAndDelete(UUID)
 
 	if err != nil {
 		http.Error(w, "Not found", http.StatusNotFound)

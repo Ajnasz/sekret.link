@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -17,7 +18,16 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 	}
 	UUID := newUUIDString()
 
-	newURL, err := getUUIDUrl(webExternalURL, UUID)
+	key, err := generateRSAKey()
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	keyString := hex.EncodeToString(key)
+
+	newURL, err := getUUIDUrlWithSecret(webExternalURL, UUID, keyString)
 
 	if err != nil {
 		log.Println(err)
@@ -25,7 +35,9 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = storage.Create(UUID, body)
+	secretStorage := &SecretStorage{storage, &AESEncrypter{key}}
+
+	err = secretStorage.Create(UUID, body)
 
 	if err != nil {
 		log.Println(err)
@@ -34,5 +46,6 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Add("x-entry-uuid", UUID)
+	w.Header().Add("x-entry-key", keyString)
 	fmt.Fprintf(w, "%s", newURL.String())
 }
