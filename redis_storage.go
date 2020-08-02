@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/go-redis/redis/v8"
@@ -46,4 +47,15 @@ func (r *RedisStorage) GetAndDelete(UUID string) ([]byte, error) {
 	}
 
 	return []byte(val.Val()), nil
+}
+
+func NewRedisStorage(redisDB string, prefix string) *RedisStorage {
+	connOptions, err := redis.ParseURL(redisDB)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	rdb := redis.NewClient(connOptions)
+
+	return &RedisStorage{rdb, prefix}
 }

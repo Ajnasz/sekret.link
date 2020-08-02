@@ -18,6 +18,10 @@ func (s *SecretStorage) Create(UUID string, entry []byte) error {
 func (s *SecretStorage) Get(UUID string) ([]byte, error) {
 	data, err := s.internalStorage.Get(UUID)
 
+	if len(data) == 0 {
+		return data, nil
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -27,6 +31,10 @@ func (s *SecretStorage) Get(UUID string) ([]byte, error) {
 
 func (s *SecretStorage) GetAndDelete(UUID string) ([]byte, error) {
 	data, err := s.internalStorage.GetAndDelete(UUID)
+
+	if len(data) == 0 {
+		return data, nil
+	}
 
 	if err != nil {
 		return nil, err
