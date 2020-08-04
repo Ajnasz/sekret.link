@@ -26,6 +26,12 @@ func handleGetEntry(w http.ResponseWriter, r *http.Request) {
 	entry, err := secretStorage.GetAndDelete(UUID)
 
 	if err != nil {
+		log.Println(err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	if len(entry) == 0 {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
