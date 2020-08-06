@@ -34,7 +34,7 @@ func TestSQLiteStorageCreateGet(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			actual := string(res)
+			actual := string(res.Data)
 			if actual != testCase {
 				t.Errorf("expected: %s, actual: %s", testCase, actual)
 			}
@@ -65,7 +65,7 @@ func TestSQLiteStorageCreateGetAndDelete(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			actual := string(res)
+			actual := string(res.Data)
 			if actual != testCase {
 				t.Errorf("expected: %s, actual: %s", testCase, actual)
 			}

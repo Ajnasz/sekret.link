@@ -78,7 +78,7 @@ func TestRedisStorage(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if string(res) != testCase {
+			if string(res.Data) != testCase {
 				t.Errorf("expected %q, got %q", testCase, res)
 			}
 
@@ -108,7 +108,7 @@ func TestRedisStorage(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if string(res) != testCase {
+			if string(res.Data) != testCase {
 				t.Errorf("expected %q, got %q", testCase, res)
 			}
 

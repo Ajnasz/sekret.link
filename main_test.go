@@ -78,7 +78,7 @@ func TestCreateEntry(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			actual := string(entry)
+			actual := string(entry.Data)
 
 			if testCase != actual {
 				t.Errorf("data not saved expected: %q, actual: %q", testCase, actual)

@@ -25,19 +25,60 @@ func (r *RedisStorage) Create(UUID string, entry []byte) error {
 	return err
 }
 
-func (r *RedisStorage) Get(UUID string) ([]byte, error) {
-	ctx := context.Background()
-	val, err := r.rdb.HGet(ctx, r.GetKey(UUID), "data").Result()
+func redisEntryToEntry(val map[string]string) (*Entry, error) {
+	var created time.Time
+	if val["created"] != "" {
+		c, err := time.Parse(time.RFC3339, val["created"])
+		if err != nil {
+			return nil, err
+		}
 
-	return []byte(val), err
+		created = c
+	}
+
+	var accessed time.Time
+	if val["accessed"] != "" {
+		a, err := time.Parse(time.RFC3339, val["accessed"])
+		if err != nil {
+			return nil, err
+		}
+		accessed = a
+	}
+
+	var expire time.Time
+	if val["expire"] != "" {
+		e, err := time.Parse(time.RFC3339, val["expire"])
+		if err != nil {
+			return nil, err
+		}
+
+		expire = e
+	}
+
+	return &Entry{
+		Data:     []byte(val["data"]),
+		Accessed: accessed,
+		Created:  created,
+		Expire:   expire,
+	}, nil
 }
 
-func (r *RedisStorage) GetAndDelete(UUID string) ([]byte, error) {
+func (r *RedisStorage) Get(UUID string) (*Entry, error) {
+	ctx := context.Background()
+	val, err := r.rdb.HGetAll(ctx, r.GetKey(UUID)).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	return redisEntryToEntry(val)
+}
+
+func (r *RedisStorage) GetAndDelete(UUID string) (*Entry, error) {
 	ctx := context.Background()
 	pipe := r.rdb.TxPipeline()
 	key := r.GetKey(UUID)
 
-	val := pipe.HGet(ctx, key, "data")
+	val := pipe.HGetAll(ctx, key)
 	pipe.HSet(ctx, key, "data", nil, "accessed", time.Now())
 
 	_, err := pipe.Exec(ctx)
@@ -46,7 +87,7 @@ func (r *RedisStorage) GetAndDelete(UUID string) ([]byte, error) {
 		return nil, err
 	}
 
-	return []byte(val.Val()), nil
+	return redisEntryToEntry(val.Val())
 }
 
 func NewRedisStorage(redisDB string, prefix string) *RedisStorage {

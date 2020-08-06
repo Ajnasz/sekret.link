@@ -20,25 +20,29 @@ func (m *MemoryStorage) Create(UUID string, entry []byte) error {
 	return nil
 }
 
-func (m *MemoryStorage) Get(UUID string) ([]byte, error) {
+func (m *MemoryStorage) Get(UUID string) (*Entry, error) {
 	m.entries.RLock()
 	defer m.entries.RUnlock()
 
 	if entry, ok := m.entries.m[UUID]; ok {
-		return entry, nil
+		return &Entry{
+			Data: entry,
+		}, nil
 	}
 
 	return nil, fmt.Errorf("Entry not found")
 }
 
-func (m *MemoryStorage) GetAndDelete(UUID string) ([]byte, error) {
+func (m *MemoryStorage) GetAndDelete(UUID string) (*Entry, error) {
 	m.entries.RLock()
 	defer m.entries.RUnlock()
 
 	if entry, ok := m.entries.m[UUID]; ok {
 		delete(m.entries.m, UUID)
 
-		return entry, nil
+		return &Entry{
+			Data: entry,
+		}, nil
 	}
 
 	return nil, fmt.Errorf("Entry not found")

@@ -31,11 +31,11 @@ func handleGetEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(entry) == 0 {
+	if len(entry.Data) == 0 {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(entry)
+	w.Write(entry.Data)
 }

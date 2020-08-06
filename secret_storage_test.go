@@ -45,8 +45,10 @@ func TestSecretStorage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if string(data) != testData {
-		t.Errorf("Expected %q, actual %q", testData, string(data))
+	actual := string(data.Data)
+
+	if actual != testData {
+		t.Errorf("Expected %q, actual %q", testData, actual)
 	}
 
 }
