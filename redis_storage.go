@@ -70,7 +70,15 @@ func (r *RedisStorage) Get(UUID string) (*Entry, error) {
 		return nil, err
 	}
 
-	return redisEntryToEntry(val)
+	ret, err := redisEntryToEntry(val)
+
+	if err != nil {
+		return nil, err
+	}
+
+	ret.UUID = UUID
+
+	return ret, nil
 }
 
 func (r *RedisStorage) GetAndDelete(UUID string) (*Entry, error) {
@@ -87,7 +95,15 @@ func (r *RedisStorage) GetAndDelete(UUID string) (*Entry, error) {
 		return nil, err
 	}
 
-	return redisEntryToEntry(val.Val())
+	ret, err := redisEntryToEntry(val.Val())
+
+	if err != nil {
+		return nil, err
+	}
+
+	ret.UUID = UUID
+
+	return ret, nil
 }
 
 func NewRedisStorage(redisDB string, prefix string) *RedisStorage {

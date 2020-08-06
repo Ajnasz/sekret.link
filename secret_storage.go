@@ -32,12 +32,10 @@ func (s *SecretStorage) Get(UUID string) (*Entry, error) {
 		return nil, err
 	}
 
-	return &Entry{
-		Data:     decrypted,
-		Accessed: entry.Accessed,
-		Created:  entry.Created,
-		Expire:   entry.Expire,
-	}, nil
+	ret := *entry
+	ret.Data = decrypted
+
+	return &ret, nil
 }
 
 func (s *SecretStorage) GetAndDelete(UUID string) (*Entry, error) {
@@ -57,10 +55,8 @@ func (s *SecretStorage) GetAndDelete(UUID string) (*Entry, error) {
 		return nil, err
 	}
 
-	return &Entry{
-		Data:     decrypted,
-		Accessed: entry.Accessed,
-		Created:  entry.Created,
-		Expire:   entry.Expire,
-	}, nil
+	ret := *entry
+	ret.Data = decrypted
+
+	return &ret, nil
 }

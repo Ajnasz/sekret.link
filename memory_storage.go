@@ -26,6 +26,7 @@ func (m *MemoryStorage) Get(UUID string) (*Entry, error) {
 
 	if entry, ok := m.entries.m[UUID]; ok {
 		return &Entry{
+			UUID: UUID,
 			Data: entry,
 		}, nil
 	}
@@ -41,6 +42,7 @@ func (m *MemoryStorage) GetAndDelete(UUID string) (*Entry, error) {
 		delete(m.entries.m, UUID)
 
 		return &Entry{
+			UUID: UUID,
 			Data: entry,
 		}, nil
 	}

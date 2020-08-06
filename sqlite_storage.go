@@ -70,6 +70,7 @@ func (s *SQLiteStorage) Get(UUID string) (*Entry, error) {
 	}
 
 	return &Entry{
+		UUID:     UUID,
 		Data:     data,
 		Created:  created,
 		Accessed: accessed,
@@ -119,6 +120,7 @@ func (s *SQLiteStorage) GetAndDelete(UUID string) (*Entry, error) {
 		expire = expireNullTime.Time
 	}
 	return &Entry{
+		UUID:     UUID,
 		Data:     data,
 		Created:  created,
 		Accessed: accessed,
