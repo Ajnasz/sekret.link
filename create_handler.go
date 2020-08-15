@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -27,8 +28,6 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 
 	keyString := hex.EncodeToString(key)
 
-	newURL, err := getUUIDUrlWithSecret(webExternalURL, UUID, keyString)
-
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
@@ -47,5 +46,31 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add("x-entry-uuid", UUID)
 	w.Header().Add("x-entry-key", keyString)
-	fmt.Fprintf(w, "%s", newURL.String())
+	if r.Header.Get("Accept") == "application/json" {
+		w.Header().Set("Content-Type", "application/json")
+		entry, err := secretStorage.Get(UUID)
+
+		if err != nil {
+			log.Println(err)
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+			return
+		}
+		entry.Data = nil
+
+		response := secretResponseFromEntry(entry)
+
+		response.Data = ""
+		response.Key = keyString
+
+		json.NewEncoder(w).Encode(response)
+	} else {
+		newURL, err := getUUIDUrlWithSecret(webExternalURL, UUID, keyString)
+		if err != nil {
+			log.Println(err)
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+			return
+		}
+
+		fmt.Fprintf(w, "%s", newURL.String())
+	}
 }

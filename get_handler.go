@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"log"
 	"net/http"
 )
@@ -36,6 +37,14 @@ func handleGetEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write(entry.Data)
+	if r.Header.Get("Accept") == "application/json" {
+		response := secretResponseFromEntry(entry)
+
+		response.Data = string(entry.Data)
+		response.Key = keyString
+		json.NewEncoder(w).Encode(response)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Write(entry.Data)
+	}
 }

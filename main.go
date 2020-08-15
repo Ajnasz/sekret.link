@@ -7,17 +7,6 @@ import (
 	"net/url"
 )
 
-func handleRequest(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-		handleCreateEntry(w, r)
-	} else if r.Method == "GET" {
-		handleGetEntry(w, r)
-	} else {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Bad request"))
-	}
-}
-
 var storage EntryStorage
 var externalURLParam string
 var sqliteDB string
