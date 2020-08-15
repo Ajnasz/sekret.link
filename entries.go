@@ -2,18 +2,23 @@ package main
 
 import "time"
 
-type Entry struct {
+type EntryMeta struct {
 	UUID     string
-	Data     []byte
 	Created  time.Time
 	Accessed time.Time
 	Expire   time.Time
+}
+
+type Entry struct {
+	EntryMeta
+	Data []byte
 }
 
 type EntryStorage interface {
 	Create(string, []byte) error
 	Get(string) (*Entry, error)
 	GetAndDelete(string) (*Entry, error)
+	GetMeta(string) (*EntryMeta, error)
 }
 
 type SecretResponse struct {
@@ -25,7 +30,7 @@ type SecretResponse struct {
 	Expire   time.Time
 }
 
-func secretResponseFromEntry(entry *Entry) *SecretResponse {
+func secretResponseFromEntryMeta(entry *EntryMeta) *SecretResponse {
 	return &SecretResponse{
 		UUID:     entry.UUID,
 		Created:  entry.Created,

@@ -20,14 +20,30 @@ func (m *MemoryStorage) Create(UUID string, entry []byte) error {
 	return nil
 }
 
+func (m *MemoryStorage) GetMeta(UUID string) (*EntryMeta, error) {
+	m.entries.RLock()
+	defer m.entries.RUnlock()
+
+	if _, ok := m.entries.m[UUID]; ok {
+		return &EntryMeta{
+			UUID: UUID,
+		}, nil
+	}
+
+	return nil, fmt.Errorf("Entry not found")
+}
+
 func (m *MemoryStorage) Get(UUID string) (*Entry, error) {
 	m.entries.RLock()
 	defer m.entries.RUnlock()
 
 	if entry, ok := m.entries.m[UUID]; ok {
-		return &Entry{
+		meta := EntryMeta{
 			UUID: UUID,
-			Data: entry,
+		}
+		return &Entry{
+			EntryMeta: meta,
+			Data:      entry,
 		}, nil
 	}
 
@@ -40,10 +56,13 @@ func (m *MemoryStorage) GetAndDelete(UUID string) (*Entry, error) {
 
 	if entry, ok := m.entries.m[UUID]; ok {
 		delete(m.entries.m, UUID)
+		meta := EntryMeta{
+			UUID: UUID,
+		}
 
 		return &Entry{
-			UUID: UUID,
-			Data: entry,
+			EntryMeta: meta,
+			Data:      entry,
 		}, nil
 	}
 

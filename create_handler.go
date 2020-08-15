@@ -48,18 +48,15 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("x-entry-key", keyString)
 	if r.Header.Get("Accept") == "application/json" {
 		w.Header().Set("Content-Type", "application/json")
-		entry, err := secretStorage.Get(UUID)
+		entry, err := secretStorage.GetMeta(UUID)
 
 		if err != nil {
 			log.Println(err)
 			http.Error(w, "Internal error", http.StatusInternalServerError)
 			return
 		}
-		entry.Data = nil
 
-		response := secretResponseFromEntry(entry)
-
-		response.Data = ""
+		response := secretResponseFromEntryMeta(entry)
 		response.Key = keyString
 
 		json.NewEncoder(w).Encode(response)

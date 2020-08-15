@@ -25,7 +25,7 @@ func (r *RedisStorage) Create(UUID string, entry []byte) error {
 	return err
 }
 
-func redisEntryToEntry(val map[string]string) (*Entry, error) {
+func redisEntryToMeta(val map[string]string) (*EntryMeta, error) {
 	var created time.Time
 	if val["created"] != "" {
 		c, err := time.Parse(time.RFC3339, val["created"])
@@ -55,11 +55,22 @@ func redisEntryToEntry(val map[string]string) (*Entry, error) {
 		expire = e
 	}
 
-	return &Entry{
-		Data:     []byte(val["data"]),
+	return &EntryMeta{
 		Accessed: accessed,
 		Created:  created,
 		Expire:   expire,
+	}, nil
+
+}
+
+func redisEntryToEntry(val map[string]string) (*Entry, error) {
+	meta, err := redisEntryToMeta(val)
+	if err != nil {
+		return nil, err
+	}
+	return &Entry{
+		EntryMeta: *meta,
+		Data:      []byte(val["data"]),
 	}, nil
 }
 
@@ -71,6 +82,31 @@ func (r *RedisStorage) Get(UUID string) (*Entry, error) {
 	}
 
 	ret, err := redisEntryToEntry(val)
+
+	if err != nil {
+		return nil, err
+	}
+
+	ret.UUID = UUID
+
+	return ret, nil
+}
+
+func (r *RedisStorage) GetMeta(UUID string) (*EntryMeta, error) {
+	ctx := context.Background()
+	metaKeys := []string{"created", "accessed", "expire"}
+
+	val := map[string]string{}
+	for _, metaKey := range metaKeys {
+		keyVal, err := r.rdb.HGet(ctx, r.GetKey(UUID), metaKey).Result()
+		if err != nil && err != redis.Nil {
+			log.Println(err)
+			return nil, err
+		}
+		val[metaKey] = keyVal
+	}
+
+	ret, err := redisEntryToMeta(val)
 
 	if err != nil {
 		return nil, err

@@ -15,6 +15,10 @@ func (s *SecretStorage) Create(UUID string, entry []byte) error {
 	return s.internalStorage.Create(UUID, encrypted)
 }
 
+func (s *SecretStorage) GetMeta(UUID string) (*EntryMeta, error) {
+	return s.internalStorage.GetMeta(UUID)
+}
+
 func (s *SecretStorage) Get(UUID string) (*Entry, error) {
 	entry, err := s.internalStorage.Get(UUID)
 
