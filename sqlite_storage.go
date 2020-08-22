@@ -13,6 +13,10 @@ type SQLiteStorage struct {
 	db *sql.DB
 }
 
+func (s *SQLiteStorage) Close() error {
+	return s.db.Close()
+}
+
 func (s *SQLiteStorage) Create(UUID string, entry []byte) error {
 	ctx := context.Background()
 	createStatement, err := s.db.PrepareContext(ctx, "INSERT INTO entries (uuid, data, created) VALUES  (?, ?, ?)")

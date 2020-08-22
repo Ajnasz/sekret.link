@@ -12,6 +12,10 @@ type MemoryStorage struct {
 	}
 }
 
+func (m *MemoryStorage) Close() error {
+	return nil
+}
+
 func (m *MemoryStorage) Create(UUID string, entry []byte) error {
 	m.entries.RLock()
 	defer m.entries.RUnlock()

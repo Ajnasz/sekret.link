@@ -14,6 +14,10 @@ type RedisStorage struct {
 	Prefix string
 }
 
+func (r *RedisStorage) Close() error {
+	return r.rdb.Close()
+}
+
 func (r *RedisStorage) GetKey(UUID string) string {
 	return fmt.Sprintf("%s:%s", r.Prefix, UUID)
 }

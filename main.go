@@ -41,6 +41,8 @@ func main() {
 		log.Fatal("No database backend selected")
 	}
 
+	defer storage.Close()
+
 	http.HandleFunc("/", handleRequest)
 
 	log.Fatal(http.ListenAndServe(":8080", nil))

@@ -15,6 +15,7 @@ type Entry struct {
 }
 
 type EntryStorage interface {
+	Close() error
 	Create(string, []byte) error
 	Get(string) (*Entry, error)
 	GetAndDelete(string) (*Entry, error)
