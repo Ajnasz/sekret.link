@@ -1,4 +1,4 @@
-module github.com/Ajnasz/1note.link
+module github.com/Ajnasz/sekret.link
 
 go 1.14
 
