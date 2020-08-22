@@ -42,13 +42,6 @@ func (s *PostgresqlStorage) GetMeta(UUID string) (*EntryMeta, error) {
 		return nil, err
 	}
 
-	_, err = tx.ExecContext(ctx, "UPDATE entries SET accessed=$1 WHERE uuid=$2", time.Now(), UUID)
-
-	if err != nil {
-		tx.Rollback()
-		return nil, err
-	}
-
 	err = tx.Commit()
 
 	if err != nil {
@@ -198,7 +191,7 @@ func NewPostgresqlStorage(psqlconn string) *PostgresqlStorage {
 		log.Fatal(err)
 	}
 
-	createTable, err := db.Prepare("CREATE TABLE IF NOT EXISTS entries (uuid uuid PRIMARY KEY, data BYTEA, created TIMESTAMP, accessed TIMESTAMP, expire TIMESTAMP)")
+	createTable, err := db.Prepare("CREATE TABLE IF NOT EXISTS entries (uuid uuid PRIMARY KEY, data BYTEA, created TIMESTAMPTZ, accessed TIMESTAMPTZ, expire TIMESTAMPTZ)")
 
 	if err != nil {
 		defer db.Close()
