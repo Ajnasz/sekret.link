@@ -10,6 +10,7 @@ import (
 var storage EntryStorage
 var externalURLParam string
 var sqliteDB string
+var postgresDB string
 var redisDB string
 var redisKeyPrefix string
 var webExternalURL *url.URL
@@ -17,6 +18,7 @@ var webExternalURL *url.URL
 func init() {
 	flag.StringVar(&externalURLParam, "webExternalURL", "", "Web server external url")
 	flag.StringVar(&sqliteDB, "sqliteDB", "", "Path to sqlite database file")
+	flag.StringVar(&postgresDB, "postgresDB", "", "Connection string for postgresql database backend")
 	flag.StringVar(&redisDB, "redisDB", "", "Path to redis database")
 	flag.StringVar(&redisKeyPrefix, "redisKeyPrefix", "entries", "Prefix of keys in redis db (in case redis is used as database backend)")
 }
@@ -31,7 +33,9 @@ func main() {
 	}
 
 	webExternalURL = extURL
-	if sqliteDB != "" {
+	if postgresDB != "" {
+		storage = NewPostgresqlStorage(postgresDB)
+	} else if sqliteDB != "" {
 		storage = NewSQLiteStorage(sqliteDB)
 		log.Println("Using SQLite database")
 	} else if redisDB != "" {
