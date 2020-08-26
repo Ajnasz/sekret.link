@@ -39,7 +39,7 @@ func TestPostgresqlStorageCreateGet(t *testing.T) {
 			defer storage.Close()
 
 			UUID := newUUIDString()
-			err := storage.Create(UUID, []byte("foo"))
+			err := storage.Create(UUID, []byte("foo"), time.Second*10)
 
 			if err != nil {
 				t.Fatal(err)
@@ -59,7 +59,6 @@ func TestPostgresqlStorageCreateGet(t *testing.T) {
 
 func TestPostgresqlStorageCreateGetAndDelete(t *testing.T) {
 	psqlConn := getConn()
-	fmt.Println(psqlConn)
 
 	testCases := []string{
 		"foo",
@@ -73,7 +72,7 @@ func TestPostgresqlStorageCreateGetAndDelete(t *testing.T) {
 			defer storage.Close()
 
 			UUID := newUUIDString()
-			err := storage.Create(UUID, []byte("foo"))
+			err := storage.Create(UUID, []byte("foo"), time.Second*10)
 
 			if err != nil {
 				t.Fatal(err)

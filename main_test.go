@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 )
 
 func cleanEntries(t *testing.T) {
@@ -113,7 +114,8 @@ func TestGetEntry(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			storage.Create(testCase.UUID, encryptedData)
+
+			storage.Create(testCase.UUID, encryptedData, time.Second*10)
 
 			req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(key)), nil)
 			w := httptest.NewRecorder()

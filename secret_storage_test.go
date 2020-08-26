@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"testing"
+	"time"
 )
 
 type DummyEncrypter struct{}
@@ -33,7 +34,7 @@ func TestSecretStorage(t *testing.T) {
 	storage := &SecretStorage{NewMemoryStorage(), NewDummyEncrypter()}
 
 	UUID := newUUIDString()
-	err := storage.Create(UUID, []byte(testData))
+	err := storage.Create(UUID, []byte(testData), time.Second*10)
 
 	if err != nil {
 		t.Fatal(err)

@@ -24,7 +24,7 @@ func TestSQLiteStorageCreateGet(t *testing.T) {
 			storage := NewSQLiteStorage(dbname)
 
 			UUID := newUUIDString()
-			err := storage.Create(UUID, []byte("foo"))
+			err := storage.Create(UUID, []byte("foo"), time.Second*10)
 
 			if err != nil {
 				t.Fatal(err)
@@ -55,7 +55,7 @@ func TestSQLiteStorageCreateGetAndDelete(t *testing.T) {
 			storage := NewSQLiteStorage(dbname)
 
 			UUID := newUUIDString()
-			err := storage.Create(UUID, []byte("foo"))
+			err := storage.Create(UUID, []byte("foo"), time.Second*10)
 
 			if err != nil {
 				t.Fatal(err)

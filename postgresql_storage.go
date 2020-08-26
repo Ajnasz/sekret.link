@@ -17,9 +17,10 @@ func (s *PostgresqlStorage) Close() error {
 	return s.db.Close()
 }
 
-func (s *PostgresqlStorage) Create(UUID string, entry []byte) error {
+func (s *PostgresqlStorage) Create(UUID string, entry []byte, expire time.Duration) error {
 	ctx := context.Background()
-	_, err := s.db.ExecContext(ctx, `INSERT INTO entries (uuid, data, created) VALUES  ($1, $2, $3) RETURNING uuid;`, UUID, entry, time.Now())
+	now := time.Now()
+	_, err := s.db.ExecContext(ctx, `INSERT INTO entries (uuid, data, created, expire) VALUES  ($1, $2, $3, $4) RETURNING uuid;`, UUID, entry, now, now.Add(expire))
 	return err
 }
 

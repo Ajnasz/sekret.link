@@ -22,9 +22,10 @@ func (r *RedisStorage) GetKey(UUID string) string {
 	return fmt.Sprintf("%s:%s", r.Prefix, UUID)
 }
 
-func (r *RedisStorage) Create(UUID string, entry []byte) error {
+func (r *RedisStorage) Create(UUID string, entry []byte, expire time.Duration) error {
 	ctx := context.Background()
-	err := r.rdb.HSet(ctx, r.GetKey(UUID), "data", entry, "created", time.Now()).Err()
+	now := time.Now()
+	err := r.rdb.HSet(ctx, r.GetKey(UUID), "data", entry, "created", now, "expire", now.Add(expire)).Err()
 
 	return err
 }

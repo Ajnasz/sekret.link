@@ -17,15 +17,16 @@ func (s *SQLiteStorage) Close() error {
 	return s.db.Close()
 }
 
-func (s *SQLiteStorage) Create(UUID string, entry []byte) error {
+func (s *SQLiteStorage) Create(UUID string, entry []byte, expire time.Duration) error {
 	ctx := context.Background()
-	createStatement, err := s.db.PrepareContext(ctx, "INSERT INTO entries (uuid, data, created) VALUES  (?, ?, ?)")
+	createStatement, err := s.db.PrepareContext(ctx, "INSERT INTO entries (uuid, data, created, expire) VALUES  (?, ?, ?, ?)")
 
 	if err != nil {
 		return err
 	}
 
-	_, err = createStatement.Exec(UUID, entry, time.Now())
+	now := time.Now()
+	_, err = createStatement.Exec(UUID, entry, now, now.Add(expire))
 
 	return err
 }

@@ -1,18 +1,20 @@
 package main
 
+import "time"
+
 type SecretStorage struct {
 	internalStorage EntryStorage
 	Encrypter       Encrypter
 }
 
-func (s *SecretStorage) Create(UUID string, entry []byte) error {
+func (s *SecretStorage) Create(UUID string, entry []byte, expire time.Duration) error {
 	encrypted, err := s.Encrypter.Encrypt(entry)
 
 	if err != nil {
 		return err
 	}
 
-	return s.internalStorage.Create(UUID, encrypted)
+	return s.internalStorage.Create(UUID, encrypted, expire)
 }
 
 func (s *SecretStorage) GetMeta(UUID string) (*EntryMeta, error) {

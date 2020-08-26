@@ -9,6 +9,7 @@ import (
 
 var storage EntryStorage
 var externalURLParam string
+var expireSeconds int
 var sqliteDB string
 var postgresDB string
 var redisDB string
@@ -21,6 +22,7 @@ func init() {
 	flag.StringVar(&postgresDB, "postgresDB", "", "Connection string for postgresql database backend")
 	flag.StringVar(&redisDB, "redisDB", "", "Path to redis database")
 	flag.StringVar(&redisKeyPrefix, "redisKeyPrefix", "entries", "Prefix of keys in redis db (in case redis is used as database backend)")
+	flag.IntVar(&expireSeconds, "expireSeconds", 60*60*24*7, "Expire in seconds")
 }
 
 func main() {

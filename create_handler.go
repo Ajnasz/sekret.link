@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"time"
 )
 
 func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +37,7 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 
 	secretStorage := &SecretStorage{storage, &AESEncrypter{key}}
 
-	err = secretStorage.Create(UUID, body)
+	err = secretStorage.Create(UUID, body, time.Second*time.Duration(expireSeconds))
 
 	if err != nil {
 		log.Println(err)

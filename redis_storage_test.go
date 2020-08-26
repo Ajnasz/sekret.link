@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 )
@@ -43,7 +44,7 @@ func TestRedisStorage(t *testing.T) {
 		cleanRedisStorage(&storage)
 		for _, testCase := range testCases {
 			UUID := newUUIDString()
-			err := storage.Create(UUID, []byte(testCase))
+			err := storage.Create(UUID, []byte(testCase), time.Second*10)
 
 			if err != nil {
 				t.Fatal(err)
@@ -66,7 +67,7 @@ func TestRedisStorage(t *testing.T) {
 		cleanRedisStorage(&storage)
 		for _, testCase := range testCases {
 			UUID := newUUIDString()
-			err := storage.Create(UUID, []byte(testCase))
+			err := storage.Create(UUID, []byte(testCase), time.Second*10)
 
 			if err != nil {
 				t.Fatal(err)
@@ -96,7 +97,7 @@ func TestRedisStorage(t *testing.T) {
 		cleanRedisStorage(&storage)
 		for _, testCase := range testCases {
 			UUID := newUUIDString()
-			err := storage.Create(UUID, []byte(testCase))
+			err := storage.Create(UUID, []byte(testCase), time.Second*10)
 
 			if err != nil {
 				t.Fatal(err)
