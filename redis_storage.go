@@ -92,6 +92,10 @@ func (r *RedisStorage) Get(UUID string) (*Entry, error) {
 		return nil, err
 	}
 
+	if ret.IsExpired() {
+		return nil, &entryExpiredError{}
+	}
+
 	ret.UUID = UUID
 
 	return ret, nil
@@ -117,6 +121,10 @@ func (r *RedisStorage) GetMeta(UUID string) (*EntryMeta, error) {
 		return nil, err
 	}
 
+	if ret.IsExpired() {
+		return nil, &entryExpiredError{}
+	}
+
 	ret.UUID = UUID
 
 	return ret, nil
@@ -140,6 +148,10 @@ func (r *RedisStorage) GetAndDelete(UUID string) (*Entry, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	if ret.IsExpired() {
+		return nil, &entryExpiredError{}
 	}
 
 	ret.UUID = UUID

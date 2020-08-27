@@ -43,12 +43,6 @@ func (s *PostgresqlStorage) GetMeta(UUID string) (*EntryMeta, error) {
 		return nil, err
 	}
 
-	err = tx.Commit()
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	var accessed time.Time
 	var expire time.Time
 
@@ -59,12 +53,35 @@ func (s *PostgresqlStorage) GetMeta(UUID string) (*EntryMeta, error) {
 		expire = expireNullTime.Time
 	}
 
-	return &EntryMeta{
+	meta := &EntryMeta{
 		UUID:     UUID,
 		Created:  created,
 		Accessed: accessed,
 		Expire:   expire,
-	}, nil
+	}
+
+	if meta.IsExpired() {
+		_, err = tx.ExecContext(ctx, "UPDATE entries SET data=$1, accessed=$2 WHERE uuid=$3", nil, time.Now(), UUID)
+
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+		err := tx.Commit()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		return nil, &entryExpiredError{}
+	}
+
+	err = tx.Commit()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return meta, nil
 }
 
 func (s *PostgresqlStorage) Get(UUID string) (*Entry, error) {
@@ -87,19 +104,6 @@ func (s *PostgresqlStorage) Get(UUID string) (*Entry, error) {
 		return nil, err
 	}
 
-	_, err = tx.ExecContext(ctx, "UPDATE entries SET accessed=$1 WHERE uuid=$2", time.Now(), UUID)
-
-	if err != nil {
-		tx.Rollback()
-		return nil, err
-	}
-
-	err = tx.Commit()
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	var accessed time.Time
 	var expire time.Time
 
@@ -115,6 +119,27 @@ func (s *PostgresqlStorage) Get(UUID string) (*Entry, error) {
 		Created:  created,
 		Accessed: accessed,
 		Expire:   expire,
+	}
+
+	if meta.IsExpired() {
+		_, err = tx.ExecContext(ctx, "UPDATE entries SET data=$1, accessed=$2 WHERE uuid=$3", nil, time.Now(), UUID)
+
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+		err := tx.Commit()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		return nil, &entryExpiredError{}
+	}
+
+	err = tx.Commit()
+
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	return &Entry{
@@ -150,11 +175,6 @@ func (s *PostgresqlStorage) GetAndDelete(UUID string) (*Entry, error) {
 		return nil, err
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	var accessed time.Time
 	var expire time.Time
 
@@ -170,6 +190,20 @@ func (s *PostgresqlStorage) GetAndDelete(UUID string) (*Entry, error) {
 		Created:  created,
 		Accessed: accessed,
 		Expire:   expire,
+	}
+
+	if meta.IsExpired() {
+		err := tx.Commit()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		return nil, &entryExpiredError{}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	return &Entry{

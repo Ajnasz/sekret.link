@@ -1,12 +1,18 @@
 package main
 
-import "time"
+import (
+	"time"
+)
 
 type EntryMeta struct {
 	UUID     string
 	Created  time.Time
 	Accessed time.Time
 	Expire   time.Time
+}
+
+func (e *EntryMeta) IsExpired() bool {
+	return e.Expire.Before(time.Now())
 }
 
 type Entry struct {
@@ -38,4 +44,10 @@ func secretResponseFromEntryMeta(entry *EntryMeta) *SecretResponse {
 		Expire:   entry.Expire,
 		Accessed: entry.Accessed,
 	}
+}
+
+type entryExpiredError struct{}
+
+func (e *entryExpiredError) Error() string {
+	return "Entry expired"
 }

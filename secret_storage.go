@@ -1,6 +1,8 @@
 package main
 
-import "time"
+import (
+	"time"
+)
 
 type SecretStorage struct {
 	internalStorage EntryStorage
@@ -18,7 +20,17 @@ func (s *SecretStorage) Create(UUID string, entry []byte, expire time.Duration) 
 }
 
 func (s *SecretStorage) GetMeta(UUID string) (*EntryMeta, error) {
-	return s.internalStorage.GetMeta(UUID)
+	entryMeta, err := s.internalStorage.GetMeta(UUID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if entryMeta.IsExpired() {
+		return nil, &entryExpiredError{}
+	}
+
+	return entryMeta, nil
 }
 
 func (s *SecretStorage) Get(UUID string) (*Entry, error) {
@@ -26,6 +38,10 @@ func (s *SecretStorage) Get(UUID string) (*Entry, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	if entry.IsExpired() {
+		return nil, &entryExpiredError{}
 	}
 
 	if len(entry.Data) == 0 {
@@ -51,6 +67,10 @@ func (s *SecretStorage) GetAndDelete(UUID string) (*Entry, error) {
 		return nil, err
 	}
 
+	if entry.IsExpired() {
+		return nil, &entryExpiredError{}
+	}
+
 	if len(entry.Data) == 0 {
 		return entry, nil
 	}
@@ -65,4 +85,8 @@ func (s *SecretStorage) GetAndDelete(UUID string) (*Entry, error) {
 	ret.Data = decrypted
 
 	return &ret, nil
+}
+
+func (s *SecretStorage) Close() error {
+	return nil
 }

@@ -45,6 +45,7 @@ func TestGetUUIDFromPath(t *testing.T) {
 }
 
 func TestCreateEntry(t *testing.T) {
+	expireSeconds = 10
 	testCases := []string{
 		"foo",
 	}

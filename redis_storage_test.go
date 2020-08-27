@@ -34,94 +34,86 @@ func TestRedisStorage(t *testing.T) {
 		DB:       0,  // use default DB
 	})
 
-	storage := RedisStorage{rdb, "entries_test"}
-
-	testCases := []string{
-		"foo",
-	}
+	storage := NewRedisStorage("redis://localhost:6379/0", "entries_test")
 
 	t.Run("Create", func(t *testing.T) {
-		cleanRedisStorage(&storage)
-		for _, testCase := range testCases {
-			UUID := newUUIDString()
-			err := storage.Create(UUID, []byte(testCase), time.Second*10)
+		cleanRedisStorage(storage)
+		testCase := "foo"
+		UUID := newUUIDString()
+		err := storage.Create(UUID, []byte(testCase), time.Second*10)
 
-			if err != nil {
-				t.Fatal(err)
-			}
+		if err != nil {
+			t.Fatal(err)
+		}
 
-			ctx := context.Background()
-			res, err := rdb.HGet(ctx, storage.GetKey(UUID), "data").Result()
+		ctx := context.Background()
+		res, err := rdb.HGet(ctx, storage.GetKey(UUID), "data").Result()
 
-			if err != nil {
-				t.Fatal(err)
-			}
+		if err != nil {
+			t.Fatal(err)
+		}
 
-			if res != testCase {
-				t.Errorf("expected %q, got %q", testCase, res)
-			}
+		if res != testCase {
+			t.Errorf("expected %q, got %q", testCase, res)
 		}
 	})
 
 	t.Run("Get", func(t *testing.T) {
-		cleanRedisStorage(&storage)
-		for _, testCase := range testCases {
-			UUID := newUUIDString()
-			err := storage.Create(UUID, []byte(testCase), time.Second*10)
+		cleanRedisStorage(storage)
+		testCase := "foo"
+		UUID := newUUIDString()
+		err := storage.Create(UUID, []byte(testCase), time.Second*10)
 
-			if err != nil {
-				t.Fatal(err)
-			}
+		if err != nil {
+			t.Fatal(err)
+		}
 
-			res, err := storage.Get(UUID)
+		res, err := storage.Get(UUID)
 
-			if err != nil {
-				t.Fatal(err)
-			}
+		if err != nil {
+			t.Fatal(err)
+		}
 
-			if string(res.Data) != testCase {
-				t.Errorf("expected %q, got %q", testCase, res)
-			}
+		if string(res.Data) != testCase {
+			t.Errorf("expected %q, got %q", testCase, res)
+		}
 
-			ctx := context.Background()
-			data, err := rdb.HGet(ctx, storage.GetKey(UUID), "data").Result()
+		ctx := context.Background()
+		data, err := rdb.HGet(ctx, storage.GetKey(UUID), "data").Result()
 
-			if data != testCase {
-				t.Errorf("Data is not ok, expected %q, got %q", testCase, data)
-			}
-
+		if data != testCase {
+			t.Errorf("Data is not ok, expected %q, got %q", testCase, data)
 		}
 	})
 
 	t.Run("GetAndDelete", func(t *testing.T) {
-		cleanRedisStorage(&storage)
-		for _, testCase := range testCases {
-			UUID := newUUIDString()
-			err := storage.Create(UUID, []byte(testCase), time.Second*10)
+		cleanRedisStorage(storage)
+		testCase := "foo"
+		UUID := newUUIDString()
+		err := storage.Create(UUID, []byte(testCase), time.Second*10)
 
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			res, err := storage.GetAndDelete(UUID)
-
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if string(res.Data) != testCase {
-				t.Errorf("expected %q, got %q", testCase, res)
-			}
-
-			ctx := context.Background()
-			data, err := rdb.HGet(ctx, storage.GetKey(UUID), "data").Result()
-
-			if data != "" {
-				t.Errorf("Data is not ok, expected %q, got %q", "", data)
-			}
-
+		if err != nil {
+			t.Fatal(err)
 		}
+
+		res, err := storage.GetAndDelete(UUID)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if string(res.Data) != testCase {
+			t.Errorf("expected %q, got %q", testCase, res)
+		}
+
+		ctx := context.Background()
+		data, err := rdb.HGet(ctx, storage.GetKey(UUID), "data").Result()
+
+		if data != "" {
+			t.Errorf("Data is not ok, expected %q, got %q", "", data)
+		}
+
 	})
 
-	cleanRedisStorage(&storage)
+	cleanRedisStorage(storage)
 }
