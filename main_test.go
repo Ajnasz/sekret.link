@@ -46,48 +46,43 @@ func TestGetUUIDFromPath(t *testing.T) {
 
 func TestCreateEntry(t *testing.T) {
 	expireSeconds = 10
-	testCases := []string{
-		"foo",
-	}
 
-	for _, testCase := range testCases {
-		t.Run(testCase, func(t *testing.T) {
-			cleanEntries(t)
-			req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(testCase)))
-			w := httptest.NewRecorder()
-			handleRequest(w, req)
+	testCase := "foo"
+	t.Run(testCase, func(t *testing.T) {
+		cleanEntries(t)
+		req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(testCase)))
+		w := httptest.NewRecorder()
+		handleRequest(w, req)
 
-			resp := w.Result()
-			body, _ := ioutil.ReadAll(resp.Body)
+		resp := w.Result()
+		body, _ := ioutil.ReadAll(resp.Body)
 
-			responseURL := string(body)
-			savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
+		responseURL := string(body)
+		savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
 
-			if err != nil {
-				t.Fatal(err)
-			}
+		if err != nil {
+			t.Fatal(err)
+		}
 
-			key, err := hex.DecodeString(keyString)
+		key, err := hex.DecodeString(keyString)
 
-			if err != nil {
-				t.Fatal(err)
-			}
+		if err != nil {
+			t.Fatal(err)
+		}
 
-			secretStorage := &SecretStorage{storage, &AESEncrypter{key}}
-			entry, err := secretStorage.Get(savedUUID)
+		secretStorage := &SecretStorage{storage, &AESEncrypter{key}}
+		entry, err := secretStorage.Get(savedUUID)
 
-			if err != nil {
-				t.Fatal(err)
-			}
+		if err != nil {
+			t.Fatal(err)
+		}
 
-			actual := string(entry.Data)
+		actual := string(entry.Data)
 
-			if testCase != actual {
-				t.Errorf("data not saved expected: %q, actual: %q", testCase, actual)
-			}
-		})
-	}
-
+		if testCase != actual {
+			t.Errorf("data not saved expected: %q, actual: %q", testCase, actual)
+		}
+	})
 }
 
 func TestGetEntry(t *testing.T) {
@@ -136,40 +131,81 @@ func TestGetEntry(t *testing.T) {
 }
 
 func TestSetAndGetEntry(t *testing.T) {
-	testCases := []string{
-		"foo",
+	testCase := "foo"
+
+	t.Run(testCase, func(t *testing.T) {
+		cleanEntries(t)
+		req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(testCase)))
+		w := httptest.NewRecorder()
+		handleRequest(w, req)
+
+		resp := w.Result()
+		body, _ := ioutil.ReadAll(resp.Body)
+
+		responseURL := string(body)
+		savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req = httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", savedUUID, keyString), nil)
+		w = httptest.NewRecorder()
+		handleRequest(w, req)
+
+		resp = w.Result()
+		body, _ = ioutil.ReadAll(resp.Body)
+
+		actual := string(body)
+
+		if testCase != actual {
+			t.Errorf("data not saved expected: %q, actual: %q", testCase, actual)
+		}
+	})
+}
+
+func TestCreateEntryWithExpiration(t *testing.T) {
+	maxExpireSeconds = 120
+	expireSeconds = -10
+	testCase := "foo"
+
+	cleanEntries(t)
+	req := httptest.NewRequest("POST", "http://example.com?expire=1m", bytes.NewReader([]byte(testCase)))
+	w := httptest.NewRecorder()
+	handleRequest(w, req)
+
+	resp := w.Result()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	if resp.StatusCode != 200 {
+		t.Errorf("Invalid statuscode, expected %d, got %d", 200, resp.StatusCode)
 	}
 
-	for _, testCase := range testCases {
-		t.Run(testCase, func(t *testing.T) {
-			cleanEntries(t)
-			req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(testCase)))
-			w := httptest.NewRecorder()
-			handleRequest(w, req)
+	responseURL := string(body)
+	savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
 
-			resp := w.Result()
-			body, _ := ioutil.ReadAll(resp.Body)
-
-			responseURL := string(body)
-			savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
-
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			req = httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", savedUUID, keyString), nil)
-			w = httptest.NewRecorder()
-			handleRequest(w, req)
-
-			resp = w.Result()
-			body, _ = ioutil.ReadAll(resp.Body)
-
-			actual := string(body)
-
-			if testCase != actual {
-				t.Errorf("data not saved expected: %q, actual: %q", testCase, actual)
-			}
-		})
+	if err != nil {
+		t.Fatal(err)
 	}
 
+	key, err := hex.DecodeString(keyString)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	secretStorage := &SecretStorage{storage, &AESEncrypter{key}}
+	entry, err := secretStorage.Get(savedUUID)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	now := time.Now()
+	if entry.Expire.After(now.Add(time.Minute)) {
+		t.Errorf("Expiration is more than expected: %q, %q", entry.Expire, now.Add(time.Second*61))
+	}
+	if entry.Expire.Before(now.Add(time.Second * 59)) {
+		t.Errorf("Expiration is less than expected: %q", entry.Expire)
+	}
 }

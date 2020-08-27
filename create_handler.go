@@ -10,6 +10,36 @@ import (
 	"time"
 )
 
+func createKey() ([]byte, string, error) {
+	key, err := generateRSAKey()
+	if err != nil {
+		return nil, "", err
+	}
+
+	keyString := hex.EncodeToString(key)
+
+	return key, keyString, nil
+}
+
+func getExpiration(expire string, defaultExpire time.Duration) (time.Duration, error) {
+	if expire == "" {
+		return defaultExpire, nil
+	}
+	userExpire, err := time.ParseDuration(expire)
+	if err != nil {
+		log.Println(err)
+		return defaultExpire, nil
+	}
+
+	maxExpire := time.Duration(maxExpireSeconds) * time.Second
+
+	if userExpire > maxExpire {
+		return 0, fmt.Errorf("Invalid expiration date")
+	}
+
+	return userExpire, nil
+}
+
 func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 
@@ -18,16 +48,8 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
-	UUID := newUUIDString()
 
-	key, err := generateRSAKey()
-	if err != nil {
-		log.Println(err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
-	}
-
-	keyString := hex.EncodeToString(key)
+	key, keyString, err := createKey()
 
 	if err != nil {
 		log.Println(err)
@@ -37,7 +59,17 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 
 	secretStorage := &SecretStorage{storage, &AESEncrypter{key}}
 
-	err = secretStorage.Create(UUID, body, time.Second*time.Duration(expireSeconds))
+	UUID := newUUIDString()
+
+	expiration, err := getExpiration(r.URL.Query().Get("expire"), time.Second*time.Duration(expireSeconds))
+
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Invalid expiration date", http.StatusBadRequest)
+		return
+	}
+
+	err = secretStorage.Create(UUID, body, expiration)
 
 	if err != nil {
 		log.Println(err)
