@@ -47,6 +47,9 @@ func (s *SQLiteStorage) GetMeta(UUID string) (*EntryMeta, error) {
 
 	if err != nil {
 		tx.Rollback()
+		if err == sql.ErrNoRows {
+			return nil, entryNotFound
+		}
 		return nil, err
 	}
 
@@ -115,6 +118,9 @@ func (s *SQLiteStorage) Get(UUID string) (*Entry, error) {
 
 	if err != nil {
 		tx.Rollback()
+		if err == sql.ErrNoRows {
+			return nil, entryNotFound
+		}
 		return nil, err
 	}
 
@@ -186,6 +192,9 @@ func (s *SQLiteStorage) GetAndDelete(UUID string) (*Entry, error) {
 
 	if err != nil {
 		tx.Rollback()
+		if err == sql.ErrNoRows {
+			return nil, entryNotFound
+		}
 		return nil, err
 	}
 
@@ -231,6 +240,22 @@ func (s *SQLiteStorage) GetAndDelete(UUID string) (*Entry, error) {
 		EntryMeta: meta,
 		Data:      data,
 	}, nil
+}
+
+func (s *SQLiteStorage) Delete(UUID string) error {
+	ctx := context.Background()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, "DELETE FROM entries WHERE uuid=?", UUID)
+
+	if err != nil {
+		tx.Rollback()
+	}
+
+	return tx.Commit()
 }
 
 func NewSQLiteStorage(fileName string) *SQLiteStorage {

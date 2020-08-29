@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"sync"
 	"time"
 )
@@ -56,7 +55,7 @@ func (m *MemoryStorage) GetMeta(UUID string) (*EntryMeta, error) {
 		return meta, nil
 	}
 
-	return nil, fmt.Errorf("Entry not found")
+	return nil, entryNotFound
 }
 
 func (m *MemoryStorage) Get(UUID string) (*Entry, error) {
@@ -81,7 +80,7 @@ func (m *MemoryStorage) Get(UUID string) (*Entry, error) {
 		}, nil
 	}
 
-	return nil, fmt.Errorf("Entry not found")
+	return nil, entryNotFound
 }
 
 func (m *MemoryStorage) GetAndDelete(UUID string) (*Entry, error) {
@@ -107,7 +106,18 @@ func (m *MemoryStorage) GetAndDelete(UUID string) (*Entry, error) {
 		}, nil
 	}
 
-	return nil, fmt.Errorf("Entry not found")
+	return nil, entryNotFound
+}
+
+func (m *MemoryStorage) Delete(UUID string) error {
+	m.entries.RLock()
+	defer m.entries.RUnlock()
+
+	if _, ok := m.entries.m[UUID]; ok {
+		delete(m.entries.m, UUID)
+	}
+
+	return nil
 }
 
 func NewMemoryStorage() *MemoryStorage {

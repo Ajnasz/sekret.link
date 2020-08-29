@@ -78,6 +78,51 @@ func TestStorages(t *testing.T) {
 					t.Errorf("Expected expire error but got %v", err)
 				}
 			})
+			t.Run("Delete", func(t *testing.T) {
+				storage.Clean()
+				UUID := newUUIDString()
+				err := storage.Create(UUID, []byte("foo"), time.Second*-10)
+
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				err = storage.Delete(UUID)
+
+				if err != nil {
+					t.Error(err)
+				}
+
+				ret, err := storage.Get(UUID)
+
+				if err != entryNotFound {
+					t.Errorf("Storage Get should return an entry not found error, but returned %v", err)
+				}
+
+				if ret != nil {
+					t.Errorf("Expected to not be able to retreive deleted item, but got: %v", ret)
+				}
+
+				retMeta, err := storage.GetMeta(UUID)
+
+				if err != entryNotFound {
+					t.Errorf("Storage GetMeta should return an entry not found error, but returned %v", err)
+				}
+
+				if retMeta != nil {
+					t.Errorf("Expected to not be able to retreive deleted item, but got: %v", ret)
+				}
+
+				ret, err = storage.GetAndDelete(UUID)
+
+				if err != entryNotFound {
+					t.Errorf("Storage GetAndDelete should return an entry not found error, but returned %v", err)
+				}
+
+				if retMeta != nil {
+					t.Errorf("Expected to not be able to retreive deleted item, but got: %v", ret)
+				}
+			})
 			storage.Clean()
 		})
 	}

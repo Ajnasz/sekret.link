@@ -86,6 +86,10 @@ func (r *RedisStorage) Get(UUID string) (*Entry, error) {
 		return nil, err
 	}
 
+	if len(val) == 0 {
+		return nil, entryNotFound
+	}
+
 	ret, err := redisEntryToEntry(val)
 
 	if err != nil {
@@ -103,6 +107,11 @@ func (r *RedisStorage) Get(UUID string) (*Entry, error) {
 
 func (r *RedisStorage) GetMeta(UUID string) (*EntryMeta, error) {
 	ctx := context.Background()
+	exists := r.rdb.Exists(ctx, r.GetKey(UUID))
+	if exists.Val() == 0 {
+		return nil, entryNotFound
+	}
+
 	metaKeys := []string{"created", "accessed", "expire"}
 
 	val := map[string]string{}
@@ -136,6 +145,7 @@ func (r *RedisStorage) GetAndDelete(UUID string) (*Entry, error) {
 	key := r.GetKey(UUID)
 
 	val := pipe.HGetAll(ctx, key)
+
 	pipe.HSet(ctx, key, "data", nil, "accessed", time.Now())
 
 	_, err := pipe.Exec(ctx)
@@ -144,7 +154,13 @@ func (r *RedisStorage) GetAndDelete(UUID string) (*Entry, error) {
 		return nil, err
 	}
 
-	ret, err := redisEntryToEntry(val.Val())
+	value := val.Val()
+
+	if len(value) == 0 {
+		return nil, entryNotFound
+	}
+
+	ret, err := redisEntryToEntry(value)
 
 	if err != nil {
 		return nil, err
@@ -157,6 +173,12 @@ func (r *RedisStorage) GetAndDelete(UUID string) (*Entry, error) {
 	ret.UUID = UUID
 
 	return ret, nil
+}
+
+func (r *RedisStorage) Delete(UUID string) error {
+	ctx := context.Background()
+	err := r.rdb.Del(ctx, r.GetKey(UUID)).Err()
+	return err
 }
 
 func NewRedisStorage(redisDB string, prefix string) *RedisStorage {

@@ -40,6 +40,9 @@ func (s *PostgresqlStorage) GetMeta(UUID string) (*EntryMeta, error) {
 
 	if err != nil {
 		tx.Rollback()
+		if err == sql.ErrNoRows {
+			return nil, entryNotFound
+		}
 		return nil, err
 	}
 
@@ -101,6 +104,10 @@ func (s *PostgresqlStorage) Get(UUID string) (*Entry, error) {
 
 	if err != nil {
 		tx.Rollback()
+		if err == sql.ErrNoRows {
+			return nil, entryNotFound
+		}
+
 		return nil, err
 	}
 
@@ -165,6 +172,9 @@ func (s *PostgresqlStorage) GetAndDelete(UUID string) (*Entry, error) {
 
 	if err != nil {
 		tx.Rollback()
+		if err == sql.ErrNoRows {
+			return nil, entryNotFound
+		}
 		return nil, err
 	}
 
@@ -210,6 +220,23 @@ func (s *PostgresqlStorage) GetAndDelete(UUID string) (*Entry, error) {
 		EntryMeta: meta,
 		Data:      data,
 	}, nil
+}
+
+func (s *PostgresqlStorage) Delete(UUID string) error {
+	ctx := context.Background()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, "DELETE FROM entries WHERE uuid=$1", UUID)
+
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func NewPostgresqlStorage(psqlconn string) *PostgresqlStorage {

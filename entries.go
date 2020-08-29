@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -26,6 +27,7 @@ type EntryStorage interface {
 	Get(string) (*Entry, error)
 	GetAndDelete(string) (*Entry, error)
 	GetMeta(string) (*EntryMeta, error)
+	Delete(string) error
 }
 
 type SecretResponse struct {
@@ -51,3 +53,5 @@ type entryExpiredError struct{}
 func (e *entryExpiredError) Error() string {
 	return "Entry expired"
 }
+
+var entryNotFound = fmt.Errorf("Entry not found")

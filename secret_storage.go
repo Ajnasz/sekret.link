@@ -88,5 +88,9 @@ func (s *SecretStorage) GetAndDelete(UUID string) (*Entry, error) {
 }
 
 func (s *SecretStorage) Close() error {
-	return nil
+	return s.internalStorage.Close()
+}
+
+func (s *SecretStorage) Delete(UUID string) error {
+	return s.internalStorage.Delete(UUID)
 }
