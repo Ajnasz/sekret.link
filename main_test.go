@@ -209,3 +209,22 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 		t.Errorf("Expiration is less than expected: %q", entry.Expire)
 	}
 }
+
+func TestCreateEntrySizeLimit(t *testing.T) {
+	maxExpireSeconds = 120
+	expireSeconds = 10
+	testCase := "ff"
+	maxDataSize = 1
+
+	cleanEntries(t)
+	req := httptest.NewRequest("POST", "http://example.com?expire=1m", bytes.NewReader([]byte(testCase)))
+	w := httptest.NewRecorder()
+	handleRequest(w, req)
+
+	resp := w.Result()
+
+	if resp.StatusCode != 413 {
+		t.Errorf("Invalid statuscode, expected %d, got %d", 413, resp.StatusCode)
+	}
+
+}

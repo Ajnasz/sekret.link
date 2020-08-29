@@ -41,11 +41,16 @@ func getExpiration(expire string, defaultExpire time.Duration) (time.Duration, e
 }
 
 func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxDataSize)
 	body, err := ioutil.ReadAll(r.Body)
 
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		if err.Error() == "http: request body too large" {
+			http.Error(w, "Too large", http.StatusRequestEntityTooLarge)
+		} else {
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+		}
 		return
 	}
 
