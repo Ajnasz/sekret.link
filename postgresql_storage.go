@@ -75,7 +75,7 @@ func (s *PostgresqlStorage) GetMeta(UUID string) (*EntryMeta, error) {
 			log.Fatal(err)
 		}
 
-		return nil, &entryExpiredError{}
+		return nil, entryExpiredError
 	}
 
 	err = tx.Commit()
@@ -140,7 +140,7 @@ func (s *PostgresqlStorage) Get(UUID string) (*Entry, error) {
 			log.Fatal(err)
 		}
 
-		return nil, &entryExpiredError{}
+		return nil, entryExpiredError
 	}
 
 	err = tx.Commit()
@@ -208,7 +208,7 @@ func (s *PostgresqlStorage) GetAndDelete(UUID string) (*Entry, error) {
 			log.Fatal(err)
 		}
 
-		return nil, &entryExpiredError{}
+		return nil, entryExpiredError
 	}
 
 	err = tx.Commit()

@@ -89,7 +89,7 @@ func (s *SQLiteStorage) GetMeta(UUID string) (*EntryMeta, error) {
 			log.Fatal(err)
 		}
 
-		return nil, &entryExpiredError{}
+		return nil, entryExpiredError
 	}
 
 	err = tx.Commit()
@@ -160,7 +160,7 @@ func (s *SQLiteStorage) Get(UUID string) (*Entry, error) {
 			log.Fatal(err)
 		}
 
-		return nil, &entryExpiredError{}
+		return nil, entryExpiredError
 	}
 
 	err = tx.Commit()
@@ -228,7 +228,7 @@ func (s *SQLiteStorage) GetAndDelete(UUID string) (*Entry, error) {
 			log.Fatal(err)
 		}
 
-		return nil, &entryExpiredError{}
+		return nil, entryExpiredError
 	}
 
 	err = tx.Commit()

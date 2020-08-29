@@ -27,7 +27,7 @@ func (s *SecretStorage) GetMeta(UUID string) (*EntryMeta, error) {
 	}
 
 	if entryMeta.IsExpired() {
-		return nil, &entryExpiredError{}
+		return nil, entryExpiredError
 	}
 
 	return entryMeta, nil
@@ -41,7 +41,7 @@ func (s *SecretStorage) Get(UUID string) (*Entry, error) {
 	}
 
 	if entry.IsExpired() {
-		return nil, &entryExpiredError{}
+		return nil, entryExpiredError
 	}
 
 	if len(entry.Data) == 0 {
@@ -68,7 +68,7 @@ func (s *SecretStorage) GetAndDelete(UUID string) (*Entry, error) {
 	}
 
 	if entry.IsExpired() {
-		return nil, &entryExpiredError{}
+		return nil, entryExpiredError
 	}
 
 	if len(entry.Data) == 0 {

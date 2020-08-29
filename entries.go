@@ -48,10 +48,5 @@ func secretResponseFromEntryMeta(entry *EntryMeta) *SecretResponse {
 	}
 }
 
-type entryExpiredError struct{}
-
-func (e *entryExpiredError) Error() string {
-	return "Entry expired"
-}
-
+var entryExpiredError = fmt.Errorf("Entry expired")
 var entryNotFound = fmt.Errorf("Entry not found")

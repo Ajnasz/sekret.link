@@ -36,7 +36,7 @@ func TestStorages(t *testing.T) {
 					t.Errorf("Expected expired data to be nil")
 				}
 
-				if _, ok := err.(*entryExpiredError); !ok {
+				if err != entryExpiredError {
 					t.Errorf("Expected expire error but got %v", err)
 				}
 			})
@@ -55,7 +55,7 @@ func TestStorages(t *testing.T) {
 					t.Errorf("Expected expired data to be nil")
 				}
 
-				if _, ok := err.(*entryExpiredError); !ok {
+				if err != entryExpiredError {
 					t.Errorf("Expected expire error but got %v", err)
 				}
 			})
@@ -74,7 +74,7 @@ func TestStorages(t *testing.T) {
 					t.Errorf("Expected expired data to be nil")
 				}
 
-				if _, ok := err.(*entryExpiredError); !ok {
+				if err != entryExpiredError {
 					t.Errorf("Expected expire error but got %v", err)
 				}
 			})

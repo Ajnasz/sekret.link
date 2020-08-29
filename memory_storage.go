@@ -50,7 +50,7 @@ func (m *MemoryStorage) GetMeta(UUID string) (*EntryMeta, error) {
 
 		if meta.IsExpired() {
 			delete(m.entries.m, UUID)
-			return nil, &entryExpiredError{}
+			return nil, entryExpiredError
 		}
 		return meta, nil
 	}
@@ -72,7 +72,7 @@ func (m *MemoryStorage) Get(UUID string) (*Entry, error) {
 
 		if meta.IsExpired() {
 			delete(m.entries.m, UUID)
-			return nil, &entryExpiredError{}
+			return nil, entryExpiredError
 		}
 		return &Entry{
 			EntryMeta: meta,
@@ -97,7 +97,7 @@ func (m *MemoryStorage) GetAndDelete(UUID string) (*Entry, error) {
 		}
 
 		if meta.IsExpired() {
-			return nil, &entryExpiredError{}
+			return nil, entryExpiredError
 		}
 
 		return &Entry{
