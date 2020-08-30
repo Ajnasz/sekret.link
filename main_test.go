@@ -45,44 +45,71 @@ func TestGetUUIDFromPath(t *testing.T) {
 }
 
 func TestCreateEntry(t *testing.T) {
+	value := "Foo"
+	expireSeconds = 10
+	cleanEntries(t)
+	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(value)))
+	w := httptest.NewRecorder()
+	handleRequest(w, req)
+
+	resp := w.Result()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	responseURL := string(body)
+	savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	key, err := hex.DecodeString(keyString)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	secretStorage := &SecretStorage{storage, &AESEncrypter{key}}
+	entry, err := secretStorage.Get(savedUUID)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	actual := string(entry.Data)
+
+	if value != actual {
+		t.Errorf("data not saved expected: %q, actual: %q", value, actual)
+	}
+}
+
+func TestRequestPathsCreateEntry(t *testing.T) {
 	expireSeconds = 10
 
-	testCase := "foo"
-	t.Run(testCase, func(t *testing.T) {
-		cleanEntries(t)
-		req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(testCase)))
-		w := httptest.NewRecorder()
-		handleRequest(w, req)
+	testCases := []struct {
+		Name       string
+		Path       string
+		StatusCode int
+	}{
+		{Name: "empty path", Path: "", StatusCode: 200},
+		{Name: "/ path", Path: "/", StatusCode: 200},
+		{Name: "Longer path", Path: "/other", StatusCode: 404},
+	}
 
-		resp := w.Result()
-		body, _ := ioutil.ReadAll(resp.Body)
+	for _, testCase := range testCases {
+		t.Run(testCase.Name, func(t *testing.T) {
+			cleanEntries(t)
+			req := httptest.NewRequest("POST", fmt.Sprintf("http://example.com%s", testCase.Path), bytes.NewReader([]byte("ASDF")))
+			w := httptest.NewRecorder()
+			handleRequest(w, req)
 
-		responseURL := string(body)
-		savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
+			resp := w.Result()
 
-		if err != nil {
-			t.Fatal(err)
-		}
+			if resp.StatusCode != testCase.StatusCode {
+				t.Errorf("Expected statuscode %d, but got %d", testCase.StatusCode, resp.StatusCode)
+			}
+		})
+	}
 
-		key, err := hex.DecodeString(keyString)
-
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		secretStorage := &SecretStorage{storage, &AESEncrypter{key}}
-		entry, err := secretStorage.Get(savedUUID)
-
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		actual := string(entry.Data)
-
-		if testCase != actual {
-			t.Errorf("data not saved expected: %q, actual: %q", testCase, actual)
-		}
-	})
 }
 
 func TestGetEntry(t *testing.T) {
