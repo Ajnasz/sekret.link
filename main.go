@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 var storage EntryStorage
@@ -43,6 +44,7 @@ func main() {
 	}
 
 	webExternalURL = extURL
+
 	if postgresDB != "" {
 		storage = NewPostgresqlStorage(postgresDB)
 	} else if sqliteDB != "" {
@@ -55,7 +57,20 @@ func main() {
 		log.Fatal("No database backend selected")
 	}
 
+	stopChan := make(chan interface{})
+	go func() {
+		for {
+			select {
+			case <-time.After(time.Second):
+				storage.DeleteExpired()
+			case <-stopChan:
+				return
+			}
+		}
+	}()
+
 	defer storage.Close()
+	defer func() { stopChan <- struct{}{} }()
 
 	http.HandleFunc("/", handleRequest)
 

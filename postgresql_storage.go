@@ -239,6 +239,23 @@ func (s *PostgresqlStorage) Delete(UUID string) error {
 	return tx.Commit()
 }
 
+func (s *PostgresqlStorage) DeleteExpired() error {
+	ctx := context.Background()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, "DELETE FROM entries WHERE expire < NOW()")
+
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
+}
+
 func NewPostgresqlStorage(psqlconn string) *PostgresqlStorage {
 	db, err := sql.Open("postgres", psqlconn)
 

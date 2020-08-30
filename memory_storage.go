@@ -119,6 +119,16 @@ func (m *MemoryStorage) Delete(UUID string) error {
 
 	return nil
 }
+func (m *MemoryStorage) DeleteExpired() error {
+	now := time.Now()
+	for UUID, entry := range m.entries.m {
+		if entry.Expire.Before(now) {
+			delete(m.entries.m, UUID)
+		}
+	}
+
+	return nil
+}
 
 func NewMemoryStorage() *MemoryStorage {
 	return &MemoryStorage{

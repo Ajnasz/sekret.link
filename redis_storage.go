@@ -181,6 +181,39 @@ func (r *RedisStorage) Delete(UUID string) error {
 	return err
 }
 
+func (r *RedisStorage) DeleteExpired() error {
+	ctx := context.Background()
+	keys, err := r.rdb.Keys(ctx, fmt.Sprintf("%s:*", r.Prefix)).Result()
+
+	if err != nil {
+		return err
+	}
+
+	entryPathsToDelete := []string{}
+	now := time.Now()
+
+	for _, entryPath := range keys {
+		val, err := r.rdb.HGetAll(ctx, entryPath).Result()
+		if err != nil {
+			return err
+		}
+		entry, err := redisEntryToEntry(val)
+		if err != nil {
+			return err
+		}
+
+		if entry.Expire.Before(now) {
+			entryPathsToDelete = append(entryPathsToDelete, entryPath)
+		}
+	}
+
+	if len(entryPathsToDelete) < 1 {
+		return nil
+	}
+
+	return r.rdb.Del(ctx, entryPathsToDelete...).Err()
+}
+
 func NewRedisStorage(redisDB string, prefix string) *RedisStorage {
 	connOptions, err := redis.ParseURL(redisDB)
 

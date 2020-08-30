@@ -253,6 +253,23 @@ func (s *SQLiteStorage) Delete(UUID string) error {
 
 	if err != nil {
 		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
+}
+func (s *SQLiteStorage) DeleteExpired() error {
+	ctx := context.Background()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, "DELETE FROM entries WHERE expire<?", time.Now())
+
+	if err != nil {
+		tx.Rollback()
+		return err
 	}
 
 	return tx.Commit()

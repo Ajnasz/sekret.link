@@ -28,6 +28,7 @@ type EntryStorage interface {
 	GetAndDelete(string) (*Entry, error)
 	GetMeta(string) (*EntryMeta, error)
 	Delete(string) error
+	DeleteExpired() error
 }
 
 type SecretResponse struct {

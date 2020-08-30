@@ -94,3 +94,6 @@ func (s *SecretStorage) Close() error {
 func (s *SecretStorage) Delete(UUID string) error {
 	return s.internalStorage.Delete(UUID)
 }
+func (s *SecretStorage) DeleteExpired() error {
+	return s.internalStorage.DeleteExpired()
+}
