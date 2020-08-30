@@ -38,13 +38,13 @@ func (e *AESEncrypter) Encrypt(data []byte) ([]byte, error) {
 func (e *AESEncrypter) Decrypt(data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(e.key)
 	if err != nil {
-		panic(err.Error())
+		return nil, err
 	}
 
 	//Create a new GCM
 	aesGCM, err := cipher.NewGCM(block)
 	if err != nil {
-		panic(err.Error())
+		return nil, err
 	}
 
 	//Get the nonce size
@@ -56,7 +56,7 @@ func (e *AESEncrypter) Decrypt(data []byte) ([]byte, error) {
 	//Decrypt the data
 	plaintext, err := aesGCM.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
-		panic(err.Error())
+		return nil, err
 	}
 
 	return plaintext, nil
