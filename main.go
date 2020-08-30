@@ -26,7 +26,7 @@ func init() {
 	flag.StringVar(&redisDB, "redisDB", "", "Path to redis database")
 	flag.StringVar(&redisKeyPrefix, "redisKeyPrefix", "entries", "Prefix of keys in redis db (in case redis is used as database backend)")
 	flag.IntVar(&expireSeconds, "expireSeconds", 60*60*24*7, "Default expiration time in seconds")
-	flag.IntVar(&maxExpireSeconds, "maxExpireSeconds", 60*60*24*7, "Max expiration time in seconds")
+	flag.IntVar(&maxExpireSeconds, "maxExpireSeconds", 60*60*24*30, "Max expiration time in seconds")
 	flag.Int64Var(&maxDataSize, "maxDataSize", 1024, "Max data size")
 }
 
