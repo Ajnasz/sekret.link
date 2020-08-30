@@ -7,12 +7,27 @@ import (
 	"net/http"
 )
 
+func onGetError(w http.ResponseWriter, err error) {
+	if err == ErrEntryExpired {
+		http.Error(w, "Gone", http.StatusGone)
+		return
+	}
+
+	if err == ErrEntryNotFound {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	log.Println(err)
+	http.Error(w, "Internal error", http.StatusInternalServerError)
+}
+
 func handleGetEntry(w http.ResponseWriter, r *http.Request) {
 	UUID, keyString, err := getUUIDAndSecretFromPath(r.URL.Path)
 
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
 
@@ -27,19 +42,7 @@ func handleGetEntry(w http.ResponseWriter, r *http.Request) {
 	entry, err := secretStorage.GetAndDelete(UUID)
 
 	if err != nil {
-		if err == ErrEntryExpired {
-			log.Println(err)
-			http.Error(w, "Gone", http.StatusGone)
-			return
-		}
-
-		log.Println(err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
-	}
-
-	if len(entry.Data) == 0 {
-		http.Error(w, "Not found", http.StatusNotFound)
+		onGetError(w, err)
 		return
 	}
 
