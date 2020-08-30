@@ -41,7 +41,7 @@ func (s *PostgresqlStorage) GetMeta(UUID string) (*EntryMeta, error) {
 	if err != nil {
 		tx.Rollback()
 		if err == sql.ErrNoRows {
-			return nil, entryNotFound
+			return nil, ErrEntryNotFound
 		}
 		return nil, err
 	}
@@ -72,16 +72,16 @@ func (s *PostgresqlStorage) GetMeta(UUID string) (*EntryMeta, error) {
 		}
 		err := tx.Commit()
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
-		return nil, entryExpiredError
+		return nil, ErrEntryExpired
 	}
 
 	err = tx.Commit()
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	return meta, nil
@@ -105,7 +105,7 @@ func (s *PostgresqlStorage) Get(UUID string) (*Entry, error) {
 	if err != nil {
 		tx.Rollback()
 		if err == sql.ErrNoRows {
-			return nil, entryNotFound
+			return nil, ErrEntryNotFound
 		}
 
 		return nil, err
@@ -137,16 +137,16 @@ func (s *PostgresqlStorage) Get(UUID string) (*Entry, error) {
 		}
 		err := tx.Commit()
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
-		return nil, entryExpiredError
+		return nil, ErrEntryExpired
 	}
 
 	err = tx.Commit()
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	return &Entry{
@@ -173,15 +173,20 @@ func (s *PostgresqlStorage) GetAndDelete(UUID string) (*Entry, error) {
 	if err != nil {
 		tx.Rollback()
 		if err == sql.ErrNoRows {
-			return nil, entryNotFound
+			return nil, ErrEntryNotFound
 		}
 		return nil, err
 	}
 
-	_, err = tx.ExecContext(ctx, "UPDATE entries SET data=$1, accessed=$2 WHERE uuid=$3", nil, time.Now(), UUID)
+	_, err = tx.ExecContext(ctx, "DELETE FROM entries WHERE uuid=$1", UUID)
 
 	if err != nil {
 		tx.Rollback()
+		return nil, err
+	}
+
+	err = tx.Commit()
+	if err != nil {
 		return nil, err
 	}
 
@@ -203,17 +208,7 @@ func (s *PostgresqlStorage) GetAndDelete(UUID string) (*Entry, error) {
 	}
 
 	if meta.IsExpired() {
-		err := tx.Commit()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		return nil, entryExpiredError
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		log.Fatal(err)
+		return nil, ErrEntryExpired
 	}
 
 	return &Entry{

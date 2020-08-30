@@ -48,15 +48,13 @@ func (s *SQLiteStorage) GetMeta(UUID string) (*EntryMeta, error) {
 	if err != nil {
 		tx.Rollback()
 		if err == sql.ErrNoRows {
-			return nil, entryNotFound
+			return nil, ErrEntryNotFound
 		}
 		return nil, err
 	}
 
-	_, err = tx.ExecContext(ctx, "UPDATE entries SET accessed=? WHERE uuid=?", time.Now(), UUID)
-
+	err = tx.Commit()
 	if err != nil {
-		tx.Rollback()
 		return nil, err
 	}
 
@@ -78,24 +76,11 @@ func (s *SQLiteStorage) GetMeta(UUID string) (*EntryMeta, error) {
 	}
 
 	if meta.IsExpired() {
-		_, err = tx.ExecContext(ctx, "UPDATE entries SET data=$1, accessed=$2 WHERE uuid=$3", nil, time.Now(), UUID)
-
-		if err != nil {
-			tx.Rollback()
-			return nil, err
-		}
-		err := tx.Commit()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		return nil, entryExpiredError
+		return nil, ErrEntryExpired
 	}
 
-	err = tx.Commit()
-
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	return meta, nil
@@ -119,7 +104,7 @@ func (s *SQLiteStorage) Get(UUID string) (*Entry, error) {
 	if err != nil {
 		tx.Rollback()
 		if err == sql.ErrNoRows {
-			return nil, entryNotFound
+			return nil, ErrEntryNotFound
 		}
 		return nil, err
 	}
@@ -160,7 +145,7 @@ func (s *SQLiteStorage) Get(UUID string) (*Entry, error) {
 			log.Fatal(err)
 		}
 
-		return nil, entryExpiredError
+		return nil, ErrEntryExpired
 	}
 
 	err = tx.Commit()
@@ -193,12 +178,12 @@ func (s *SQLiteStorage) GetAndDelete(UUID string) (*Entry, error) {
 	if err != nil {
 		tx.Rollback()
 		if err == sql.ErrNoRows {
-			return nil, entryNotFound
+			return nil, ErrEntryNotFound
 		}
 		return nil, err
 	}
 
-	_, err = tx.ExecContext(ctx, "UPDATE entries SET data=?, accessed=? WHERE uuid=?", nil, time.Now(), UUID)
+	_, err = tx.ExecContext(ctx, "DELETE FROM entries WHERE uuid=?", UUID)
 
 	if err != nil {
 		tx.Rollback()
@@ -225,15 +210,15 @@ func (s *SQLiteStorage) GetAndDelete(UUID string) (*Entry, error) {
 	if meta.IsExpired() {
 		err := tx.Commit()
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 
-		return nil, entryExpiredError
+		return nil, ErrEntryExpired
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	return &Entry{

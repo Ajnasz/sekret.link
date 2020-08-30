@@ -109,8 +109,8 @@ func TestRedisStorage(t *testing.T) {
 		ctx := context.Background()
 		data, err := rdb.HGet(ctx, storage.GetKey(UUID), "data").Result()
 
-		if data != "" {
-			t.Errorf("Data is not ok, expected %q, got %q", "", data)
+		if len(data) != 0 {
+			t.Errorf("Data is not ok, expected to be empty, got %q", data)
 		}
 
 	})

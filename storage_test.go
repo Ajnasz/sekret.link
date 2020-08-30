@@ -36,7 +36,7 @@ func TestStorages(t *testing.T) {
 					t.Errorf("Expected expired data to be nil")
 				}
 
-				if err != entryExpiredError {
+				if err != ErrEntryExpired {
 					t.Errorf("Expected expire error but got %v", err)
 				}
 			})
@@ -55,7 +55,7 @@ func TestStorages(t *testing.T) {
 					t.Errorf("Expected expired data to be nil")
 				}
 
-				if err != entryExpiredError {
+				if err != ErrEntryExpired {
 					t.Errorf("Expected expire error but got %v", err)
 				}
 			})
@@ -74,7 +74,7 @@ func TestStorages(t *testing.T) {
 					t.Errorf("Expected expired data to be nil")
 				}
 
-				if err != entryExpiredError {
+				if err != ErrEntryExpired {
 					t.Errorf("Expected expire error but got %v", err)
 				}
 			})
@@ -95,7 +95,7 @@ func TestStorages(t *testing.T) {
 
 				ret, err := storage.Get(UUID)
 
-				if err != entryNotFound {
+				if err != ErrEntryNotFound {
 					t.Errorf("Storage Get should return an entry not found error, but returned %v", err)
 				}
 
@@ -105,7 +105,7 @@ func TestStorages(t *testing.T) {
 
 				retMeta, err := storage.GetMeta(UUID)
 
-				if err != entryNotFound {
+				if err != ErrEntryNotFound {
 					t.Errorf("Storage GetMeta should return an entry not found error, but returned %v", err)
 				}
 
@@ -115,7 +115,7 @@ func TestStorages(t *testing.T) {
 
 				ret, err = storage.GetAndDelete(UUID)
 
-				if err != entryNotFound {
+				if err != ErrEntryNotFound {
 					t.Errorf("Storage GetAndDelete should return an entry not found error, but returned %v", err)
 				}
 
@@ -162,7 +162,7 @@ func TestStorages(t *testing.T) {
 					ret, err := storage.Get(item.UUID)
 
 					if item.ShouldExpire {
-						if err != entryNotFound {
+						if err != ErrEntryNotFound {
 							t.Errorf("Expected entry to return a not found error, but got %s", err)
 						}
 

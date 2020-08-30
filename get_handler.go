@@ -27,7 +27,7 @@ func handleGetEntry(w http.ResponseWriter, r *http.Request) {
 	entry, err := secretStorage.GetAndDelete(UUID)
 
 	if err != nil {
-		if err == entryExpiredError {
+		if err == ErrEntryExpired {
 			log.Println(err)
 			http.Error(w, "Gone", http.StatusGone)
 			return

@@ -92,24 +92,9 @@ func TestPostgresqlStorageCreateGetAndDelete(t *testing.T) {
 			var created time.Time
 
 			row := storage.db.QueryRow("SELECT data, accessed, created FROM entries WHERE uuid=$1", UUID)
-			// row := storage.db.QueryRow("SELECT accessed, created FROM entries WHERE uuid=?", "d799509c-21bd-47a3-a552-495fda8595b4")
 			err = row.Scan(&data, &accessed, &created)
-			if err != nil && err != sql.ErrNoRows {
+			if err == nil && err != sql.ErrNoRows {
 				t.Fatal(err)
-			}
-
-			if data != nil {
-				t.Errorf("Data returned, when it should be null %q", data)
-			}
-
-			now := time.Now()
-
-			if now.Sub(accessed) > time.Second {
-				t.Errorf("Accessed time is too large %q", accessed)
-			}
-
-			if !accessed.After(created) {
-				t.Errorf("Accessed (%q) expected to be after created (%q)", accessed, created)
 			}
 		})
 	}

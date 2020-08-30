@@ -49,5 +49,5 @@ func secretResponseFromEntryMeta(entry *EntryMeta) *SecretResponse {
 	}
 }
 
-var entryExpiredError = fmt.Errorf("Entry expired")
-var entryNotFound = fmt.Errorf("Entry not found")
+var ErrEntryExpired = fmt.Errorf("Entry expired")
+var ErrEntryNotFound = fmt.Errorf("Entry not found")
