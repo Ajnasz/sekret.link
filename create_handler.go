@@ -83,6 +83,7 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add("x-entry-uuid", UUID)
 	w.Header().Add("x-entry-key", keyString)
+	w.Header().Add("x-entry-expire", time.Now().Add(expiration).Format(time.RFC3339))
 	if r.Header.Get("Accept") == "application/json" {
 		w.Header().Set("Content-Type", "application/json")
 		entry, err := secretStorage.GetMeta(UUID)
