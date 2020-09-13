@@ -27,8 +27,7 @@ func getExpiration(expire string, defaultExpire time.Duration) (time.Duration, e
 	}
 	userExpire, err := time.ParseDuration(expire)
 	if err != nil {
-		log.Println(err)
-		return defaultExpire, nil
+		return 0, err
 	}
 
 	maxExpire := time.Duration(maxExpireSeconds) * time.Second
