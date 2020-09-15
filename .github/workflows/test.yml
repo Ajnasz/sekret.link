@@ -1,4 +1,4 @@
-name: Go
+name: Test
 
 on:
   push:
@@ -37,37 +37,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-
-    - name: Set up Go 1.x
-      uses: actions/setup-go@v2
-      with:
-        go-version: ^1.13
-      id: go
-
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
-
-    - name: Get dependencies
-      run: |
-        go get -v -t -d ./...
-        if [ -f Gopkg.toml ]; then
-            curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-            dep ensure
-        fi
-
-    - name: Build
-      uses:
-      run: |
-        VERSION=$(git describe --tags)
-        go build -ldflags "-w -s -X main.version=${VERSION}" .
-
   test:
     name: Test
     runs-on: ubuntu-latest
