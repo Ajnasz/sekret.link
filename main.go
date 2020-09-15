@@ -2,22 +2,27 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
 	"time"
 )
 
-var storage EntryStorage
-var externalURLParam string
-var expireSeconds int
-var maxExpireSeconds int
-var sqliteDB string
-var postgresDB string
-var redisDB string
-var redisKeyPrefix string
-var webExternalURL *url.URL
-var maxDataSize int64
+var (
+	storage          EntryStorage
+	externalURLParam string
+	expireSeconds    int
+	maxExpireSeconds int
+	sqliteDB         string
+	postgresDB       string
+	redisDB          string
+	redisKeyPrefix   string
+	webExternalURL   *url.URL
+	maxDataSize      int64
+	version          string
+	queryVersion     bool
+)
 
 func init() {
 	flag.StringVar(&externalURLParam, "webExternalURL", "", "Web server external url")
@@ -28,10 +33,16 @@ func init() {
 	flag.IntVar(&expireSeconds, "expireSeconds", 60*60*24*7, "Default expiration time in seconds")
 	flag.IntVar(&maxExpireSeconds, "maxExpireSeconds", 60*60*24*30, "Max expiration time in seconds")
 	flag.Int64Var(&maxDataSize, "maxDataSize", 1024, "Max data size")
+	flag.BoolVar(&queryVersion, "version", false, "Get version information")
 }
 
 func main() {
 	flag.Parse()
+
+	if queryVersion {
+		fmt.Println(version)
+		return
+	}
 
 	if maxExpireSeconds < expireSeconds {
 		log.Fatal("`expireSeconds` must be less or equal then `maxExpireSeconds`")
