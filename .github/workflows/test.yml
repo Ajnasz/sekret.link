@@ -25,7 +25,8 @@ jobs:
         image: postgres
         # Provide the password for postgres
         env:
-          POSTGRES_PASSWORD: Km61HJgJbBjNA0FdABpjDmQxEz008PHAQMA8TLpUbnlaKN7U8G1bQGHk0wsm
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
         # Set health checks to wait until postgres has started
         options: >-
           --health-cmd pg_isready
@@ -54,5 +55,8 @@ jobs:
         fi
 
     - name: Test
+      env:
+        POSTGRES_URL: "postgres://postgres:5432/secret_link_test?sslmode=disable"
+        REDIS_URL: "redis://redis:6379/0"
       run: go test -v .
 
