@@ -61,7 +61,7 @@ jobs:
 
     - name: Test
       env:
-        POSTGRES_URL: "postgres://localhost:5432/sekret_link_test?sslmode=disable"
+        POSTGRES_URL: "postgres://sekret_link_test:password@localhost:5432/sekret_link_test?sslmode=disable"
         REDIS_URL: "redis://localhost:6379/0"
       run: go test -v .
 
