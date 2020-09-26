@@ -24,6 +24,24 @@ var (
 	queryVersion     bool
 )
 
+func getStorage() EntryStorage {
+	postgresDB = getConnectionString(postgresDB, "POSTGRES_URL")
+	if postgresDB != "" {
+		return NewPostgresqlStorage(postgresDB)
+	}
+	sqliteDB = getConnectionString(sqliteDB, "SQLITE_DB")
+	if sqliteDB != "" {
+		return NewSQLiteStorage(sqliteDB)
+	}
+
+	redisDB := getConnectionString(redisDB, "REDIS_URL")
+	if redisDB != "" {
+		return NewRedisStorage(redisDB, redisKeyPrefix)
+	}
+
+	return nil
+}
+
 func init() {
 	flag.StringVar(&externalURLParam, "webExternalURL", "", "Web server external url")
 	flag.StringVar(&sqliteDB, "sqliteDB", "", "Path to sqlite database file")
@@ -56,15 +74,8 @@ func main() {
 
 	webExternalURL = extURL
 
-	if postgresDB != "" {
-		storage = NewPostgresqlStorage(postgresDB)
-	} else if sqliteDB != "" {
-		storage = NewSQLiteStorage(sqliteDB)
-		log.Println("Using SQLite database")
-	} else if redisDB != "" {
-		storage = NewRedisStorage(redisDB, redisKeyPrefix)
-		log.Println("Using Redis database")
-	} else {
+	storage = getStorage()
+	if storage == nil {
 		log.Fatal("No database backend selected")
 	}
 
