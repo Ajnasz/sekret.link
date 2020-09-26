@@ -4,17 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	// "os"
 	"testing"
 	"time"
 )
 
-func getConn() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", "secret_link_test", "Km61HJgJbBjNA0FdABpjDmQxEz008PHAQMA8TLpUbnlaKN7U8G1bQGHk0wsm", "localhost", 54320, "secret_link_test")
+func getPSQLTestConn() string {
+	return getConnectionString(fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", "secret_link_test", "Km61HJgJbBjNA0FdABpjDmQxEz008PHAQMA8TLpUbnlaKN7U8G1bQGHk0wsm", "localhost", 54320, "secret_link_test"), "POSTGRES_URL")
 }
 
 func clearPSQLDatabase(dbname string) {
-	psqlConn := getConn()
+	psqlConn := getPSQLTestConn()
 	storage := NewPostgresqlStorage(psqlConn)
 	defer storage.Close()
 	ctx := context.Background()
@@ -26,7 +25,7 @@ func clearPSQLDatabase(dbname string) {
 }
 
 func TestPostgresqlStorageCreateGet(t *testing.T) {
-	psqlConn := getConn()
+	psqlConn := getPSQLTestConn()
 	testCases := []string{
 		"foo",
 	}
@@ -58,7 +57,7 @@ func TestPostgresqlStorageCreateGet(t *testing.T) {
 }
 
 func TestPostgresqlStorageCreateGetAndDelete(t *testing.T) {
-	psqlConn := getConn()
+	psqlConn := getPSQLTestConn()
 
 	testCases := []string{
 		"foo",
