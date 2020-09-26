@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http/httptest"
@@ -70,6 +71,46 @@ func TestCreateEntry(t *testing.T) {
 
 	secretStorage := &SecretStorage{storage, &AESEncrypter{key}}
 	entry, err := secretStorage.Get(savedUUID)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	actual := string(entry.Data)
+
+	if value != actual {
+		t.Errorf("data not saved expected: %q, actual: %q", value, actual)
+	}
+}
+
+func TestCreateEntryJSON(t *testing.T) {
+	value := "Foo"
+	expireSeconds = 10
+	cleanEntries(t)
+	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(value)))
+	req.Header.Add("Accept", "application/json")
+	w := httptest.NewRecorder()
+	handleRequest(w, req)
+
+	resp := w.Result()
+	encode := struct {
+		Key string
+		EntryMeta
+	}{}
+	err := json.NewDecoder(resp.Body).Decode(&encode)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	key, err := hex.DecodeString(encode.Key)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	secretStorage := &SecretStorage{storage, &AESEncrypter{key}}
+	entry, err := secretStorage.Get(encode.UUID)
 
 	if err != nil {
 		t.Fatal(err)
