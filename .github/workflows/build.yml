@@ -32,7 +32,6 @@ jobs:
         fi
 
     - name: Build
-      uses:
       run: |
         VERSION=$(git describe --tags)
         go build -ldflags "-w -s -X main.version=${VERSION}" .
