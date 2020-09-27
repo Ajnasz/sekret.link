@@ -40,12 +40,12 @@ type SecretResponse struct {
 	Expire   time.Time
 }
 
-func secretResponseFromEntryMeta(entry *EntryMeta) *SecretResponse {
+func secretResponseFromEntryMeta(meta EntryMeta) *SecretResponse {
 	return &SecretResponse{
-		UUID:     entry.UUID,
-		Created:  entry.Created,
-		Expire:   entry.Expire,
-		Accessed: entry.Accessed,
+		UUID:     meta.UUID,
+		Created:  meta.Created,
+		Expire:   meta.Expire,
+		Accessed: meta.Accessed,
 	}
 }
 

@@ -13,18 +13,18 @@ type PostgresqlStorage struct {
 	db *sql.DB
 }
 
-func (s *PostgresqlStorage) Close() error {
+func (s PostgresqlStorage) Close() error {
 	return s.db.Close()
 }
 
-func (s *PostgresqlStorage) Create(UUID string, entry []byte, expire time.Duration) error {
+func (s PostgresqlStorage) Create(UUID string, entry []byte, expire time.Duration) error {
 	ctx := context.Background()
 	now := time.Now()
 	_, err := s.db.ExecContext(ctx, `INSERT INTO entries (uuid, data, created, expire) VALUES  ($1, $2, $3, $4) RETURNING uuid;`, UUID, entry, now, now.Add(expire))
 	return err
 }
 
-func (s *PostgresqlStorage) GetMeta(UUID string) (*EntryMeta, error) {
+func (s PostgresqlStorage) GetMeta(UUID string) (*EntryMeta, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -87,7 +87,7 @@ func (s *PostgresqlStorage) GetMeta(UUID string) (*EntryMeta, error) {
 	return meta, nil
 }
 
-func (s *PostgresqlStorage) Get(UUID string) (*Entry, error) {
+func (s PostgresqlStorage) Get(UUID string) (*Entry, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -155,7 +155,7 @@ func (s *PostgresqlStorage) Get(UUID string) (*Entry, error) {
 	}, nil
 }
 
-func (s *PostgresqlStorage) GetAndDelete(UUID string) (*Entry, error) {
+func (s PostgresqlStorage) GetAndDelete(UUID string) (*Entry, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -217,7 +217,7 @@ func (s *PostgresqlStorage) GetAndDelete(UUID string) (*Entry, error) {
 	}, nil
 }
 
-func (s *PostgresqlStorage) Delete(UUID string) error {
+func (s PostgresqlStorage) Delete(UUID string) error {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -234,7 +234,7 @@ func (s *PostgresqlStorage) Delete(UUID string) error {
 	return tx.Commit()
 }
 
-func (s *PostgresqlStorage) DeleteExpired() error {
+func (s PostgresqlStorage) DeleteExpired() error {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {

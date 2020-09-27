@@ -47,7 +47,7 @@ func handleGetEntry(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Header.Get("Accept") == "application/json" {
-		response := secretResponseFromEntryMeta(&entry.EntryMeta)
+		response := secretResponseFromEntryMeta(entry.EntryMeta)
 
 		response.Data = string(entry.Data)
 		response.Key = keyString

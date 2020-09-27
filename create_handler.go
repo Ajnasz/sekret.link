@@ -94,7 +94,7 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		response := secretResponseFromEntryMeta(entry)
+		response := secretResponseFromEntryMeta(*entry)
 		response.Key = keyString
 
 		json.NewEncoder(w).Encode(response)

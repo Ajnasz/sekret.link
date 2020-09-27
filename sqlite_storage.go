@@ -13,11 +13,11 @@ type SQLiteStorage struct {
 	db *sql.DB
 }
 
-func (s *SQLiteStorage) Close() error {
+func (s SQLiteStorage) Close() error {
 	return s.db.Close()
 }
 
-func (s *SQLiteStorage) Create(UUID string, entry []byte, expire time.Duration) error {
+func (s SQLiteStorage) Create(UUID string, entry []byte, expire time.Duration) error {
 	ctx := context.Background()
 	createStatement, err := s.db.PrepareContext(ctx, "INSERT INTO entries (uuid, data, created, expire) VALUES  (?, ?, ?, ?)")
 
@@ -31,7 +31,7 @@ func (s *SQLiteStorage) Create(UUID string, entry []byte, expire time.Duration) 
 	return err
 }
 
-func (s *SQLiteStorage) GetMeta(UUID string) (*EntryMeta, error) {
+func (s SQLiteStorage) GetMeta(UUID string) (*EntryMeta, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -86,7 +86,7 @@ func (s *SQLiteStorage) GetMeta(UUID string) (*EntryMeta, error) {
 	return meta, nil
 }
 
-func (s *SQLiteStorage) Get(UUID string) (*Entry, error) {
+func (s SQLiteStorage) Get(UUID string) (*Entry, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -160,7 +160,7 @@ func (s *SQLiteStorage) Get(UUID string) (*Entry, error) {
 	}, nil
 }
 
-func (s *SQLiteStorage) GetAndDelete(UUID string) (*Entry, error) {
+func (s SQLiteStorage) GetAndDelete(UUID string) (*Entry, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -227,7 +227,7 @@ func (s *SQLiteStorage) GetAndDelete(UUID string) (*Entry, error) {
 	}, nil
 }
 
-func (s *SQLiteStorage) Delete(UUID string) error {
+func (s SQLiteStorage) Delete(UUID string) error {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -243,7 +243,7 @@ func (s *SQLiteStorage) Delete(UUID string) error {
 
 	return tx.Commit()
 }
-func (s *SQLiteStorage) DeleteExpired() error {
+func (s SQLiteStorage) DeleteExpired() error {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
