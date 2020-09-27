@@ -14,7 +14,7 @@ func getPSQLTestConn() string {
 
 func clearPSQLDatabase(dbname string) {
 	psqlConn := getPSQLTestConn()
-	storage := NewPostgresqlStorage(psqlConn)
+	storage := newPostgresqlStorage(psqlConn)
 	defer storage.Close()
 	ctx := context.Background()
 	_, err := storage.db.ExecContext(ctx, "TRUNCATE entries;")
@@ -34,7 +34,7 @@ func TestPostgresqlStorageCreateGet(t *testing.T) {
 		t.Run(testCase, func(t *testing.T) {
 			clearPSQLDatabase(psqlConn)
 
-			storage := NewPostgresqlStorage(psqlConn)
+			storage := newPostgresqlStorage(psqlConn)
 			defer storage.Close()
 
 			UUID := newUUIDString()
@@ -67,7 +67,7 @@ func TestPostgresqlStorageCreateGetAndDelete(t *testing.T) {
 		t.Run(testCase, func(t *testing.T) {
 			clearPSQLDatabase(psqlConn)
 
-			storage := NewPostgresqlStorage(psqlConn)
+			storage := newPostgresqlStorage(psqlConn)
 			defer storage.Close()
 
 			UUID := newUUIDString()

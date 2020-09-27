@@ -31,7 +31,7 @@ func NewDummyEncrypter() *DummyEncrypter {
 func TestSecretStorage(t *testing.T) {
 
 	testData := "Lorem ipusm dolor sit amet"
-	storage := &SecretStorage{NewMemoryStorage(), NewDummyEncrypter()}
+	storage := &secretStorage{newMemoryStorage(), NewDummyEncrypter()}
 
 	UUID := newUUIDString()
 	err := storage.Create(UUID, []byte(testData), time.Second*10)

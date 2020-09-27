@@ -61,7 +61,7 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	secretStorage := &SecretStorage{storage, &AESEncrypter{key}}
+	secretStore := &secretStorage{storage, &AESEncrypter{key}}
 
 	UUID := newUUIDString()
 
@@ -73,7 +73,7 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = secretStorage.Create(UUID, body, expiration)
+	err = secretStore.Create(UUID, body, expiration)
 
 	if err != nil {
 		log.Println(err)
@@ -86,7 +86,7 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("x-entry-expire", time.Now().Add(expiration).Format(time.RFC3339))
 	if r.Header.Get("Accept") == "application/json" {
 		w.Header().Set("Content-Type", "application/json")
-		entry, err := secretStorage.GetMeta(UUID)
+		entry, err := secretStore.GetMeta(UUID)
 
 		if err != nil {
 			log.Println(err)

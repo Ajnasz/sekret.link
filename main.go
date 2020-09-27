@@ -27,16 +27,19 @@ var (
 func getStorage() EntryStorage {
 	postgresDB = getConnectionString(postgresDB, "POSTGRES_URL")
 	if postgresDB != "" {
-		return NewPostgresqlStorage(postgresDB)
+		log.Println("Connect to Postgres")
+		return newPostgresqlStorage(postgresDB)
 	}
 	sqliteDB = getConnectionString(sqliteDB, "SQLITE_DB")
 	if sqliteDB != "" {
-		return NewSQLiteStorage(sqliteDB)
+		log.Println("Connect to sqlite")
+		return newSQLiteStorage(sqliteDB)
 	}
 
 	redisDB := getConnectionString(redisDB, "REDIS_URL")
 	if redisDB != "" {
-		return NewRedisStorage(redisDB, redisKeyPrefix)
+		log.Println("Connect to redis")
+		return newRedisStorage(redisDB, redisKeyPrefix)
 	}
 
 	return nil

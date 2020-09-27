@@ -38,8 +38,8 @@ func handleGetEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	secretStorage := &SecretStorage{storage, &AESEncrypter{key}}
-	entry, err := secretStorage.GetAndDelete(UUID)
+	secretStore := &secretStorage{storage, &AESEncrypter{key}}
+	entry, err := secretStore.GetAndDelete(UUID)
 
 	if err != nil {
 		onGetError(w, err)

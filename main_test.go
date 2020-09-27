@@ -15,7 +15,7 @@ import (
 func cleanEntries(t *testing.T) {
 	extURL, _ := url.Parse("http://example.com")
 	webExternalURL = extURL
-	storage = NewMemoryStorage()
+	storage = newMemoryStorage()
 }
 
 func TestGetUUIDFromPath(t *testing.T) {
@@ -69,8 +69,8 @@ func TestCreateEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStorage := &SecretStorage{storage, &AESEncrypter{key}}
-	entry, err := secretStorage.Get(savedUUID)
+	secretStore := &secretStorage{storage, &AESEncrypter{key}}
+	entry, err := secretStore.Get(savedUUID)
 
 	if err != nil {
 		t.Fatal(err)
@@ -106,8 +106,8 @@ func TestCreateEntryJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStorage := &SecretStorage{storage, &AESEncrypter{key}}
-	entry, err := secretStorage.Get(encode.UUID)
+	secretStore := &secretStorage{storage, &AESEncrypter{key}}
+	entry, err := secretStore.Get(encode.UUID)
 
 	if err != nil {
 		t.Fatal(err)
@@ -302,8 +302,8 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStorage := &SecretStorage{storage, &AESEncrypter{key}}
-	entry, err := secretStorage.Get(savedUUID)
+	secretStore := &secretStorage{storage, &AESEncrypter{key}}
+	entry, err := secretStore.Get(savedUUID)
 
 	if err != nil {
 		t.Fatal(err)
