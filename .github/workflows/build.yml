@@ -33,5 +33,4 @@ jobs:
 
     - name: Build
       run: |
-        VERSION=$(git describe --tags)
-        go build -ldflags "-w -s -X main.version=${VERSION}" .
+        ./build.sh -o liux -a amd64 -s postgres

@@ -1,3 +1,5 @@
+// +build sqlite test
+
 package main
 
 import (

@@ -1,3 +1,5 @@
+// +build !postgres,!sqlite,!redis
+
 package main
 
 import (
@@ -137,6 +139,10 @@ func newMemoryStorage() *memoryStorage {
 			m map[string]*memoryEntry
 		}{m: make(map[string]*memoryEntry)},
 	}
+}
+
+func newStorage() EntryStorage {
+	return newMemoryStorage()
 }
 
 type memoryCleanbleStorage struct {
