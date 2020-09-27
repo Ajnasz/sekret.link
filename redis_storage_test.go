@@ -1,3 +1,5 @@
+// +build redis test
+
 package main
 
 import (
@@ -9,7 +11,7 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-func cleanRedisStorage(storage *RedisStorage) {
+func cleanRedisStorage(storage *redisStorage) {
 	ctx := context.Background()
 	keys, err := storage.rdb.Keys(ctx, fmt.Sprintf("%s:*", storage.Prefix)).Result()
 
@@ -42,7 +44,7 @@ func TestRedisStorage(t *testing.T) {
 
 	rdb := redis.NewClient(connOptions)
 
-	storage := NewRedisStorage(connStr, "entries_test")
+	storage := newRedisStorage(connStr, "entries_test")
 
 	t.Run("Create", func(t *testing.T) {
 		cleanRedisStorage(storage)

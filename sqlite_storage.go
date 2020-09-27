@@ -1,3 +1,5 @@
+// +build sqlite test
+
 package main
 
 import (
@@ -9,15 +11,15 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type SQLiteStorage struct {
+type sqliteStorage struct {
 	db *sql.DB
 }
 
-func (s *SQLiteStorage) Close() error {
+func (s sqliteStorage) Close() error {
 	return s.db.Close()
 }
 
-func (s *SQLiteStorage) Create(UUID string, entry []byte, expire time.Duration) error {
+func (s sqliteStorage) Create(UUID string, entry []byte, expire time.Duration) error {
 	ctx := context.Background()
 	createStatement, err := s.db.PrepareContext(ctx, "INSERT INTO entries (uuid, data, created, expire) VALUES  (?, ?, ?, ?)")
 
@@ -31,7 +33,7 @@ func (s *SQLiteStorage) Create(UUID string, entry []byte, expire time.Duration) 
 	return err
 }
 
-func (s *SQLiteStorage) GetMeta(UUID string) (*EntryMeta, error) {
+func (s sqliteStorage) GetMeta(UUID string) (*EntryMeta, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -86,7 +88,7 @@ func (s *SQLiteStorage) GetMeta(UUID string) (*EntryMeta, error) {
 	return meta, nil
 }
 
-func (s *SQLiteStorage) Get(UUID string) (*Entry, error) {
+func (s sqliteStorage) Get(UUID string) (*Entry, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -160,7 +162,7 @@ func (s *SQLiteStorage) Get(UUID string) (*Entry, error) {
 	}, nil
 }
 
-func (s *SQLiteStorage) GetAndDelete(UUID string) (*Entry, error) {
+func (s sqliteStorage) GetAndDelete(UUID string) (*Entry, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -227,7 +229,7 @@ func (s *SQLiteStorage) GetAndDelete(UUID string) (*Entry, error) {
 	}, nil
 }
 
-func (s *SQLiteStorage) Delete(UUID string) error {
+func (s sqliteStorage) Delete(UUID string) error {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -243,7 +245,7 @@ func (s *SQLiteStorage) Delete(UUID string) error {
 
 	return tx.Commit()
 }
-func (s *SQLiteStorage) DeleteExpired() error {
+func (s sqliteStorage) DeleteExpired() error {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -260,7 +262,7 @@ func (s *SQLiteStorage) DeleteExpired() error {
 	return tx.Commit()
 }
 
-func NewSQLiteStorage(fileName string) *SQLiteStorage {
+func newSQLiteStorage(fileName string) *sqliteStorage {
 	db, err := sql.Open("sqlite3", fileName)
 
 	if err != nil {
@@ -278,5 +280,17 @@ func NewSQLiteStorage(fileName string) *SQLiteStorage {
 		log.Fatal(err)
 	}
 
-	return &SQLiteStorage{db}
+	return &sqliteStorage{db}
+}
+
+type sqliteCleanableStorage struct {
+	*sqliteStorage
+}
+
+func (s sqliteCleanableStorage) Clean() {
+	_, err := s.db.Exec("DELETE FROM entries;")
+
+	if err != nil {
+		log.Fatal(err)
+	}
 }

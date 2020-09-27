@@ -4,12 +4,12 @@ import (
 	"time"
 )
 
-type SecretStorage struct {
+type secretStorage struct {
 	internalStorage EntryStorage
 	Encrypter       Encrypter
 }
 
-func (s *SecretStorage) Create(UUID string, entry []byte, expire time.Duration) error {
+func (s secretStorage) Create(UUID string, entry []byte, expire time.Duration) error {
 	encrypted, err := s.Encrypter.Encrypt(entry)
 
 	if err != nil {
@@ -19,7 +19,7 @@ func (s *SecretStorage) Create(UUID string, entry []byte, expire time.Duration) 
 	return s.internalStorage.Create(UUID, encrypted, expire)
 }
 
-func (s *SecretStorage) GetMeta(UUID string) (*EntryMeta, error) {
+func (s secretStorage) GetMeta(UUID string) (*EntryMeta, error) {
 	entryMeta, err := s.internalStorage.GetMeta(UUID)
 
 	if err != nil {
@@ -33,7 +33,7 @@ func (s *SecretStorage) GetMeta(UUID string) (*EntryMeta, error) {
 	return entryMeta, nil
 }
 
-func (s *SecretStorage) Get(UUID string) (*Entry, error) {
+func (s secretStorage) Get(UUID string) (*Entry, error) {
 	entry, err := s.internalStorage.Get(UUID)
 
 	if err != nil {
@@ -60,7 +60,7 @@ func (s *SecretStorage) Get(UUID string) (*Entry, error) {
 	return &ret, nil
 }
 
-func (s *SecretStorage) GetAndDelete(UUID string) (*Entry, error) {
+func (s secretStorage) GetAndDelete(UUID string) (*Entry, error) {
 	entry, err := s.internalStorage.GetAndDelete(UUID)
 
 	if err != nil {
@@ -87,13 +87,22 @@ func (s *SecretStorage) GetAndDelete(UUID string) (*Entry, error) {
 	return &ret, nil
 }
 
-func (s *SecretStorage) Close() error {
+func (s secretStorage) Close() error {
 	return s.internalStorage.Close()
 }
 
-func (s *SecretStorage) Delete(UUID string) error {
+func (s secretStorage) Delete(UUID string) error {
 	return s.internalStorage.Delete(UUID)
 }
-func (s *SecretStorage) DeleteExpired() error {
+func (s secretStorage) DeleteExpired() error {
 	return s.internalStorage.DeleteExpired()
+}
+
+type CleanableSecretStorage struct {
+	*secretStorage
+	internalStorage CleanableStorage
+}
+
+func (s CleanableSecretStorage) Clean() {
+	s.internalStorage.Clean()
 }

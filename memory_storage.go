@@ -1,3 +1,5 @@
+// +build !postgres,!sqlite,!redis
+
 package main
 
 import (
@@ -12,18 +14,18 @@ type memoryEntry struct {
 	Accessed time.Time
 }
 
-type MemoryStorage struct {
+type memoryStorage struct {
 	entries struct {
 		sync.RWMutex
 		m map[string]*memoryEntry
 	}
 }
 
-func (m *MemoryStorage) Close() error {
+func (m *memoryStorage) Close() error {
 	return nil
 }
 
-func (m *MemoryStorage) Create(UUID string, entry []byte, expire time.Duration) error {
+func (m *memoryStorage) Create(UUID string, entry []byte, expire time.Duration) error {
 	m.entries.Lock()
 	defer m.entries.Unlock()
 
@@ -36,7 +38,7 @@ func (m *MemoryStorage) Create(UUID string, entry []byte, expire time.Duration) 
 	return nil
 }
 
-func (m *MemoryStorage) GetMeta(UUID string) (*EntryMeta, error) {
+func (m *memoryStorage) GetMeta(UUID string) (*EntryMeta, error) {
 	m.entries.RLock()
 	defer m.entries.RUnlock()
 
@@ -58,7 +60,7 @@ func (m *MemoryStorage) GetMeta(UUID string) (*EntryMeta, error) {
 	return nil, ErrEntryNotFound
 }
 
-func (m *MemoryStorage) Get(UUID string) (*Entry, error) {
+func (m *memoryStorage) Get(UUID string) (*Entry, error) {
 	m.entries.RLock()
 	defer m.entries.RUnlock()
 
@@ -83,7 +85,7 @@ func (m *MemoryStorage) Get(UUID string) (*Entry, error) {
 	return nil, ErrEntryNotFound
 }
 
-func (m *MemoryStorage) GetAndDelete(UUID string) (*Entry, error) {
+func (m *memoryStorage) GetAndDelete(UUID string) (*Entry, error) {
 	m.entries.RLock()
 	defer m.entries.RUnlock()
 
@@ -109,7 +111,7 @@ func (m *MemoryStorage) GetAndDelete(UUID string) (*Entry, error) {
 	return nil, ErrEntryNotFound
 }
 
-func (m *MemoryStorage) Delete(UUID string) error {
+func (m *memoryStorage) Delete(UUID string) error {
 	m.entries.RLock()
 	defer m.entries.RUnlock()
 
@@ -119,7 +121,7 @@ func (m *MemoryStorage) Delete(UUID string) error {
 
 	return nil
 }
-func (m *MemoryStorage) DeleteExpired() error {
+func (m *memoryStorage) DeleteExpired() error {
 	now := time.Now()
 	for UUID, entry := range m.entries.m {
 		if entry.Expire.Before(now) {
@@ -130,11 +132,26 @@ func (m *MemoryStorage) DeleteExpired() error {
 	return nil
 }
 
-func NewMemoryStorage() *MemoryStorage {
-	return &MemoryStorage{
+func newMemoryStorage() *memoryStorage {
+	return &memoryStorage{
 		struct {
 			sync.RWMutex
 			m map[string]*memoryEntry
 		}{m: make(map[string]*memoryEntry)},
 	}
+}
+
+func newStorage() EntryStorage {
+	return newMemoryStorage()
+}
+
+type memoryCleanbleStorage struct {
+	*memoryStorage
+}
+
+func (s memoryCleanbleStorage) Clean() {
+	s.entries.RLock()
+	defer s.entries.RUnlock()
+
+	s.entries.m = make(map[string]*memoryEntry)
 }

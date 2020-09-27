@@ -1,3 +1,5 @@
+// +build redis test
+
 package main
 
 import (
@@ -9,20 +11,20 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-type RedisStorage struct {
+type redisStorage struct {
 	rdb    *redis.Client
 	Prefix string
 }
 
-func (r *RedisStorage) Close() error {
+func (r redisStorage) Close() error {
 	return r.rdb.Close()
 }
 
-func (r *RedisStorage) GetKey(UUID string) string {
+func (r redisStorage) GetKey(UUID string) string {
 	return fmt.Sprintf("%s:%s", r.Prefix, UUID)
 }
 
-func (r *RedisStorage) Create(UUID string, entry []byte, expire time.Duration) error {
+func (r redisStorage) Create(UUID string, entry []byte, expire time.Duration) error {
 	ctx := context.Background()
 	now := time.Now()
 	err := r.rdb.HSet(ctx, r.GetKey(UUID), "data", entry, "created", now, "expire", now.Add(expire)).Err()
@@ -79,7 +81,7 @@ func redisEntryToEntry(val map[string]string) (*Entry, error) {
 	}, nil
 }
 
-func (r *RedisStorage) Get(UUID string) (*Entry, error) {
+func (r redisStorage) Get(UUID string) (*Entry, error) {
 	ctx := context.Background()
 	val, err := r.rdb.HGetAll(ctx, r.GetKey(UUID)).Result()
 	if err != nil {
@@ -105,7 +107,7 @@ func (r *RedisStorage) Get(UUID string) (*Entry, error) {
 	return ret, nil
 }
 
-func (r *RedisStorage) GetMeta(UUID string) (*EntryMeta, error) {
+func (r redisStorage) GetMeta(UUID string) (*EntryMeta, error) {
 	ctx := context.Background()
 	exists := r.rdb.Exists(ctx, r.GetKey(UUID))
 	if exists.Val() == 0 {
@@ -139,7 +141,7 @@ func (r *RedisStorage) GetMeta(UUID string) (*EntryMeta, error) {
 	return ret, nil
 }
 
-func (r *RedisStorage) GetAndDelete(UUID string) (*Entry, error) {
+func (r redisStorage) GetAndDelete(UUID string) (*Entry, error) {
 	ctx := context.Background()
 	pipe := r.rdb.TxPipeline()
 	key := r.GetKey(UUID)
@@ -175,13 +177,13 @@ func (r *RedisStorage) GetAndDelete(UUID string) (*Entry, error) {
 	return ret, nil
 }
 
-func (r *RedisStorage) Delete(UUID string) error {
+func (r redisStorage) Delete(UUID string) error {
 	ctx := context.Background()
 	err := r.rdb.Del(ctx, r.GetKey(UUID)).Err()
 	return err
 }
 
-func (r *RedisStorage) DeleteExpired() error {
+func (r redisStorage) DeleteExpired() error {
 	ctx := context.Background()
 	keys, err := r.rdb.Keys(ctx, fmt.Sprintf("%s:*", r.Prefix)).Result()
 
@@ -214,7 +216,7 @@ func (r *RedisStorage) DeleteExpired() error {
 	return r.rdb.Del(ctx, entryPathsToDelete...).Err()
 }
 
-func NewRedisStorage(redisDB string, prefix string) *RedisStorage {
+func newRedisStorage(redisDB string, prefix string) *redisStorage {
 	connOptions, err := redis.ParseURL(redisDB)
 
 	if err != nil {
@@ -222,5 +224,26 @@ func NewRedisStorage(redisDB string, prefix string) *RedisStorage {
 	}
 	rdb := redis.NewClient(connOptions)
 
-	return &RedisStorage{rdb, prefix}
+	return &redisStorage{rdb, prefix}
+}
+
+type redisCleanableStorage struct {
+	*redisStorage
+}
+
+func (s redisCleanableStorage) Clean() {
+	ctx := context.Background()
+	keys, err := s.rdb.Keys(ctx, fmt.Sprintf("%s:*", s.Prefix)).Result()
+
+	if err != nil {
+		panic(err)
+	}
+
+	if len(keys) > 0 {
+		err = s.rdb.Del(ctx, keys...).Err()
+
+		if err != nil {
+			panic(err)
+		}
+	}
 }

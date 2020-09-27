@@ -7,15 +7,15 @@ import (
 
 func TestStorages(t *testing.T) {
 	storages := map[string]CleanableStorage{
-		"Postgres": PostgresCleanableStorage{NewPostgresqlStorage(getPSQLTestConn())},
-		"Redis":    RedisCleanableStorage{NewRedisStorage(getRedisTestConn(), "entries_test")},
-		"SQLite":   SQLiteCleanableStorage{NewSQLiteStorage("./test.sqlite")},
-		"Memory":   MemoryCleanbleStorage{NewMemoryStorage()},
+		"Postgres": postgresCleanableStorage{newPostgresqlStorage(getPSQLTestConn())},
+		"Redis":    redisCleanableStorage{newRedisStorage(getRedisTestConn(), "entries_test")},
+		"SQLite":   sqliteCleanableStorage{newSQLiteStorage("./test.sqlite")},
+		"Memory":   memoryCleanbleStorage{newMemoryStorage()},
 		"Secret": CleanableSecretStorage{
-			&SecretStorage{NewMemoryStorage(),
+			&secretStorage{newMemoryStorage(),
 				NewDummyEncrypter(),
 			},
-			MemoryCleanbleStorage{NewMemoryStorage()},
+			memoryCleanbleStorage{newMemoryStorage()},
 		},
 	}
 

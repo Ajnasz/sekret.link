@@ -38,8 +38,8 @@ func handleGetEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	secretStorage := &SecretStorage{storage, &AESEncrypter{key}}
-	entry, err := secretStorage.GetAndDelete(UUID)
+	secretStore := &secretStorage{storage, &AESEncrypter{key}}
+	entry, err := secretStore.GetAndDelete(UUID)
 
 	if err != nil {
 		onGetError(w, err)
@@ -47,7 +47,7 @@ func handleGetEntry(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Header.Get("Accept") == "application/json" {
-		response := secretResponseFromEntryMeta(&entry.EntryMeta)
+		response := secretResponseFromEntryMeta(entry.EntryMeta)
 
 		response.Data = string(entry.Data)
 		response.Key = keyString

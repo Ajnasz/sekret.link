@@ -1,3 +1,5 @@
+// +build sqlite
+
 package main
 
 import (
@@ -21,7 +23,7 @@ func TestSQLiteStorageCreateGet(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase, func(t *testing.T) {
 			clearDatabase(dbname)
-			storage := NewSQLiteStorage(dbname)
+			storage := newSQLiteStorage(dbname)
 
 			UUID := newUUIDString()
 			err := storage.Create(UUID, []byte("foo"), time.Second*10)
@@ -47,7 +49,7 @@ func TestSQLiteStorageCreateGetAndDelete(t *testing.T) {
 	testCase := "foo"
 
 	clearDatabase(dbname)
-	storage := NewSQLiteStorage(dbname)
+	storage := newSQLiteStorage(dbname)
 
 	UUID := newUUIDString()
 	err := storage.Create(UUID, []byte("foo"), time.Second*10)

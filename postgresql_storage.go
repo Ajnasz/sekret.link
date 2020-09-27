@@ -1,3 +1,5 @@
+// +build postgres test
+
 package main
 
 import (
@@ -9,22 +11,22 @@ import (
 	_ "github.com/lib/pq"
 )
 
-type PostgresqlStorage struct {
+type postgresqlStorage struct {
 	db *sql.DB
 }
 
-func (s *PostgresqlStorage) Close() error {
+func (s postgresqlStorage) Close() error {
 	return s.db.Close()
 }
 
-func (s *PostgresqlStorage) Create(UUID string, entry []byte, expire time.Duration) error {
+func (s postgresqlStorage) Create(UUID string, entry []byte, expire time.Duration) error {
 	ctx := context.Background()
 	now := time.Now()
 	_, err := s.db.ExecContext(ctx, `INSERT INTO entries (uuid, data, created, expire) VALUES  ($1, $2, $3, $4) RETURNING uuid;`, UUID, entry, now, now.Add(expire))
 	return err
 }
 
-func (s *PostgresqlStorage) GetMeta(UUID string) (*EntryMeta, error) {
+func (s postgresqlStorage) GetMeta(UUID string) (*EntryMeta, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -87,7 +89,7 @@ func (s *PostgresqlStorage) GetMeta(UUID string) (*EntryMeta, error) {
 	return meta, nil
 }
 
-func (s *PostgresqlStorage) Get(UUID string) (*Entry, error) {
+func (s postgresqlStorage) Get(UUID string) (*Entry, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -155,7 +157,7 @@ func (s *PostgresqlStorage) Get(UUID string) (*Entry, error) {
 	}, nil
 }
 
-func (s *PostgresqlStorage) GetAndDelete(UUID string) (*Entry, error) {
+func (s postgresqlStorage) GetAndDelete(UUID string) (*Entry, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -217,7 +219,7 @@ func (s *PostgresqlStorage) GetAndDelete(UUID string) (*Entry, error) {
 	}, nil
 }
 
-func (s *PostgresqlStorage) Delete(UUID string) error {
+func (s postgresqlStorage) Delete(UUID string) error {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -234,7 +236,7 @@ func (s *PostgresqlStorage) Delete(UUID string) error {
 	return tx.Commit()
 }
 
-func (s *PostgresqlStorage) DeleteExpired() error {
+func (s postgresqlStorage) DeleteExpired() error {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -251,7 +253,7 @@ func (s *PostgresqlStorage) DeleteExpired() error {
 	return tx.Commit()
 }
 
-func NewPostgresqlStorage(psqlconn string) *PostgresqlStorage {
+func newPostgresqlStorage(psqlconn string) *postgresqlStorage {
 	db, err := sql.Open("postgres", psqlconn)
 
 	if err != nil {
@@ -278,5 +280,17 @@ func NewPostgresqlStorage(psqlconn string) *PostgresqlStorage {
 		log.Fatal(err)
 	}
 
-	return &PostgresqlStorage{db}
+	return &postgresqlStorage{db}
+}
+
+type postgresCleanableStorage struct {
+	*postgresqlStorage
+}
+
+func (s postgresCleanableStorage) Clean() {
+	_, err := s.db.Exec("TRUNCATE entries;")
+
+	if err != nil {
+		log.Fatal(err)
+	}
 }
