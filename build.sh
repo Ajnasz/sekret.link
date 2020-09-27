@@ -38,7 +38,7 @@ OSLIST="linux darwin freebsd"
 ARCHLIST="amd64 386"
 STORAGE="postgres"
 
-while getopts "ra:o:" opt
+while getopts "ra:o:s:" opt
 do
 	case "$opt" in
 		"r")
