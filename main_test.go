@@ -93,14 +93,11 @@ func TestCreateEntryJSON(t *testing.T) {
 	handleRequest(w, req)
 
 	resp := w.Result()
-	encode := struct {
-		Key string
-		EntryMeta
-	}{}
+	var encode SecretResponse
 	err := json.NewDecoder(resp.Body).Decode(&encode)
 
 	if err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	key, err := hex.DecodeString(encode.Key)
@@ -196,6 +193,49 @@ func TestGetEntry(t *testing.T) {
 		})
 	}
 
+}
+
+func TestGetEntryJSON(t *testing.T) {
+	testCase := struct {
+		Name  string
+		Value string
+		UUID  string
+	}{
+
+		"first",
+		"foo",
+		"3f356f6c-c8b1-4b48-8243-aa04d07b8873",
+	}
+
+	key, err := generateRSAKey()
+	if err != nil {
+		t.Error(err)
+	}
+	cleanEntries(t)
+	encrypter := AESEncrypter{key}
+	encryptedData, err := encrypter.Encrypt([]byte(testCase.Value))
+	if err != nil {
+		t.Error(err)
+	}
+
+	storage.Create(testCase.UUID, encryptedData, time.Second*10)
+
+	req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(key)), nil)
+	req.Header.Add("Accept", "application/json")
+	w := httptest.NewRecorder()
+	handleRequest(w, req)
+
+	resp := w.Result()
+	var encode SecretResponse
+	err = json.NewDecoder(resp.Body).Decode(&encode)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	if encode.Data != testCase.Value {
+		t.Error("Wrong value returned")
+	}
 }
 
 func TestSetAndGetEntry(t *testing.T) {
