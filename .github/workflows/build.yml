@@ -33,4 +33,4 @@ jobs:
 
     - name: Build
       run: |
-        ./build.sh -o liux -a amd64 -s postgres
+        ./build.sh -o linux -a amd64 -s postgres
