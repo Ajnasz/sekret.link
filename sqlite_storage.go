@@ -8,6 +8,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/Ajnasz/sekret.link/storage"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -33,7 +34,7 @@ func (s sqliteStorage) Create(UUID string, entry []byte, expire time.Duration) e
 	return err
 }
 
-func (s sqliteStorage) GetMeta(UUID string) (*EntryMeta, error) {
+func (s sqliteStorage) GetMeta(UUID string) (*storage.EntryMeta, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -70,7 +71,7 @@ func (s sqliteStorage) GetMeta(UUID string) (*EntryMeta, error) {
 		expire = expireNullTime.Time
 	}
 
-	meta := &EntryMeta{
+	meta := &storage.EntryMeta{
 		UUID:     UUID,
 		Created:  created,
 		Accessed: accessed,
@@ -128,7 +129,7 @@ func (s sqliteStorage) Get(UUID string) (*Entry, error) {
 		expire = expireNullTime.Time
 	}
 
-	meta := EntryMeta{
+	meta := storage.EntryMeta{
 		UUID:     UUID,
 		Created:  created,
 		Accessed: accessed,
@@ -202,7 +203,7 @@ func (s sqliteStorage) GetAndDelete(UUID string) (*Entry, error) {
 		expire = expireNullTime.Time
 	}
 
-	meta := EntryMeta{
+	meta := storage.EntryMeta{
 		UUID:     UUID,
 		Created:  created,
 		Accessed: accessed,

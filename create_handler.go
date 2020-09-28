@@ -61,7 +61,7 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	secretStore := &secretStorage{storage, &AESEncrypter{key}}
+	secretStore := &secretStorage{entryStorage, &AESEncrypter{key}}
 
 	UUID := newUUIDString()
 

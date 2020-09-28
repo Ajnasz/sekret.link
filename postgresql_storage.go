@@ -8,6 +8,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/Ajnasz/sekret.link/storage"
 	_ "github.com/lib/pq"
 )
 
@@ -26,7 +27,7 @@ func (s postgresqlStorage) Create(UUID string, entry []byte, expire time.Duratio
 	return err
 }
 
-func (s postgresqlStorage) GetMeta(UUID string) (*EntryMeta, error) {
+func (s postgresqlStorage) GetMeta(UUID string) (*storage.EntryMeta, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -58,7 +59,7 @@ func (s postgresqlStorage) GetMeta(UUID string) (*EntryMeta, error) {
 		expire = expireNullTime.Time
 	}
 
-	meta := &EntryMeta{
+	meta := &storage.EntryMeta{
 		UUID:     UUID,
 		Created:  created,
 		Accessed: accessed,
@@ -123,7 +124,7 @@ func (s postgresqlStorage) Get(UUID string) (*Entry, error) {
 		expire = expireNullTime.Time
 	}
 
-	meta := EntryMeta{
+	meta := storage.EntryMeta{
 		UUID:     UUID,
 		Created:  created,
 		Accessed: accessed,
@@ -202,7 +203,7 @@ func (s postgresqlStorage) GetAndDelete(UUID string) (*Entry, error) {
 		expire = expireNullTime.Time
 	}
 
-	meta := EntryMeta{
+	meta := storage.EntryMeta{
 		UUID:     UUID,
 		Created:  created,
 		Accessed: accessed,

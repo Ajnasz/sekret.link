@@ -15,7 +15,7 @@ import (
 func cleanEntries(t *testing.T) {
 	extURL, _ := url.Parse("http://example.com")
 	webExternalURL = extURL
-	storage = newMemoryStorage()
+	entryStorage = newMemoryStorage()
 }
 
 func TestGetUUIDFromPath(t *testing.T) {
@@ -69,7 +69,7 @@ func TestCreateEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := &secretStorage{storage, &AESEncrypter{key}}
+	secretStore := &secretStorage{entryStorage, &AESEncrypter{key}}
 	entry, err := secretStore.Get(savedUUID)
 
 	if err != nil {
@@ -106,7 +106,7 @@ func TestCreateEntryJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := &secretStorage{storage, &AESEncrypter{key}}
+	secretStore := &secretStorage{entryStorage, &AESEncrypter{key}}
 	entry, err := secretStore.Get(encode.UUID)
 
 	if err != nil {
@@ -176,7 +176,7 @@ func TestGetEntry(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			storage.Create(testCase.UUID, encryptedData, time.Second*10)
+			entryStorage.Create(testCase.UUID, encryptedData, time.Second*10)
 
 			req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(key)), nil)
 			w := httptest.NewRecorder()
@@ -218,7 +218,7 @@ func TestGetEntryJSON(t *testing.T) {
 		t.Error(err)
 	}
 
-	storage.Create(testCase.UUID, encryptedData, time.Second*10)
+	entryStorage.Create(testCase.UUID, encryptedData, time.Second*10)
 
 	req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(key)), nil)
 	req.Header.Add("Accept", "application/json")
@@ -302,7 +302,7 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := &secretStorage{storage, &AESEncrypter{key}}
+	secretStore := &secretStorage{entryStorage, &AESEncrypter{key}}
 	entry, err := secretStore.Get(savedUUID)
 
 	if err != nil {

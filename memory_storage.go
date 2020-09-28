@@ -5,6 +5,8 @@ package main
 import (
 	"sync"
 	"time"
+
+	"github.com/Ajnasz/sekret.link/storage"
 )
 
 type memoryEntry struct {
@@ -38,12 +40,12 @@ func (m *memoryStorage) Create(UUID string, entry []byte, expire time.Duration) 
 	return nil
 }
 
-func (m *memoryStorage) GetMeta(UUID string) (*EntryMeta, error) {
+func (m *memoryStorage) GetMeta(UUID string) (*storage.EntryMeta, error) {
 	m.entries.RLock()
 	defer m.entries.RUnlock()
 
 	if entry, ok := m.entries.m[UUID]; ok {
-		meta := &EntryMeta{
+		meta := &storage.EntryMeta{
 			UUID:     UUID,
 			Created:  entry.Created,
 			Accessed: entry.Accessed,
@@ -65,7 +67,7 @@ func (m *memoryStorage) Get(UUID string) (*Entry, error) {
 	defer m.entries.RUnlock()
 
 	if entry, ok := m.entries.m[UUID]; ok {
-		meta := EntryMeta{
+		meta := storage.EntryMeta{
 			UUID:     UUID,
 			Created:  entry.Created,
 			Accessed: entry.Accessed,
@@ -91,7 +93,7 @@ func (m *memoryStorage) GetAndDelete(UUID string) (*Entry, error) {
 
 	if entry, ok := m.entries.m[UUID]; ok {
 		delete(m.entries.m, UUID)
-		meta := EntryMeta{
+		meta := storage.EntryMeta{
 			UUID:     UUID,
 			Created:  entry.Created,
 			Accessed: entry.Accessed,

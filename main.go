@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	storage          EntryStorage
+	entryStorage     EntryStorage
 	externalURLParam string
 	expireSeconds    int
 	maxExpireSeconds int
@@ -60,8 +60,8 @@ func main() {
 
 	webExternalURL = extURL
 
-	storage = getStorage()
-	if storage == nil {
+	entryStorage = getStorage()
+	if entryStorage == nil {
 		log.Fatal("No database backend selected")
 	}
 
@@ -70,14 +70,14 @@ func main() {
 		for {
 			select {
 			case <-time.After(time.Second):
-				storage.DeleteExpired()
+				entryStorage.DeleteExpired()
 			case <-stopChan:
 				return
 			}
 		}
 	}()
 
-	defer storage.Close()
+	defer entryStorage.Close()
 	defer func() { stopChan <- struct{}{} }()
 
 	http.HandleFunc("/", handleRequest)

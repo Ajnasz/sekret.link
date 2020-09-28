@@ -2,6 +2,8 @@ package main
 
 import (
 	"time"
+
+	"github.com/Ajnasz/sekret.link/storage"
 )
 
 type secretStorage struct {
@@ -19,7 +21,7 @@ func (s secretStorage) Create(UUID string, entry []byte, expire time.Duration) e
 	return s.internalStorage.Create(UUID, encrypted, expire)
 }
 
-func (s secretStorage) GetMeta(UUID string) (*EntryMeta, error) {
+func (s secretStorage) GetMeta(UUID string) (*storage.EntryMeta, error) {
 	entryMeta, err := s.internalStorage.GetMeta(UUID)
 
 	if err != nil {

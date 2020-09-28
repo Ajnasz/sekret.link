@@ -8,6 +8,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/Ajnasz/sekret.link/storage"
 	"github.com/go-redis/redis/v8"
 )
 
@@ -32,7 +33,7 @@ func (r redisStorage) Create(UUID string, entry []byte, expire time.Duration) er
 	return err
 }
 
-func redisEntryToMeta(val map[string]string) (*EntryMeta, error) {
+func redisEntryToMeta(val map[string]string) (*storage.EntryMeta, error) {
 	var created time.Time
 	if val["created"] != "" {
 		c, err := time.Parse(time.RFC3339, val["created"])
@@ -62,7 +63,7 @@ func redisEntryToMeta(val map[string]string) (*EntryMeta, error) {
 		expire = e
 	}
 
-	return &EntryMeta{
+	return &storage.EntryMeta{
 		Accessed: accessed,
 		Created:  created,
 		Expire:   expire,
@@ -107,7 +108,7 @@ func (r redisStorage) Get(UUID string) (*Entry, error) {
 	return ret, nil
 }
 
-func (r redisStorage) GetMeta(UUID string) (*EntryMeta, error) {
+func (r redisStorage) GetMeta(UUID string) (*storage.EntryMeta, error) {
 	ctx := context.Background()
 	exists := r.rdb.Exists(ctx, r.GetKey(UUID))
 	if exists.Val() == 0 {
