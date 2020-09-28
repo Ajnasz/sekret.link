@@ -143,7 +143,7 @@ func newMemoryStorage() *memoryStorage {
 	}
 }
 
-func newStorage() EntryStorage {
+func newStorage() storage.EntryStorage {
 	return newMemoryStorage()
 }
 

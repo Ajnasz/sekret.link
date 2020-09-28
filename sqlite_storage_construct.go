@@ -2,6 +2,8 @@
 
 package main
 
-func newStorage() EntryStorage {
+import "github.com/Ajnasz/sekret.link/storage"
+
+func newStorage() storage.EntryStorage {
 	return newSQLiteStorage(getConnectionString(sqliteDB, "SQLITE_DB"))
 }

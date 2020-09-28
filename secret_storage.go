@@ -7,7 +7,7 @@ import (
 )
 
 type secretStorage struct {
-	internalStorage EntryStorage
+	internalStorage storage.EntryStorage
 	Encrypter       Encrypter
 }
 

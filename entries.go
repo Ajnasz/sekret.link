@@ -7,16 +7,6 @@ import (
 	"github.com/Ajnasz/sekret.link/storage"
 )
 
-type EntryStorage interface {
-	Close() error
-	Create(string, []byte, time.Duration) error
-	Get(string) (*storage.Entry, error)
-	GetAndDelete(string) (*storage.Entry, error)
-	GetMeta(string) (*storage.EntryMeta, error)
-	Delete(string) error
-	DeleteExpired() error
-}
-
 type SecretResponse struct {
 	UUID     string
 	Key      string
