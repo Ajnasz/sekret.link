@@ -7,16 +7,11 @@ import (
 	"github.com/Ajnasz/sekret.link/storage"
 )
 
-type Entry struct {
-	storage.EntryMeta
-	Data []byte
-}
-
 type EntryStorage interface {
 	Close() error
 	Create(string, []byte, time.Duration) error
-	Get(string) (*Entry, error)
-	GetAndDelete(string) (*Entry, error)
+	Get(string) (*storage.Entry, error)
+	GetAndDelete(string) (*storage.Entry, error)
 	GetMeta(string) (*storage.EntryMeta, error)
 	Delete(string) error
 	DeleteExpired() error

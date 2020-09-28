@@ -62,7 +62,7 @@ func (m *memoryStorage) GetMeta(UUID string) (*storage.EntryMeta, error) {
 	return nil, ErrEntryNotFound
 }
 
-func (m *memoryStorage) Get(UUID string) (*Entry, error) {
+func (m *memoryStorage) Get(UUID string) (*storage.Entry, error) {
 	m.entries.RLock()
 	defer m.entries.RUnlock()
 
@@ -78,7 +78,7 @@ func (m *memoryStorage) Get(UUID string) (*Entry, error) {
 			delete(m.entries.m, UUID)
 			return nil, ErrEntryExpired
 		}
-		return &Entry{
+		return &storage.Entry{
 			EntryMeta: meta,
 			Data:      entry.Data,
 		}, nil
@@ -87,7 +87,7 @@ func (m *memoryStorage) Get(UUID string) (*Entry, error) {
 	return nil, ErrEntryNotFound
 }
 
-func (m *memoryStorage) GetAndDelete(UUID string) (*Entry, error) {
+func (m *memoryStorage) GetAndDelete(UUID string) (*storage.Entry, error) {
 	m.entries.RLock()
 	defer m.entries.RUnlock()
 
@@ -104,7 +104,7 @@ func (m *memoryStorage) GetAndDelete(UUID string) (*Entry, error) {
 			return nil, ErrEntryExpired
 		}
 
-		return &Entry{
+		return &storage.Entry{
 			EntryMeta: meta,
 			Data:      entry.Data,
 		}, nil

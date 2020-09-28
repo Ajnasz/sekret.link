@@ -71,18 +71,18 @@ func redisEntryToMeta(val map[string]string) (*storage.EntryMeta, error) {
 
 }
 
-func redisEntryToEntry(val map[string]string) (*Entry, error) {
+func redisEntryToEntry(val map[string]string) (*storage.Entry, error) {
 	meta, err := redisEntryToMeta(val)
 	if err != nil {
 		return nil, err
 	}
-	return &Entry{
+	return &storage.Entry{
 		EntryMeta: *meta,
 		Data:      []byte(val["data"]),
 	}, nil
 }
 
-func (r redisStorage) Get(UUID string) (*Entry, error) {
+func (r redisStorage) Get(UUID string) (*storage.Entry, error) {
 	ctx := context.Background()
 	val, err := r.rdb.HGetAll(ctx, r.GetKey(UUID)).Result()
 	if err != nil {
@@ -142,7 +142,7 @@ func (r redisStorage) GetMeta(UUID string) (*storage.EntryMeta, error) {
 	return ret, nil
 }
 
-func (r redisStorage) GetAndDelete(UUID string) (*Entry, error) {
+func (r redisStorage) GetAndDelete(UUID string) (*storage.Entry, error) {
 	ctx := context.Background()
 	pipe := r.rdb.TxPipeline()
 	key := r.GetKey(UUID)

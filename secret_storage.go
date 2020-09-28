@@ -35,7 +35,7 @@ func (s secretStorage) GetMeta(UUID string) (*storage.EntryMeta, error) {
 	return entryMeta, nil
 }
 
-func (s secretStorage) Get(UUID string) (*Entry, error) {
+func (s secretStorage) Get(UUID string) (*storage.Entry, error) {
 	entry, err := s.internalStorage.Get(UUID)
 
 	if err != nil {
@@ -62,7 +62,7 @@ func (s secretStorage) Get(UUID string) (*Entry, error) {
 	return &ret, nil
 }
 
-func (s secretStorage) GetAndDelete(UUID string) (*Entry, error) {
+func (s secretStorage) GetAndDelete(UUID string) (*storage.Entry, error) {
 	entry, err := s.internalStorage.GetAndDelete(UUID)
 
 	if err != nil {

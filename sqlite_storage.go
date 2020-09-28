@@ -89,7 +89,7 @@ func (s sqliteStorage) GetMeta(UUID string) (*storage.EntryMeta, error) {
 	return meta, nil
 }
 
-func (s sqliteStorage) Get(UUID string) (*Entry, error) {
+func (s sqliteStorage) Get(UUID string) (*storage.Entry, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -157,13 +157,13 @@ func (s sqliteStorage) Get(UUID string) (*Entry, error) {
 		log.Fatal(err)
 	}
 
-	return &Entry{
+	return &storage.Entry{
 		EntryMeta: meta,
 		Data:      data,
 	}, nil
 }
 
-func (s sqliteStorage) GetAndDelete(UUID string) (*Entry, error) {
+func (s sqliteStorage) GetAndDelete(UUID string) (*storage.Entry, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -224,7 +224,7 @@ func (s sqliteStorage) GetAndDelete(UUID string) (*Entry, error) {
 		return nil, err
 	}
 
-	return &Entry{
+	return &storage.Entry{
 		EntryMeta: meta,
 		Data:      data,
 	}, nil
