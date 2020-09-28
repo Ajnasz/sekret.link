@@ -8,13 +8,15 @@ build() {
 	STORAGE="$3"
 	echo $VERSION
 	echo $BUILD
-	echo $STORAGE
 	for os in $OSLIST
 	do
 		for arch in $ARCHLIST
 		do
-			echo "building $os.$arch.$STORAGE"
-			GOOS=$os GOARCH=$arch go build -tags $STORAGE -ldflags "-w -s -X main.version=${VERSION} -X main.build=${BUILD}" -o "sekret.link.$os.$arch.$STORAGE"
+			for storage in $STORAGELIST
+			do
+				echo "building $os.$arch.$storage"
+				GOOS=$os GOARCH=$arch go build -tags $storage -ldflags "-w -s -X main.version=${VERSION} -X main.build=${BUILD}" -o "sekret.link.$os.$arch.$storage"
+			done
 		done
 	done
 }
@@ -24,11 +26,14 @@ remove() {
 	do
 		for arch in $ARCHLIST
 		do
-			if [ -f "sekret.link.$os.$arch.$STORAGE" ]
-			then
-				echo "removing $os.$arch.$STORAGE"
-				rm "sekret.link.$os.$arch.$STORAGE"
-			fi
+			for storage in $STORAGELIST
+			do
+				if [ -f "sekret.link.$os.$arch.$storage" ]
+				then
+					echo "removing $os.$arch.$storage"
+					rm "sekret.link.$os.$arch.$storage"
+				fi
+			done
 		done
 	done
 }
@@ -36,7 +41,7 @@ remove() {
 REMOVE=0
 OSLIST="linux darwin freebsd"
 ARCHLIST="amd64 386"
-STORAGE="postgres"
+STORAGELIST="postgres redis sqlite"
 
 while getopts "ra:o:s:" opt
 do
@@ -51,7 +56,7 @@ do
 			OSLIST="$OPTARG"
 			;;
 		"s")
-			STORAGE="$OPTARG"
+			STORAGELIST="$OPTARG"
 			;;
 		[?])
 			exit 1
