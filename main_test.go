@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -117,6 +119,61 @@ func TestCreateEntryJSON(t *testing.T) {
 
 	if value != actual {
 		t.Errorf("data not saved expected: %q, actual: %q", value, actual)
+	}
+}
+
+func TestCreateEntryForm(t *testing.T) {
+	value := "Foo"
+	expireSeconds = 10
+	cleanEntries(t)
+
+	data := url.Values{}
+	data.Set("secret", value)
+	data.Set("expire", "1m")
+
+	req := httptest.NewRequest("POST", "http://example.com", strings.NewReader(data.Encode()))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
+
+	w := httptest.NewRecorder()
+
+	handleRequest(w, req)
+
+	resp := w.Result()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	responseURL := string(body)
+	savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	key, err := hex.DecodeString(keyString)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	secretStore := &secretStorage{entryStorage, &AESEncrypter{key}}
+	entry, err := secretStore.Get(savedUUID)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	actual := string(entry.Data)
+
+	if value != actual {
+		t.Errorf("data not saved expected: %q, actual: %q", value, actual)
+	}
+
+	now := time.Now()
+	if entry.Expire.After(now.Add(time.Minute)) {
+		t.Errorf("Expiration is more than expected: %q, %q", entry.Expire, now.Add(time.Second*61))
+	}
+	if entry.Expire.Before(now.Add(time.Second * 59)) {
+		t.Errorf("Expiration is less than expected: %q", entry.Expire)
 	}
 }
 

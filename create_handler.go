@@ -39,9 +39,46 @@ func getExpiration(expire string, defaultExpire time.Duration) (time.Duration, e
 	return userExpire, nil
 }
 
+func getRequestBody(r *http.Request) ([]byte, error) {
+	var body []byte
+	var err error
+	if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
+		if r.PostForm == nil {
+			err = r.ParseForm()
+			if err != nil {
+				return nil, err
+			}
+		}
+		body = []byte(r.Form.Get("secret"))
+	} else {
+		body, err = ioutil.ReadAll(r.Body)
+	}
+
+	return body, err
+}
+
+func getExpirationR(r *http.Request) (time.Duration, error) {
+	var expiration string
+	if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
+		if r.PostForm == nil {
+			err := r.ParseForm()
+			if err != nil {
+				return 0, err
+			}
+		}
+
+		expiration = r.Form.Get("expire")
+	} else {
+		expiration = r.URL.Query().Get("expire")
+	}
+
+	return getExpiration(expiration, time.Second*time.Duration(expireSeconds))
+}
+
 func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxDataSize)
-	body, err := ioutil.ReadAll(r.Body)
+
+	body, err := getRequestBody(r)
 
 	if err != nil {
 		log.Println(err)
@@ -65,11 +102,11 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 
 	UUID := newUUIDString()
 
-	expiration, err := getExpiration(r.URL.Query().Get("expire"), time.Second*time.Duration(expireSeconds))
+	expiration, err := getExpirationR(r)
 
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "Invalid expiration date", http.StatusBadRequest)
+		http.Error(w, "Invalid expiration", http.StatusBadRequest)
 		return
 	}
 
