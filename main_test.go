@@ -5,10 +5,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http/httptest"
 	"net/url"
-	"strconv"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -53,7 +55,7 @@ func TestCreateEntry(t *testing.T) {
 	cleanEntries(t)
 	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(value)))
 	w := httptest.NewRecorder()
-	handleRequest(w, req)
+	secretHandler{}.ServeHTTP(w, req)
 
 	resp := w.Result()
 	body, _ := ioutil.ReadAll(resp.Body)
@@ -92,7 +94,7 @@ func TestCreateEntryJSON(t *testing.T) {
 	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(value)))
 	req.Header.Add("Accept", "application/json")
 	w := httptest.NewRecorder()
-	handleRequest(w, req)
+	secretHandler{}.ServeHTTP(w, req)
 
 	resp := w.Result()
 	var encode SecretResponse
@@ -122,22 +124,48 @@ func TestCreateEntryJSON(t *testing.T) {
 	}
 }
 
+func createMultipart(values map[string]io.Reader) (*bytes.Buffer, *multipart.Writer, error) {
+	var b bytes.Buffer
+	w := multipart.NewWriter(&b)
+
+	for key, r := range values {
+		var fw io.Writer
+		var err error
+		if x, ok := r.(*os.File); ok {
+			if fw, err = w.CreateFormFile(key, x.Name()); err != nil {
+				return nil, nil, err
+			}
+		} else {
+			if fw, err = w.CreateFormField(key); err != nil {
+				return nil, nil, err
+			}
+		}
+
+		if _, err = io.Copy(fw, r); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	w.Close()
+
+	return &b, w, nil
+}
+
 func TestCreateEntryForm(t *testing.T) {
 	value := "Foo"
-	expireSeconds = 10
+	expireSeconds = 60
 	cleanEntries(t)
 
-	data := url.Values{}
-	data.Set("secret", value)
-	data.Set("expire", "1m")
+	data, multi, err := createMultipart(map[string]io.Reader{
+		"secret": strings.NewReader(value),
+	})
 
-	req := httptest.NewRequest("POST", "http://example.com", strings.NewReader(data.Encode()))
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
+	req := httptest.NewRequest("POST", fmt.Sprintf("http://example.com/?expire=%ds", expireSeconds), data)
+	req.Header.Set("Content-Type", multi.FormDataContentType())
 
 	w := httptest.NewRecorder()
 
-	handleRequest(w, req)
+	secretHandler{}.ServeHTTP(w, req)
 
 	resp := w.Result()
 	body, _ := ioutil.ReadAll(resp.Body)
@@ -195,7 +223,7 @@ func TestRequestPathsCreateEntry(t *testing.T) {
 			cleanEntries(t)
 			req := httptest.NewRequest("POST", fmt.Sprintf("http://example.com%s", testCase.Path), bytes.NewReader([]byte("ASDF")))
 			w := httptest.NewRecorder()
-			handleRequest(w, req)
+			secretHandler{}.ServeHTTP(w, req)
 
 			resp := w.Result()
 
@@ -237,7 +265,7 @@ func TestGetEntry(t *testing.T) {
 
 			req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(key)), nil)
 			w := httptest.NewRecorder()
-			handleRequest(w, req)
+			secretHandler{}.ServeHTTP(w, req)
 
 			resp := w.Result()
 			body, _ := ioutil.ReadAll(resp.Body)
@@ -280,7 +308,7 @@ func TestGetEntryJSON(t *testing.T) {
 	req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(key)), nil)
 	req.Header.Add("Accept", "application/json")
 	w := httptest.NewRecorder()
-	handleRequest(w, req)
+	secretHandler{}.ServeHTTP(w, req)
 
 	resp := w.Result()
 	var encode SecretResponse
@@ -302,7 +330,7 @@ func TestSetAndGetEntry(t *testing.T) {
 		cleanEntries(t)
 		req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(testCase)))
 		w := httptest.NewRecorder()
-		handleRequest(w, req)
+		secretHandler{}.ServeHTTP(w, req)
 
 		resp := w.Result()
 		body, _ := ioutil.ReadAll(resp.Body)
@@ -316,7 +344,7 @@ func TestSetAndGetEntry(t *testing.T) {
 
 		req = httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", savedUUID, keyString), nil)
 		w = httptest.NewRecorder()
-		handleRequest(w, req)
+		secretHandler{}.ServeHTTP(w, req)
 
 		resp = w.Result()
 		body, _ = ioutil.ReadAll(resp.Body)
@@ -337,7 +365,7 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 	cleanEntries(t)
 	req := httptest.NewRequest("POST", "http://example.com?expire=1m", bytes.NewReader([]byte(testCase)))
 	w := httptest.NewRecorder()
-	handleRequest(w, req)
+	secretHandler{}.ServeHTTP(w, req)
 
 	resp := w.Result()
 	body, _ := ioutil.ReadAll(resp.Body)
@@ -384,7 +412,7 @@ func TestCreateEntrySizeLimit(t *testing.T) {
 	cleanEntries(t)
 	req := httptest.NewRequest("POST", "http://example.com?expire=1m", bytes.NewReader([]byte(testCase)))
 	w := httptest.NewRecorder()
-	handleRequest(w, req)
+	secretHandler{}.ServeHTTP(w, req)
 
 	resp := w.Result()
 

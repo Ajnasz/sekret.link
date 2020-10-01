@@ -13,7 +13,21 @@ func setupResponse(w *http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func handleRequest(w http.ResponseWriter, r *http.Request) {
+func handlePostRequest(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		setupResponse(&w, r)
+		if r.URL.Path != "" {
+			http.Error(w, "Not found", http.StatusNotFound)
+			log.Println("Not found", r.URL.Path)
+			return
+		}
+		handleCreateEntry(w, r)
+	}
+}
+
+type secretHandler struct{}
+
+func (s secretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if (*r).Method == "OPTIONS" {
 		setupResponse(&w, r)
 		return

@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"path"
 	"time"
 
 	"github.com/Ajnasz/sekret.link/storage"
@@ -38,7 +39,7 @@ func init() {
 	flag.StringVar(&redisKeyPrefix, "redisKeyPrefix", "entries", "Prefix of keys in redis db (in case redis is used as database backend)")
 	flag.IntVar(&expireSeconds, "expireSeconds", 60*60*24*7, "Default expiration time in seconds")
 	flag.IntVar(&maxExpireSeconds, "maxExpireSeconds", 60*60*24*30, "Max expiration time in seconds")
-	flag.Int64Var(&maxDataSize, "maxDataSize", 1024, "Max data size")
+	flag.Int64Var(&maxDataSize, "maxDataSize", 1024*1024, "Max data size")
 	flag.BoolVar(&queryVersion, "version", false, "Get version information")
 }
 
@@ -82,7 +83,15 @@ func main() {
 	defer entryStorage.Close()
 	defer func() { stopChan <- struct{}{} }()
 
-	http.HandleFunc("/", handleRequest)
+	apiRoot := ""
+
+	if webExternalURL.Path != "" {
+		apiRoot = webExternalURL.Path
+	}
+
+	apiRoot = path.Clean(apiRoot + "/")
+
+	http.Handle(apiRoot, http.StripPrefix(apiRoot, secretHandler{}))
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

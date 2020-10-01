@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"mime"
 	"net/http"
 	"time"
 )
@@ -42,15 +43,25 @@ func getExpiration(expire string, defaultExpire time.Duration) (time.Duration, e
 func getRequestBody(r *http.Request) ([]byte, error) {
 	var body []byte
 	var err error
-	if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
-		if r.PostForm == nil {
-			err = r.ParseForm()
-			if err != nil {
-				return nil, err
-			}
+
+	ct := r.Header.Get("content-type")
+	if ct == "" {
+		ct = "application/octet-stream"
+	}
+	ct, _, err = mime.ParseMediaType(ct)
+	if err != nil {
+		return nil, err
+	}
+
+	switch {
+	case ct == "multipart/form-data":
+		err = r.ParseMultipartForm(1024 * 1024)
+		if err != nil {
+			return nil, err
 		}
-		body = []byte(r.Form.Get("secret"))
-	} else {
+
+		body = []byte(r.PostForm.Get("secret"))
+	default:
 		body, err = ioutil.ReadAll(r.Body)
 	}
 
@@ -59,18 +70,8 @@ func getRequestBody(r *http.Request) ([]byte, error) {
 
 func getExpirationR(r *http.Request) (time.Duration, error) {
 	var expiration string
-	if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
-		if r.PostForm == nil {
-			err := r.ParseForm()
-			if err != nil {
-				return 0, err
-			}
-		}
-
-		expiration = r.Form.Get("expire")
-	} else {
-		expiration = r.URL.Query().Get("expire")
-	}
+	r.ParseForm()
+	expiration = r.Form.Get("expire")
 
 	return getExpiration(expiration, time.Second*time.Duration(expireSeconds))
 }
@@ -81,7 +82,6 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 	body, err := getRequestBody(r)
 
 	if err != nil {
-		log.Println(err)
 		if err.Error() == "http: request body too large" {
 			http.Error(w, "Too large", http.StatusRequestEntityTooLarge)
 		} else {
