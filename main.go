@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/Ajnasz/sekret.link/storage"
@@ -89,7 +90,13 @@ func main() {
 		apiRoot = webExternalURL.Path
 	}
 
-	apiRoot = path.Clean(apiRoot + "/")
+	apiRoot = path.Clean(apiRoot)
+
+	if !strings.HasSuffix(apiRoot, "/") {
+		apiRoot += "/"
+	}
+
+	log.Println("Handle Path: ", apiRoot)
 
 	http.Handle(apiRoot, http.StripPrefix(apiRoot, secretHandler{}))
 
