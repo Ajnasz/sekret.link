@@ -29,7 +29,7 @@ func getUUIDUrlWithSecret(u *url.URL, UUID string, key string) (*url.URL, error)
 func getUUIDAndSecretFromPath(urlPath string) (string, string, error) {
 	pathDir, key := path.Split(urlPath)
 	if len(pathDir) < 1 {
-		return "", "", fmt.Errorf("Invalid URL")
+		return "", "", fmt.Errorf("Invalid URL %q", urlPath)
 	}
 	_, uuidFromPath := path.Split(pathDir[0 : len(pathDir)-1])
 	UUID, err := uuid.Parse(uuidFromPath)
