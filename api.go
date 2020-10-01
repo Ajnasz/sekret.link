@@ -28,12 +28,12 @@ func handlePostRequest(w http.ResponseWriter, r *http.Request) {
 type secretHandler struct{}
 
 func (s secretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if (*r).Method == "OPTIONS" {
+	if (*r).Method == http.MethodOptions {
 		setupResponse(&w, r)
 		return
 	}
 
-	if r.Method == "POST" {
+	if r.Method == http.MethodPost {
 		setupResponse(&w, r)
 		if r.URL.Path != "/" && r.URL.Path != "" {
 			http.Error(w, "Not found", http.StatusNotFound)
@@ -41,7 +41,7 @@ func (s secretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		handleCreateEntry(w, r)
-	} else if r.Method == "GET" {
+	} else if r.Method == http.MethodGet {
 		setupResponse(&w, r)
 		handleGetEntry(w, r)
 	} else {

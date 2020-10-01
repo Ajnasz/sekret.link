@@ -60,7 +60,22 @@ func getRequestBody(r *http.Request) ([]byte, error) {
 			return nil, err
 		}
 
-		body = []byte(r.PostForm.Get("secret"))
+		secret := r.PostForm.Get("secret")
+		if secret != "" {
+			body = []byte(secret)
+		} else {
+			file, _, err := r.FormFile("secret")
+
+			if err != nil {
+				return nil, err
+			}
+
+			body, err = ioutil.ReadAll(file)
+
+			if err != nil {
+				return nil, err
+			}
+		}
 	default:
 		body, err = ioutil.ReadAll(r.Body)
 	}
