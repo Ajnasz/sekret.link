@@ -42,8 +42,25 @@ REMOVE=0
 OSLIST="linux darwin freebsd"
 ARCHLIST="amd64 386"
 STORAGELIST="postgres redis sqlite"
+BUILD=0
 
-while getopts "ra:o:s:" opt
+subcommand="$1"
+shift
+case "$subcommand" in
+	"test")
+		go test -v -tags test
+		return
+		;;
+	"build")
+		BUILD=1;
+		;;
+	*)
+		echo "Invalid command, available commands are \"test\" and \"build\""
+		exit 1
+		;;
+esac
+
+while getopts "tra:o:s:" opt
 do
 	case "$opt" in
 		"r")
