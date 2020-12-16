@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Build
+    name: Test
     runs-on: ubuntu-latest
     steps:
 
@@ -31,6 +31,6 @@ jobs:
             dep ensure
         fi
 
-    - name: Build
+    - name: Test
       run: |
         ./build.sh test
