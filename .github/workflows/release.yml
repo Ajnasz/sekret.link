@@ -3,9 +3,9 @@ name: Release
 on:
   workflow_run:
     workflows:
-      - "Run tests"
-      tags:
-      - 'v*'
+    - "Run tests"
+    tags:
+    - 'v*'
 
 jobs:
   build:
