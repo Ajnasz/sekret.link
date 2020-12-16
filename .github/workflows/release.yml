@@ -1,10 +1,9 @@
-name: Build
+name: Release
 
 on:
   push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+    tags:
+    - 'v*'
 
 jobs:
   build:
@@ -31,6 +30,17 @@ jobs:
             dep ensure
         fi
 
-    - name: Build
+    - name: Test
       run: |
-        ./build.sh -o linux -a amd64 -s postgres
+        ./build.sh build
+
+    - run: |
+        set -x
+        assets=()
+        for asset in build/*; do
+          assets+=("-a" "$asset")
+        done
+        tag_name="${GITHUB_REF##*/}"
+        hub release create "${assets[@]}" -m "$tag_name" "$tag_name"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,45 +1,17 @@
 name: Test
 
-on: push
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
 
 jobs:
-
-  container-job:
-    name: Test
+  build:
+    name: Build
     runs-on: ubuntu-latest
-
-    # Service containers to run with `container-job`
-    services:
-      # Label used to access the service container
-      redis:
-        # Docker Hub image
-        image: redis
-        # Set health checks to wait until redis has started
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-      postgres:
-        # Docker Hub image
-        image: postgres
-        # Provide the password for postgres
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: sekret_link_test
-        # Set health checks to wait until postgres has started
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
     steps:
+
     - name: Set up Go 1.x
       uses: actions/setup-go@v2
       with:
@@ -59,9 +31,6 @@ jobs:
             dep ensure
         fi
 
-    - name: Test
-      env:
-        POSTGRES_URL: "postgres://postgres:password@localhost:5432/sekret_link_test?sslmode=disable"
-        REDIS_URL: "redis://localhost:6379/0"
-      run: go test -tags test -v .
-
+    - name: Build
+      run: |
+        ./build.sh test
