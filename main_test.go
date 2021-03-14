@@ -261,7 +261,7 @@ func TestGetEntry(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			entryStorage.Create(testCase.UUID, encryptedData, time.Second*10)
+			entryStorage.Create(testCase.UUID, encryptedData, time.Second*10, 1)
 
 			req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(key)), nil)
 			w := httptest.NewRecorder()
@@ -303,7 +303,7 @@ func TestGetEntryJSON(t *testing.T) {
 		t.Error(err)
 	}
 
-	entryStorage.Create(testCase.UUID, encryptedData, time.Second*10)
+	entryStorage.Create(testCase.UUID, encryptedData, time.Second*10, 1)
 
 	req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(key)), nil)
 	req.Header.Add("Accept", "application/json")

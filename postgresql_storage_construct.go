@@ -27,8 +27,6 @@ func addRemainingRead(db *sql.DB) error {
 		return err
 	}
 
-	log.Println("Exec alter table")
-
 	_, err = alterTable.Exec()
 
 	return err

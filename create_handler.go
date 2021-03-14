@@ -50,7 +50,7 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 
 	UUID := newUUIDString()
 
-	err = secretStore.Create(UUID, data.body, data.expiration)
+	err = secretStore.Create(UUID, data.body, data.expiration, 1)
 
 	if err != nil {
 		log.Println(err)

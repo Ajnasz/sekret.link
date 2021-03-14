@@ -38,7 +38,7 @@ func TestPostgresqlStorageCreateGet(t *testing.T) {
 			defer storage.Close()
 
 			UUID := newUUIDString()
-			err := storage.Create(UUID, []byte("foo"), time.Second*10)
+			err := storage.Create(UUID, []byte("foo"), time.Second*10, 1)
 
 			if err != nil {
 				t.Fatal(err)
@@ -59,19 +59,45 @@ func TestPostgresqlStorageCreateGet(t *testing.T) {
 func TestPostgresqlStorageCreateGetAndDelete(t *testing.T) {
 	psqlConn := getPSQLTestConn()
 
-	testCases := []string{
-		"foo",
+	testCases := []struct {
+		Name         string
+		Secret       string
+		Reads        int
+		Remaining    int
+		ExistanceErr error
+	}{
+		{
+			Name:         "Simple get",
+			Secret:       "foo",
+			Reads:        1,
+			Remaining:    0,
+			ExistanceErr: sql.ErrNoRows,
+		},
+		{
+			Name:         "Exist get",
+			Secret:       "bar",
+			Reads:        2,
+			Remaining:    1,
+			ExistanceErr: nil,
+		},
+		{
+			Name:         "Exist get 2",
+			Secret:       "bar",
+			Reads:        3,
+			Remaining:    2,
+			ExistanceErr: nil,
+		},
 	}
 
 	for _, testCase := range testCases {
-		t.Run(testCase, func(t *testing.T) {
+		t.Run(testCase.Name, func(t *testing.T) {
 			clearPSQLDatabase(psqlConn)
 
 			storage := newPostgresqlStorage(psqlConn)
 			defer storage.Close()
 
 			UUID := newUUIDString()
-			err := storage.Create(UUID, []byte("foo"), time.Second*10)
+			err := storage.Create(UUID, []byte(testCase.Secret), time.Second*10, testCase.Reads)
 
 			if err != nil {
 				t.Fatal(err)
@@ -82,18 +108,21 @@ func TestPostgresqlStorageCreateGetAndDelete(t *testing.T) {
 			}
 
 			actual := string(res.Data)
-			if actual != testCase {
-				t.Errorf("expected: %s, actual: %s", testCase, actual)
+			if actual != testCase.Secret {
+				t.Errorf("expected: %s, actual: %s", testCase.Secret, actual)
 			}
 
 			var data []byte
-			var accessed time.Time
-			var created time.Time
+			var remainingReads int
 
-			row := storage.db.QueryRow("SELECT data, accessed, created FROM entries WHERE uuid=$1", UUID)
-			err = row.Scan(&data, &accessed, &created)
-			if err == nil && err != sql.ErrNoRows {
+			row := storage.db.QueryRow("SELECT data, remaining_reads FROM entries WHERE uuid=$1", UUID)
+			err = row.Scan(&data, &remainingReads)
+			if err != testCase.ExistanceErr {
 				t.Fatal(err)
+			}
+
+			if remainingReads != testCase.Remaining {
+				t.Errorf("expected remaining to be %d, but got %d", testCase.Remaining, remainingReads)
 			}
 		})
 	}

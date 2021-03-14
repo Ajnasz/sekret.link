@@ -22,7 +22,7 @@ func TestStorages(t *testing.T) {
 			t.Run("Get", func(t *testing.T) {
 				storage.Clean()
 				UUID := newUUIDString()
-				err := storage.Create(UUID, []byte("foo"), time.Second*-10)
+				err := storage.Create(UUID, []byte("foo"), time.Second*-10, 1)
 
 				if err != nil {
 					t.Fatal(err)
@@ -41,7 +41,7 @@ func TestStorages(t *testing.T) {
 			t.Run("GetMeta", func(t *testing.T) {
 				storage.Clean()
 				UUID := newUUIDString()
-				err := storage.Create(UUID, []byte("foo"), time.Second*-10)
+				err := storage.Create(UUID, []byte("foo"), time.Second*-10, 1)
 
 				if err != nil {
 					t.Fatal(err)
@@ -60,7 +60,7 @@ func TestStorages(t *testing.T) {
 			t.Run("GetAndDelete", func(t *testing.T) {
 				storage.Clean()
 				UUID := newUUIDString()
-				err := storage.Create(UUID, []byte("foo"), time.Second*-10)
+				err := storage.Create(UUID, []byte("foo"), time.Second*-10, 1)
 
 				if err != nil {
 					t.Fatal(err)
@@ -79,7 +79,7 @@ func TestStorages(t *testing.T) {
 			t.Run("Delete", func(t *testing.T) {
 				storage.Clean()
 				UUID := newUUIDString()
-				err := storage.Create(UUID, []byte("foo"), time.Second*-10)
+				err := storage.Create(UUID, []byte("foo"), time.Second*-10, 1)
 
 				if err != nil {
 					t.Fatal(err)
@@ -145,7 +145,7 @@ func TestStorages(t *testing.T) {
 				}
 
 				for _, item := range items {
-					err := storage.Create(item.UUID, item.Value, item.Expire)
+					err := storage.Create(item.UUID, item.Value, item.Expire, 1)
 
 					if err != nil {
 						t.Fatal(err)

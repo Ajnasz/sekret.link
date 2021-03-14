@@ -11,14 +11,14 @@ type secretStorage struct {
 	Encrypter       Encrypter
 }
 
-func (s secretStorage) Create(UUID string, entry []byte, expire time.Duration) error {
+func (s secretStorage) Create(UUID string, entry []byte, expire time.Duration, remainingReads int) error {
 	encrypted, err := s.Encrypter.Encrypt(entry)
 
 	if err != nil {
 		return err
 	}
 
-	return s.internalStorage.Create(UUID, encrypted, expire)
+	return s.internalStorage.Create(UUID, encrypted, expire, remainingReads)
 }
 
 func (s secretStorage) GetMeta(UUID string) (*storage.EntryMeta, error) {

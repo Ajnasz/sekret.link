@@ -27,7 +27,7 @@ func (m *memoryStorage) Close() error {
 	return nil
 }
 
-func (m *memoryStorage) Create(UUID string, entry []byte, expire time.Duration) error {
+func (m *memoryStorage) Create(UUID string, entry []byte, expire time.Duration, remainingReads int) error {
 	m.entries.Lock()
 	defer m.entries.Unlock()
 

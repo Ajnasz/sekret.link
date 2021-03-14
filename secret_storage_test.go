@@ -34,7 +34,7 @@ func TestSecretStorage(t *testing.T) {
 	storage := &secretStorage{newMemoryStorage(), NewDummyEncrypter()}
 
 	UUID := newUUIDString()
-	err := storage.Create(UUID, []byte(testData), time.Second*10)
+	err := storage.Create(UUID, []byte(testData), time.Second*10, 1)
 
 	if err != nil {
 		t.Fatal(err)

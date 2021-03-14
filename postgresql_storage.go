@@ -18,10 +18,10 @@ func (s postgresqlStorage) Close() error {
 	return s.db.Close()
 }
 
-func (s postgresqlStorage) Create(UUID string, entry []byte, expire time.Duration) error {
+func (s postgresqlStorage) Create(UUID string, entry []byte, expire time.Duration, remainingReads int) error {
 	ctx := context.Background()
 	now := time.Now()
-	_, err := s.db.ExecContext(ctx, `INSERT INTO entries (uuid, data, created, expire) VALUES  ($1, $2, $3, $4) RETURNING uuid;`, UUID, entry, now, now.Add(expire))
+	_, err := s.db.ExecContext(ctx, `INSERT INTO entries (uuid, data, created, expire, remaining_reads) VALUES  ($1, $2, $3, $4, $5) RETURNING uuid;`, UUID, entry, now, now.Add(expire), remainingReads)
 	return err
 }
 
@@ -179,11 +179,16 @@ func (s postgresqlStorage) GetAndDelete(UUID string) (*storage.Entry, error) {
 		return nil, err
 	}
 
-	_, err = tx.ExecContext(ctx, "DELETE FROM entries WHERE uuid=$1", UUID)
-
-	if err != nil {
-		tx.Rollback()
-		return nil, err
+	queries := []string{
+		"UPDATE entries SET remaining_reads = remaining_reads - 1 WHERE uuid=$1;",
+		"DELETE FROM entries WHERE uuid=$1 AND remaining_reads < 1;",
+	}
+	for _, query := range queries {
+		_, err = tx.ExecContext(ctx, query, UUID)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
 	}
 
 	err = tx.Commit()
@@ -242,7 +247,7 @@ func (s postgresqlStorage) DeleteExpired() error {
 		return err
 	}
 
-	_, err = tx.ExecContext(ctx, "DELETE FROM entries WHERE expire < NOW()")
+	_, err = tx.ExecContext(ctx, "DELETE FROM entries WHERE expire < NOW() OR remaining_reads < 1;")
 
 	if err != nil {
 		tx.Rollback()
