@@ -32,12 +32,13 @@ func (s postgresqlStorage) GetMeta(UUID string) (*storage.EntryMeta, error) {
 		return nil, err
 	}
 
-	row := tx.QueryRowContext(ctx, "SELECT created, accessed, expire FROM entries WHERE uuid=$1", UUID)
+	row := tx.QueryRowContext(ctx, "SELECT created, accessed, expire, remaining_reads FROM entries WHERE uuid=$1", UUID)
 
 	var created time.Time
 	var accessedNullTime sql.NullTime
 	var expireNullTime sql.NullTime
-	err = row.Scan(&created, &accessedNullTime, &expireNullTime)
+	var remainingReadsNullInt32 sql.NullInt32
+	err = row.Scan(&created, &accessedNullTime, &expireNullTime, &remainingReadsNullInt32)
 
 	if err != nil {
 		tx.Rollback()
@@ -49,6 +50,7 @@ func (s postgresqlStorage) GetMeta(UUID string) (*storage.EntryMeta, error) {
 
 	var accessed time.Time
 	var expire time.Time
+	var maxReads int32
 
 	if accessedNullTime.Valid {
 		accessed = accessedNullTime.Time
@@ -56,12 +58,16 @@ func (s postgresqlStorage) GetMeta(UUID string) (*storage.EntryMeta, error) {
 	if expireNullTime.Valid {
 		expire = expireNullTime.Time
 	}
+	if remainingReadsNullInt32.Valid {
+		maxReads = remainingReadsNullInt32.Int32
+	}
 
 	meta := &storage.EntryMeta{
 		UUID:     UUID,
 		Created:  created,
 		Accessed: accessed,
 		Expire:   expire,
+		MaxReads: maxReads,
 	}
 
 	if meta.IsExpired() {

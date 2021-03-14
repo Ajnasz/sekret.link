@@ -7,6 +7,7 @@ type EntryMeta struct {
 	Created  time.Time
 	Accessed time.Time
 	Expire   time.Time
+	MaxReads int32
 }
 
 func (e *EntryMeta) IsExpired() bool {

@@ -32,6 +32,10 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 			log.Println(err)
 			http.Error(w, "Invalid expiration", http.StatusBadRequest)
 			return
+		} else if err.Error() == "Invalid max read" {
+			log.Println(err)
+			http.Error(w, "Invalid max read", http.StatusBadRequest)
+			return
 		} else {
 			http.Error(w, "Internal error", http.StatusInternalServerError)
 		}
@@ -50,7 +54,7 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 
 	UUID := newUUIDString()
 
-	err = secretStore.Create(UUID, data.body, data.expiration, 1)
+	err = secretStore.Create(UUID, data.body, data.expiration, data.maxReads)
 
 	if err != nil {
 		log.Println(err)

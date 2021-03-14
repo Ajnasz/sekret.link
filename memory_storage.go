@@ -10,10 +10,11 @@ import (
 )
 
 type memoryEntry struct {
-	Data     []byte
-	Created  time.Time
-	Expire   time.Time
-	Accessed time.Time
+	Data           []byte
+	Created        time.Time
+	Expire         time.Time
+	Accessed       time.Time
+	RemainingReads int32
 }
 
 type memoryStorage struct {
@@ -33,9 +34,10 @@ func (m *memoryStorage) Create(UUID string, entry []byte, expire time.Duration, 
 
 	now := time.Now()
 	m.entries.m[UUID] = &memoryEntry{
-		Data:    entry,
-		Created: now,
-		Expire:  now.Add(expire),
+		Data:           entry,
+		Created:        now,
+		Expire:         now.Add(expire),
+		RemainingReads: int32(remainingReads),
 	}
 	return nil
 }
@@ -50,6 +52,7 @@ func (m *memoryStorage) GetMeta(UUID string) (*storage.EntryMeta, error) {
 			Created:  entry.Created,
 			Accessed: entry.Accessed,
 			Expire:   entry.Expire,
+			MaxReads: entry.RemainingReads,
 		}
 
 		if meta.IsExpired() {

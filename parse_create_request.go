@@ -5,12 +5,14 @@ import (
 	"io/ioutil"
 	"mime"
 	"net/http"
+	"strconv"
 	"time"
 )
 
 type requestData struct {
 	body       []byte
 	expiration time.Duration
+	maxReads   int
 }
 
 func calculateExpiration(expire string, defaultExpire time.Duration) (time.Duration, error) {
@@ -76,6 +78,27 @@ func (b requestData) ContentType() string {
 	return "plain/text"
 }
 
+const MIN_MAX_READ_COUNT int = 1
+
+func getSecretMaxReads(r *http.Request) (int, error) {
+	r.ParseForm()
+	val := r.Form.Get("maxReads")
+	if val == "" {
+		return MIN_MAX_READ_COUNT, nil
+	}
+
+	maxReads, err := strconv.Atoi(val)
+	if err != nil {
+		return 0, err
+	}
+
+	if maxReads < MIN_MAX_READ_COUNT {
+		return 0, fmt.Errorf("Invalid max read")
+	}
+
+	return maxReads, nil
+}
+
 func getSecretExpiration(r *http.Request) (time.Duration, error) {
 	var expiration string
 	r.ParseForm()
@@ -97,9 +120,16 @@ func parseCreateRequest(r *http.Request) (*requestData, error) {
 		return nil, err
 	}
 
+	maxReads, err := getSecretMaxReads(r)
+
+	if err != nil {
+		return nil, err
+	}
+
 	return &requestData{
 		body:       body,
 		expiration: expiration,
+		maxReads:   maxReads,
 	}, nil
 
 }

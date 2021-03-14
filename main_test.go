@@ -407,6 +407,8 @@ func TestCreateEntrySizeLimit(t *testing.T) {
 	maxExpireSeconds = 120
 	expireSeconds = 10
 	testCase := "ff"
+	oldMaxDataSize := maxDataSize
+	defer func() { maxDataSize = oldMaxDataSize }()
 	maxDataSize = 1
 
 	cleanEntries(t)
@@ -420,4 +422,40 @@ func TestCreateEntrySizeLimit(t *testing.T) {
 		t.Errorf("Invalid statuscode, expected %d, got %d", 413, resp.StatusCode)
 	}
 
+}
+
+func TestCreateEntryWithMaxReads(t *testing.T) {
+	value := "FooBarBAzdd"
+	expireSeconds = 10
+	cleanEntries(t)
+	req := httptest.NewRequest("POST", "http://example.com?maxReads=2", bytes.NewReader([]byte(value)))
+	w := httptest.NewRecorder()
+	secretHandler{}.ServeHTTP(w, req)
+
+	resp := w.Result()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	responseURL := string(body)
+	savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	key, err := hex.DecodeString(keyString)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	secretStore := &secretStorage{entryStorage, &AESEncrypter{key}}
+	entry, err := secretStore.GetMeta(savedUUID)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if entry.MaxReads != 2 {
+		t.Errorf("expected max reads to be: %d, actual: %d", 2, entry.MaxReads)
+	}
 }
