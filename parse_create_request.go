@@ -89,11 +89,15 @@ func getSecretMaxReads(r *http.Request) (int, error) {
 
 	maxReads, err := strconv.Atoi(val)
 	if err != nil {
+		if _, isNumError := err.(*strconv.NumError); isNumError {
+			return 0, fmt.Errorf("Invalid maxReads")
+		}
+
 		return 0, err
 	}
 
 	if maxReads < MIN_MAX_READ_COUNT {
-		return 0, fmt.Errorf("Invalid max read")
+		return 0, fmt.Errorf("Invalid maxReads")
 	}
 
 	return maxReads, nil
