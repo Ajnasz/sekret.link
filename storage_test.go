@@ -19,25 +19,6 @@ func TestStorages(t *testing.T) {
 
 	for name, storage := range storages {
 		t.Run(name, func(t *testing.T) {
-			t.Run("Get", func(t *testing.T) {
-				storage.Clean()
-				UUID := newUUIDString()
-				err := storage.Create(UUID, []byte("foo"), time.Second*-10, 1)
-
-				if err != nil {
-					t.Fatal(err)
-				}
-
-				data, err := storage.Get(UUID)
-
-				if data != nil {
-					t.Errorf("Expected expired data to be nil")
-				}
-
-				if err != ErrEntryExpired {
-					t.Errorf("Expected expire error but got %v", err)
-				}
-			})
 			t.Run("GetMeta", func(t *testing.T) {
 				storage.Clean()
 				UUID := newUUIDString()
@@ -91,16 +72,6 @@ func TestStorages(t *testing.T) {
 					t.Error(err)
 				}
 
-				ret, err := storage.Get(UUID)
-
-				if err != ErrEntryNotFound {
-					t.Errorf("Storage Get should return an entry not found error, but returned %v", err)
-				}
-
-				if ret != nil {
-					t.Errorf("Expected to not be able to retreive deleted item, but got: %v", ret)
-				}
-
 				retMeta, err := storage.GetMeta(UUID)
 
 				if err != ErrEntryNotFound {
@@ -108,16 +79,16 @@ func TestStorages(t *testing.T) {
 				}
 
 				if retMeta != nil {
-					t.Errorf("Expected to not be able to retreive deleted item, but got: %v", ret)
+					t.Errorf("Expected to not be able to retreive deleted item, but got: %v", retMeta)
 				}
 
-				ret, err = storage.GetAndDelete(UUID)
+				ret, err := storage.GetAndDelete(UUID)
 
 				if err != ErrEntryNotFound {
 					t.Errorf("Storage GetAndDelete should return an entry not found error, but returned %v", err)
 				}
 
-				if retMeta != nil {
+				if ret != nil {
 					t.Errorf("Expected to not be able to retreive deleted item, but got: %v", ret)
 				}
 			})
@@ -157,7 +128,7 @@ func TestStorages(t *testing.T) {
 						t.Error(err)
 					}
 
-					ret, err := storage.Get(item.UUID)
+					ret, err := storage.GetMeta(item.UUID)
 
 					if item.ShouldExpire {
 						if err != ErrEntryNotFound {
@@ -174,8 +145,6 @@ func TestStorages(t *testing.T) {
 
 						if ret == nil {
 							t.Error("Returned a nil data")
-						} else if string(ret.Data) != string(item.Value) {
-							t.Errorf("Expected data to be %q but got %q", string(item.Value), string(ret.Data))
 						}
 					}
 				}

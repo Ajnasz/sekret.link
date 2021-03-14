@@ -35,33 +35,6 @@ func (s secretStorage) GetMeta(UUID string) (*storage.EntryMeta, error) {
 	return entryMeta, nil
 }
 
-func (s secretStorage) Get(UUID string) (*storage.Entry, error) {
-	entry, err := s.internalStorage.Get(UUID)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if entry.IsExpired() {
-		return nil, ErrEntryExpired
-	}
-
-	if len(entry.Data) == 0 {
-		return entry, nil
-	}
-
-	decrypted, err := s.Encrypter.Decrypt(entry.Data)
-
-	if err != nil {
-		return nil, err
-	}
-
-	ret := *entry
-	ret.Data = decrypted
-
-	return &ret, nil
-}
-
 func (s secretStorage) GetAndDelete(UUID string) (*storage.Entry, error) {
 	entry, err := s.internalStorage.GetAndDelete(UUID)
 

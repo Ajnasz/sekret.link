@@ -40,7 +40,7 @@ func TestSecretStorage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data, err := storage.Get(UUID)
+	data, err := storage.GetAndDelete(UUID)
 
 	if err != nil {
 		t.Fatal(err)

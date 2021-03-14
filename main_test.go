@@ -74,7 +74,7 @@ func TestCreateEntry(t *testing.T) {
 	}
 
 	secretStore := &secretStorage{entryStorage, &AESEncrypter{key}}
-	entry, err := secretStore.Get(savedUUID)
+	entry, err := secretStore.GetAndDelete(savedUUID)
 
 	if err != nil {
 		t.Fatal(err)
@@ -111,7 +111,7 @@ func TestCreateEntryJSON(t *testing.T) {
 	}
 
 	secretStore := &secretStorage{entryStorage, &AESEncrypter{key}}
-	entry, err := secretStore.Get(encode.UUID)
+	entry, err := secretStore.GetAndDelete(encode.UUID)
 
 	if err != nil {
 		t.Fatal(err)
@@ -184,7 +184,7 @@ func TestCreateEntryForm(t *testing.T) {
 	}
 
 	secretStore := &secretStorage{entryStorage, &AESEncrypter{key}}
-	entry, err := secretStore.Get(savedUUID)
+	entry, err := secretStore.GetAndDelete(savedUUID)
 
 	if err != nil {
 		t.Fatal(err)
@@ -388,7 +388,7 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 	}
 
 	secretStore := &secretStorage{entryStorage, &AESEncrypter{key}}
-	entry, err := secretStore.Get(savedUUID)
+	entry, err := secretStore.GetAndDelete(savedUUID)
 
 	if err != nil {
 		t.Fatal(err)
