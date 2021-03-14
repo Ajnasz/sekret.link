@@ -7,6 +7,33 @@ import (
 	"github.com/Ajnasz/sekret.link/storage"
 )
 
+type dbExec func(*sql.DB) error
+
+func createTable(db *sql.DB) error {
+	createTable, err := db.Prepare("CREATE TABLE IF NOT EXISTS entries (uuid uuid PRIMARY KEY, data BYTEA, remaining_reads SMALLINT DEFAULT 1, created TIMESTAMPTZ, accessed TIMESTAMPTZ, expire TIMESTAMPTZ)")
+
+	if err != nil {
+		return err
+	}
+	_, err = createTable.Exec()
+
+	return err
+}
+
+func addRemainingRead(db *sql.DB) error {
+	alterTable, err := db.Prepare("ALTER TABLE entries ADD COLUMN IF NOT EXISTS remaining_reads SMALLINT DEFAULT 1")
+
+	if err != nil {
+		return err
+	}
+
+	log.Println("Exec alter table")
+
+	_, err = alterTable.Exec()
+
+	return err
+}
+
 func newPostgresqlStorage(psqlconn string) *postgresqlStorage {
 	db, err := sql.Open("postgres", psqlconn)
 
@@ -21,13 +48,13 @@ func newPostgresqlStorage(psqlconn string) *postgresqlStorage {
 		log.Fatal(err)
 	}
 
-	createTable, err := db.Prepare("CREATE TABLE IF NOT EXISTS entries (uuid uuid PRIMARY KEY, data BYTEA, created TIMESTAMPTZ, accessed TIMESTAMPTZ, expire TIMESTAMPTZ)")
-
-	if err != nil {
-		defer db.Close()
-		log.Fatal(err)
+	for _, f := range []dbExec{createTable, addRemainingRead} {
+		err = f(db)
+		if err != nil {
+			defer db.Close()
+			log.Fatal(err)
+		}
 	}
-	_, err = createTable.Exec()
 
 	if err != nil {
 		defer db.Close()
