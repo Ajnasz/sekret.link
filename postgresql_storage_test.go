@@ -1,5 +1,3 @@
-// +build postgres test
-
 package main
 
 import (

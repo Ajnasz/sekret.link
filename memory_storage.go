@@ -143,9 +143,9 @@ func newMemoryStorage() *memoryStorage {
 	}
 }
 
-func newStorage() storage.EntryStorage {
-	return newMemoryStorage()
-}
+// func newStorage() storage.EntryStorage {
+// 	return newMemoryStorage()
+// }
 
 type memoryCleanbleStorage struct {
 	*memoryStorage

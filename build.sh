@@ -49,7 +49,7 @@ remove() {
 REMOVE=0
 OSLIST="linux"
 ARCHLIST="amd64 386"
-STORAGELIST="postgres redis sqlite"
+STORAGELIST="postgres"
 BUILD_DIR="./build"
 STORAGE=""
 BUILD=0

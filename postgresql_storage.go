@@ -1,5 +1,3 @@
-// +build postgres test
-
 package main
 
 import (
@@ -252,36 +250,6 @@ func (s postgresqlStorage) DeleteExpired() error {
 	}
 
 	return tx.Commit()
-}
-
-func newPostgresqlStorage(psqlconn string) *postgresqlStorage {
-	db, err := sql.Open("postgres", psqlconn)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = db.Ping()
-
-	if err != nil {
-		defer db.Close()
-		log.Fatal(err)
-	}
-
-	createTable, err := db.Prepare("CREATE TABLE IF NOT EXISTS entries (uuid uuid PRIMARY KEY, data BYTEA, created TIMESTAMPTZ, accessed TIMESTAMPTZ, expire TIMESTAMPTZ)")
-
-	if err != nil {
-		defer db.Close()
-		log.Fatal(err)
-	}
-	_, err = createTable.Exec()
-
-	if err != nil {
-		defer db.Close()
-		log.Fatal(err)
-	}
-
-	return &postgresqlStorage{db}
 }
 
 type postgresCleanableStorage struct {

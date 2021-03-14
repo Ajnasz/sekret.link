@@ -11,17 +11,6 @@ jobs:
     # Service containers to run with `container-job`
     services:
       # Label used to access the service container
-      redis:
-        # Docker Hub image
-        image: redis
-        # Set health checks to wait until redis has started
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
       postgres:
         # Docker Hub image
         image: postgres
@@ -62,5 +51,4 @@ jobs:
     - name: Test
       env:
         POSTGRES_URL: "postgres://postgres:password@localhost:5432/sekret_link_test?sslmode=disable"
-        REDIS_URL: "redis://localhost:6379/0"
       run: ./build.sh test
