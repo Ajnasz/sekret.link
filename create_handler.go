@@ -64,16 +64,17 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add("x-entry-uuid", UUID)
 	w.Header().Add("x-entry-key", keyString)
-	w.Header().Add("x-entry-expire", time.Now().Add(data.expiration).Format(time.RFC3339))
+	entry, err := secretStore.GetMeta(UUID)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Add("x-entry-expire", entry.Expire.Format(time.RFC3339))
+	w.Header().Add("x-entry-delete-key", entry.DeleteKey)
 	if r.Header.Get("Accept") == "application/json" {
 		w.Header().Set("Content-Type", "application/json")
-		entry, err := secretStore.GetMeta(UUID)
-
-		if err != nil {
-			log.Println(err)
-			http.Error(w, "Internal error", http.StatusInternalServerError)
-			return
-		}
 
 		response := secretResponseFromEntryMeta(*entry)
 		response.Key = keyString

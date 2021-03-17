@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"mime/multipart"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
@@ -16,10 +17,12 @@ import (
 	"time"
 )
 
-func cleanEntries(t *testing.T) {
+func cleanEntries() {
 	extURL, _ := url.Parse("http://example.com")
 	webExternalURL = extURL
-	entryStorage = newMemoryStorage()
+	psqlConnection := newPostgresqlStorage(getPSQLTestConn())
+	entryStorage = psqlConnection
+	// postgresCleanableStorage{psqlConnection}.Clean()
 }
 
 func TestGetUUIDFromPath(t *testing.T) {
@@ -37,7 +40,7 @@ func TestGetUUIDFromPath(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
-			cleanEntries(t)
+			t.Cleanup(cleanEntries)
 			actual, err := getUUIDFromPath(testCase.Value)
 			if err != nil {
 				t.Fatal(err)
@@ -52,7 +55,7 @@ func TestGetUUIDFromPath(t *testing.T) {
 func TestCreateEntry(t *testing.T) {
 	value := "Foo"
 	expireSeconds = 10
-	cleanEntries(t)
+	t.Cleanup(cleanEntries)
 	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(value)))
 	w := httptest.NewRecorder()
 	secretHandler{}.ServeHTTP(w, req)
@@ -62,6 +65,14 @@ func TestCreateEntry(t *testing.T) {
 
 	responseURL := string(body)
 	savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
+
+	if resp.Header.Get("x-entry-uuid") != savedUUID {
+		t.Errorf("Expected x-entry-uuid header to be %q, but got %q", savedUUID, resp.Header.Get("x-entry-uuid"))
+	}
+
+	if resp.Header.Get("x-entry-delete-key") == "" {
+		t.Error("Expected x-entry-delete-key to not be empty")
+	}
 
 	if err != nil {
 		t.Fatal(err)
@@ -90,7 +101,7 @@ func TestCreateEntry(t *testing.T) {
 func TestCreateEntryJSON(t *testing.T) {
 	value := "Foo"
 	expireSeconds = 10
-	cleanEntries(t)
+	t.Cleanup(cleanEntries)
 	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(value)))
 	req.Header.Add("Accept", "application/json")
 	w := httptest.NewRecorder()
@@ -102,6 +113,10 @@ func TestCreateEntryJSON(t *testing.T) {
 
 	if err != nil {
 		t.Error(err)
+	}
+
+	if encode.DeleteKey == "" {
+		t.Error("In create response the deleteKey is empty")
 	}
 
 	key, err := hex.DecodeString(encode.Key)
@@ -154,7 +169,7 @@ func createMultipart(values map[string]io.Reader) (*bytes.Buffer, *multipart.Wri
 func TestCreateEntryForm(t *testing.T) {
 	value := "Foo"
 	expireSeconds = 60
-	cleanEntries(t)
+	t.Cleanup(cleanEntries)
 
 	data, multi, err := createMultipart(map[string]io.Reader{
 		"secret": strings.NewReader(value),
@@ -220,7 +235,7 @@ func TestRequestPathsCreateEntry(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
-			cleanEntries(t)
+			t.Cleanup(cleanEntries)
 			req := httptest.NewRequest("POST", fmt.Sprintf("http://example.com%s", testCase.Path), bytes.NewReader([]byte("ASDF")))
 			w := httptest.NewRecorder()
 			secretHandler{}.ServeHTTP(w, req)
@@ -250,11 +265,11 @@ func TestGetEntry(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
+			t.Cleanup(cleanEntries)
 			key, err := generateRSAKey()
 			if err != nil {
 				t.Fatal(err)
 			}
-			cleanEntries(t)
 			encrypter := AESEncrypter{key}
 			encryptedData, err := encrypter.Encrypt([]byte(testCase.Value))
 			if err != nil {
@@ -263,7 +278,7 @@ func TestGetEntry(t *testing.T) {
 
 			entryStorage.Create(testCase.UUID, encryptedData, time.Second*10, 1)
 
-			req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(key)), nil)
+			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(key)), nil)
 			w := httptest.NewRecorder()
 			secretHandler{}.ServeHTTP(w, req)
 
@@ -281,6 +296,7 @@ func TestGetEntry(t *testing.T) {
 }
 
 func TestGetEntryJSON(t *testing.T) {
+	t.Cleanup(cleanEntries)
 	testCase := struct {
 		Name  string
 		Value string
@@ -296,7 +312,6 @@ func TestGetEntryJSON(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	cleanEntries(t)
 	encrypter := AESEncrypter{key}
 	encryptedData, err := encrypter.Encrypt([]byte(testCase.Value))
 	if err != nil {
@@ -326,43 +341,41 @@ func TestGetEntryJSON(t *testing.T) {
 func TestSetAndGetEntry(t *testing.T) {
 	testCase := "foo"
 
-	t.Run(testCase, func(t *testing.T) {
-		cleanEntries(t)
-		req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(testCase)))
-		w := httptest.NewRecorder()
-		secretHandler{}.ServeHTTP(w, req)
+	t.Cleanup(cleanEntries)
+	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(testCase)))
+	w := httptest.NewRecorder()
+	secretHandler{}.ServeHTTP(w, req)
 
-		resp := w.Result()
-		body, _ := ioutil.ReadAll(resp.Body)
+	resp := w.Result()
+	body, _ := ioutil.ReadAll(resp.Body)
 
-		responseURL := string(body)
-		savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
+	responseURL := string(body)
+	savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
 
-		if err != nil {
-			t.Fatal(err)
-		}
+	if err != nil {
+		t.Fatal(err)
+	}
 
-		req = httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", savedUUID, keyString), nil)
-		w = httptest.NewRecorder()
-		secretHandler{}.ServeHTTP(w, req)
+	req = httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", savedUUID, keyString), nil)
+	w = httptest.NewRecorder()
+	secretHandler{}.ServeHTTP(w, req)
 
-		resp = w.Result()
-		body, _ = ioutil.ReadAll(resp.Body)
+	resp = w.Result()
+	body, _ = ioutil.ReadAll(resp.Body)
 
-		actual := string(body)
+	actual := string(body)
 
-		if testCase != actual {
-			t.Errorf("data not saved expected: %q, actual: %q", testCase, actual)
-		}
-	})
+	if testCase != actual {
+		t.Errorf("data not saved expected: %q, actual: %q", testCase, actual)
+	}
 }
 
 func TestCreateEntryWithExpiration(t *testing.T) {
+	t.Cleanup(cleanEntries)
 	maxExpireSeconds = 120
 	expireSeconds = -10
 	testCase := "foo"
 
-	cleanEntries(t)
 	req := httptest.NewRequest("POST", "http://example.com?expire=1m", bytes.NewReader([]byte(testCase)))
 	w := httptest.NewRecorder()
 	secretHandler{}.ServeHTTP(w, req)
@@ -404,6 +417,7 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 }
 
 func TestCreateEntrySizeLimit(t *testing.T) {
+	t.Cleanup(cleanEntries)
 	maxExpireSeconds = 120
 	expireSeconds = 10
 	testCase := "ff"
@@ -411,7 +425,6 @@ func TestCreateEntrySizeLimit(t *testing.T) {
 	defer func() { maxDataSize = oldMaxDataSize }()
 	maxDataSize = 1
 
-	cleanEntries(t)
 	req := httptest.NewRequest("POST", "http://example.com?expire=1m", bytes.NewReader([]byte(testCase)))
 	w := httptest.NewRecorder()
 	secretHandler{}.ServeHTTP(w, req)
@@ -427,7 +440,7 @@ func TestCreateEntrySizeLimit(t *testing.T) {
 func TestCreateEntryWithMaxReads(t *testing.T) {
 	value := "FooBarBAzdd"
 	expireSeconds = 10
-	cleanEntries(t)
+	t.Cleanup(cleanEntries)
 	req := httptest.NewRequest("POST", "http://example.com?maxReads=2", bytes.NewReader([]byte(value)))
 	w := httptest.NewRecorder()
 	secretHandler{}.ServeHTTP(w, req)
@@ -457,5 +470,31 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 
 	if entry.MaxReads != 2 {
 		t.Errorf("expected max reads to be: %d, actual: %d", 2, entry.MaxReads)
+	}
+}
+
+func TestDeleteEntry(t *testing.T) {
+	t.Cleanup(cleanEntries)
+	req := httptest.NewRequest(http.MethodPost, "http://example.com", bytes.NewReader([]byte("foobarbaz")))
+	w := httptest.NewRecorder()
+	handler := secretHandler{}
+	handler.ServeHTTP(w, req)
+
+	resp := w.Result()
+
+	deleteKey := resp.Header.Get("x-entry-delete-key")
+	key := resp.Header.Get("x-entry-key")
+	UUID := resp.Header.Get("x-entry-uuid")
+
+	url := fmt.Sprintf("http://example.com/%s/%s/%s", UUID, key, deleteKey)
+
+	req = httptest.NewRequest(http.MethodDelete, url, nil)
+	w = httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	resp = w.Result()
+
+	if resp.StatusCode != http.StatusAccepted {
+		t.Errorf("Delete response expected to be %d, but got %d", http.StatusAccepted, resp.StatusCode)
 	}
 }

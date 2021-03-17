@@ -6,8 +6,13 @@ import (
 	"github.com/Ajnasz/sekret.link/storage"
 )
 
+type verifyStorage interface {
+	storage.EntryStorage
+	VerifyDelete(string, string) (bool, error)
+}
+
 type secretStorage struct {
-	internalStorage storage.EntryStorage
+	internalStorage verifyStorage
 	Encrypter       Encrypter
 }
 
@@ -60,6 +65,10 @@ func (s secretStorage) GetAndDelete(UUID string) (*storage.Entry, error) {
 	ret.Data = decrypted
 
 	return &ret, nil
+}
+
+func (s secretStorage) VerifyDelete(UUID string, deleteKey string) (bool, error) {
+	return s.internalStorage.VerifyDelete(UUID, deleteKey)
 }
 
 func (s secretStorage) Close() error {

@@ -31,7 +31,16 @@ func NewDummyEncrypter() *DummyEncrypter {
 func TestSecretStorage(t *testing.T) {
 
 	testData := "Lorem ipusm dolor sit amet"
-	storage := &secretStorage{newMemoryStorage(), NewDummyEncrypter()}
+	psqlStorage := postgresCleanableStorage{newPostgresqlStorage(getPSQLTestConn())}
+	storage := &CleanableSecretStorage{
+		&secretStorage{
+			psqlStorage,
+			NewDummyEncrypter(),
+		},
+		psqlStorage,
+	}
+	defer storage.Clean()
+	// TODO defer storage.Close()
 
 	UUID := newUUIDString()
 	err := storage.Create(UUID, []byte(testData), time.Second*10, 1)

@@ -9,12 +9,10 @@ import (
 	"path"
 	"strings"
 	"time"
-
-	"github.com/Ajnasz/sekret.link/storage"
 )
 
 var (
-	entryStorage     storage.EntryStorage
+	entryStorage     verifyStorage
 	externalURLParam string
 	expireSeconds    int
 	maxExpireSeconds int
@@ -25,7 +23,7 @@ var (
 	queryVersion     bool
 )
 
-func getStorage() storage.EntryStorage {
+func getStorage() verifyStorage {
 	return newStorage()
 }
 

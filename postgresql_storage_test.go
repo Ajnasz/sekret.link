@@ -9,7 +9,7 @@ import (
 )
 
 func getPSQLTestConn() string {
-	return getConnectionString(fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", "secret_link_test", "Km61HJgJbBjNA0FdABpjDmQxEz008PHAQMA8TLpUbnlaKN7U8G1bQGHk0wsm", "localhost", 54320, "secret_link_test"), "POSTGRES_URL")
+	return getConnectionString(fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", "secret_link_test", "Km61HJgJbBjNA0FdABpjDmQxEz008PHAQMA8TLpUbnlaKN7U8G1bQGHk0wsm", "localhost", 5432, "secret_link_test"), "POSTGRES_URL")
 }
 
 func clearPSQLDatabase(dbname string) {
@@ -125,5 +125,59 @@ func TestPostgresqlStorageCreateGetAndDelete(t *testing.T) {
 				t.Errorf("expected remaining to be %d, but got %d", testCase.Remaining, remainingReads)
 			}
 		})
+	}
+}
+
+func TestPostgresqlStorageVerifyDelete(t *testing.T) {
+	psqlConn := getPSQLTestConn()
+	testCases := []struct {
+		UUID        string
+		Key         string
+		DeleteKey   string
+		Expected    bool
+		ExpectedErr error
+	}{
+		{
+			UUID:        "5e8e0330-1f9c-45eb-99ef-d49eeb4952f5",
+			DeleteKey:   "",
+			Expected:    true,
+			ExpectedErr: nil,
+		},
+		{
+			UUID:        "9d436e32-1914-4d9f-a9b4-51f8e58b271a",
+			DeleteKey:   "2e573753-93f6-4b39-918f-b3448b050d01",
+			Expected:    false,
+			ExpectedErr: nil,
+		},
+	}
+	for _, testCase := range testCases {
+		clearPSQLDatabase(psqlConn)
+
+		storage := newPostgresqlStorage(psqlConn)
+		defer storage.Close()
+
+		err := storage.Create(testCase.UUID, []byte("foo"), time.Second*10, 1)
+		if err != testCase.ExpectedErr {
+			t.Error(err)
+		}
+
+		var deleteKey string
+
+		if testCase.DeleteKey == "" {
+			row := storage.db.QueryRow("SELECT delete_key FROM entries WHERE uuid=$1", testCase.UUID)
+			row.Scan(&deleteKey)
+		} else {
+			deleteKey = testCase.DeleteKey
+		}
+
+		actual, err := storage.VerifyDelete(testCase.UUID, deleteKey)
+
+		if err != nil {
+			t.Errorf("Expected error to be %+v, but got %+v", testCase.ExpectedErr, err)
+		}
+
+		if actual != testCase.Expected {
+			t.Errorf("Expected %+v to be %+v", actual, testCase.Expected)
+		}
 	}
 }

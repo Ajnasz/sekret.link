@@ -6,14 +6,15 @@ import (
 )
 
 func TestStorages(t *testing.T) {
+	psqlStorage := postgresCleanableStorage{newPostgresqlStorage(getPSQLTestConn())}
 	storages := map[string]CleanableStorage{
-		"Postgres": postgresCleanableStorage{newPostgresqlStorage(getPSQLTestConn())},
-		"Memory":   memoryCleanbleStorage{newMemoryStorage()},
+		"Postgres": psqlStorage,
 		"Secret": CleanableSecretStorage{
-			&secretStorage{newMemoryStorage(),
+			&secretStorage{
+				psqlStorage,
 				NewDummyEncrypter(),
 			},
-			memoryCleanbleStorage{newMemoryStorage()},
+			psqlStorage,
 		},
 	}
 

@@ -8,20 +8,22 @@ import (
 )
 
 type SecretResponse struct {
-	UUID     string
-	Key      string
-	Data     string
-	Created  time.Time
-	Accessed time.Time
-	Expire   time.Time
+	UUID      string
+	Key       string
+	Data      string
+	Created   time.Time
+	Accessed  time.Time
+	Expire    time.Time
+	DeleteKey string
 }
 
 func secretResponseFromEntryMeta(meta storage.EntryMeta) *SecretResponse {
 	return &SecretResponse{
-		UUID:     meta.UUID,
-		Created:  meta.Created,
-		Expire:   meta.Expire,
-		Accessed: meta.Accessed,
+		UUID:      meta.UUID,
+		Created:   meta.Created,
+		Expire:    meta.Expire,
+		Accessed:  meta.Accessed,
+		DeleteKey: meta.DeleteKey,
 	}
 }
 
