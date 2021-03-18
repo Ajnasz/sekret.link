@@ -8,7 +8,7 @@ import (
 	"path"
 )
 
-func getDeleteStuff(urlPath string) (string, string, string, error) {
+func parseDeleteEntryPath(urlPath string) (string, string, string, error) {
 	pathDir, delKey := path.Split(urlPath)
 	if len(pathDir) < 1 {
 		return "", "", "", fmt.Errorf("Invalid URL %q", urlPath)
@@ -28,7 +28,7 @@ func getDeleteStuff(urlPath string) (string, string, string, error) {
 }
 
 func handleDeleteEntry(w http.ResponseWriter, r *http.Request) {
-	UUID, _, deleteKey, err := getDeleteStuff(r.URL.Path)
+	UUID, _, deleteKey, err := parseDeleteEntryPath(r.URL.Path)
 
 	if err != nil {
 		log.Println(err)

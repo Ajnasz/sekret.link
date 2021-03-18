@@ -1,22 +1,12 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 )
 
 type dbExec func(*sql.DB) error
-
-func addExtension(db *sql.DB) error {
-	q, err := db.Prepare("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";")
-
-	if err != nil {
-		return err
-	}
-	_, err = q.Exec()
-
-	return err
-}
 
 func createTable(db *sql.DB) error {
 	q, err := db.Prepare("CREATE TABLE IF NOT EXISTS entries (uuid uuid PRIMARY KEY, data BYTEA, remaining_reads SMALLINT DEFAULT 1, delete_key CHAR(256) NOT NULL, created TIMESTAMPTZ, accessed TIMESTAMPTZ, expire TIMESTAMPTZ);")
@@ -42,15 +32,48 @@ func addRemainingRead(db *sql.DB) error {
 }
 
 func addDeleteKey(db *sql.DB) error {
-	alterTable, err := db.Prepare("ALTER TABLE entries ADD COLUMN IF NOT EXISTS delete_key CHAR(256) NOT NULL;")
+	ctx := context.Background()
+	tx, err := db.BeginTx(ctx, nil)
+	alterTable, err := db.PrepareContext(ctx, "ALTER TABLE entries ADD COLUMN IF NOT EXISTS delete_key CHAR(256);")
 
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 
-	_, err = alterTable.Exec()
+	_, err = alterTable.ExecContext(ctx)
 
-	return err
+	rows, err := db.QueryContext(ctx, "SELECT uuid FROM entries WHERE delete_key IS NULL;")
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	for rows.Next() {
+		var UUID string
+		if err := rows.Scan(&UUID); err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		_, deleteKey, err := createKey()
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		_, err = db.ExecContext(ctx, "UPDATE entries SET delete_key=$2 WHERE uuid=$1", UUID, deleteKey)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	_, err = db.ExecContext(ctx, "ALTER TABLE entries ALTER COLUMN delete_key SET NOT NULL;")
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	return tx.Commit()
 }
 
 func newPostgresqlStorage(psqlconn string) *postgresqlStorage {
@@ -67,7 +90,7 @@ func newPostgresqlStorage(psqlconn string) *postgresqlStorage {
 		log.Fatal("DB ping failed", err)
 	}
 
-	for _, f := range []dbExec{addExtension, createTable, addRemainingRead, addDeleteKey} {
+	for _, f := range []dbExec{createTable, addRemainingRead, addDeleteKey} {
 		err = f(db)
 		if err != nil {
 			defer db.Close()
