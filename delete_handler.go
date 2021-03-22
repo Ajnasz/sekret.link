@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"log"
 	"net/http"
 	"path"
+
+	"github.com/google/uuid"
 )
 
 func parseDeleteEntryPath(urlPath string) (string, string, string, error) {

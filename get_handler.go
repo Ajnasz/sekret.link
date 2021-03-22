@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+
+	"github.com/Ajnasz/sekret.link/storage"
 )
 
 func onGetError(w http.ResponseWriter, err error) {
@@ -22,6 +24,27 @@ func onGetError(w http.ResponseWriter, err error) {
 	http.Error(w, "Internal error", http.StatusInternalServerError)
 }
 
+func handleGetSecret(UUID, keyString string) (*storage.Entry, error) {
+	key, err := hex.DecodeString(keyString)
+	if err != nil {
+		return nil, err
+	}
+
+	secretStore := &secretStorage{entryStorage, &AESEncrypter{key}}
+	return secretStore.GetAndDelete(UUID)
+}
+
+func sendGetSecretResponse(entry *storage.Entry, w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Accept") == "application/json" {
+		response := secretResponseFromEntryMeta(entry.EntryMeta)
+		response.Data = string(entry.Data)
+		json.NewEncoder(w).Encode(response)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Write(entry.Data)
+	}
+}
+
 func handleGetEntry(w http.ResponseWriter, r *http.Request) {
 	UUID, keyString, err := getUUIDAndSecretFromPath(r.URL.Path)
 
@@ -30,30 +53,12 @@ func handleGetEntry(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
-
-	key, err := hex.DecodeString(keyString)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
-	}
-
-	secretStore := &secretStorage{entryStorage, &AESEncrypter{key}}
-	entry, err := secretStore.GetAndDelete(UUID)
+	entry, err := handleGetSecret(UUID, keyString)
 
 	if err != nil {
 		onGetError(w, err)
 		return
 	}
 
-	if r.Header.Get("Accept") == "application/json" {
-		response := secretResponseFromEntryMeta(entry.EntryMeta)
-
-		response.Data = string(entry.Data)
-		response.Key = keyString
-		json.NewEncoder(w).Encode(response)
-	} else {
-		w.WriteHeader(http.StatusOK)
-		w.Write(entry.Data)
-	}
+	sendGetSecretResponse(entry, w, r)
 }
