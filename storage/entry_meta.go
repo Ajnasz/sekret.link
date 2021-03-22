@@ -7,6 +7,7 @@ type EntryMeta struct {
 	Created   time.Time
 	Accessed  time.Time
 	Expire    time.Time
+	Key       string
 	DeleteKey string
 	MaxReads  int32
 }

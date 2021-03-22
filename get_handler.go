@@ -36,6 +36,7 @@ func handleGetSecret(UUID, keyString string) (*storage.Entry, error) {
 
 func sendGetSecretResponse(entry *storage.Entry, w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("Accept") == "application/json" {
+		w.Header().Set("Content-Type", "application/json")
 		response := secretResponseFromEntryMeta(entry.EntryMeta)
 		response.Data = string(entry.Data)
 		json.NewEncoder(w).Encode(response)
