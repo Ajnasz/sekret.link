@@ -90,7 +90,7 @@ func main() {
 
 	log.Println("Handle Path: ", apiRoot)
 
-	http.Handle(apiRoot, http.StripPrefix(apiRoot, secretHandler{}))
+	http.Handle(apiRoot, http.StripPrefix(apiRoot, setupLogging(setupHeaders(secretHandler{}))))
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
