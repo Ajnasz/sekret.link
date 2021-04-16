@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -61,7 +60,7 @@ func TestCreateEntry(t *testing.T) {
 	secretHandler{}.ServeHTTP(w, req)
 
 	resp := w.Result()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	responseURL := string(body)
 	savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
@@ -183,7 +182,7 @@ func TestCreateEntryForm(t *testing.T) {
 	secretHandler{}.ServeHTTP(w, req)
 
 	resp := w.Result()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	responseURL := string(body)
 	savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
@@ -283,7 +282,7 @@ func TestGetEntry(t *testing.T) {
 			secretHandler{}.ServeHTTP(w, req)
 
 			resp := w.Result()
-			body, _ := ioutil.ReadAll(resp.Body)
+			body, _ := io.ReadAll(resp.Body)
 
 			actual := string(body)
 
@@ -347,7 +346,7 @@ func TestSetAndGetEntry(t *testing.T) {
 	secretHandler{}.ServeHTTP(w, req)
 
 	resp := w.Result()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	responseURL := string(body)
 	savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
@@ -361,7 +360,7 @@ func TestSetAndGetEntry(t *testing.T) {
 	secretHandler{}.ServeHTTP(w, req)
 
 	resp = w.Result()
-	body, _ = ioutil.ReadAll(resp.Body)
+	body, _ = io.ReadAll(resp.Body)
 
 	actual := string(body)
 
@@ -381,7 +380,7 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 	secretHandler{}.ServeHTTP(w, req)
 
 	resp := w.Result()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode != 200 {
 		t.Errorf("Invalid statuscode, expected %d, got %d", 200, resp.StatusCode)
@@ -446,7 +445,7 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 	secretHandler{}.ServeHTTP(w, req)
 
 	resp := w.Result()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 
 	responseURL := string(body)
 	savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
