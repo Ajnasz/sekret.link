@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"mime"
 	"net/http"
 	"strconv"
@@ -52,7 +52,7 @@ func parseMultiForm(r *http.Request) ([]byte, error) {
 		return nil, err
 	}
 
-	return ioutil.ReadAll(file)
+	return io.ReadAll(file)
 }
 
 func getBody(r *http.Request) ([]byte, error) {
@@ -70,7 +70,7 @@ func getBody(r *http.Request) ([]byte, error) {
 	case ct == "multipart/form-data":
 		return parseMultiForm(r)
 	default:
-		return ioutil.ReadAll(r.Body)
+		return io.ReadAll(r.Body)
 	}
 }
 
