@@ -34,6 +34,9 @@ func addRemainingRead(db *sql.DB) error {
 func addDeleteKey(db *sql.DB) error {
 	ctx := context.Background()
 	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
 	alterTable, err := db.PrepareContext(ctx, "ALTER TABLE entries ADD COLUMN IF NOT EXISTS delete_key CHAR(256);")
 
 	if err != nil {
@@ -42,6 +45,11 @@ func addDeleteKey(db *sql.DB) error {
 	}
 
 	_, err = alterTable.ExecContext(ctx)
+
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
 
 	rows, err := db.QueryContext(ctx, "SELECT uuid FROM entries WHERE delete_key IS NULL;")
 	if err != nil {

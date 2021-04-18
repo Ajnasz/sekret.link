@@ -174,6 +174,10 @@ func TestCreateEntryForm(t *testing.T) {
 		"secret": strings.NewReader(value),
 	})
 
+	if err != nil {
+		t.Error(err)
+	}
+
 	req := httptest.NewRequest("POST", fmt.Sprintf("http://example.com/?expire=%ds", expireSeconds), data)
 	req.Header.Set("Content-Type", multi.FormDataContentType())
 
