@@ -8,15 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-func getUUIDUrl(u *url.URL, UUID string) (*url.URL, error) {
-	newURL, err := url.Parse(fmt.Sprintf("%s/%s", u.String(), UUID))
-	if err != nil {
-		return nil, err
-	}
-
-	return newURL, nil
-}
-
 func getUUIDUrlWithSecret(u *url.URL, UUID string, key string) (*url.URL, error) {
 	newURL, err := url.Parse(fmt.Sprintf("%s/%s/%s", u.String(), UUID, key))
 	if err != nil {
