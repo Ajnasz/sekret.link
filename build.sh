@@ -13,7 +13,7 @@ build() {
 	echo "$VERSION"
 	echo "$BUILD"
 
-  mkdir -p $BUILD_DIR
+	mkdir -p "$BUILD_DIR"
 
 	for os in $OSLIST
 	do
@@ -55,8 +55,8 @@ STORAGE=""
 BUILD=0
 
 if [ $# -lt 1 ];then
-  echo "Command required, available commands are \"test\" and \"build\"" >&2
-  exit 1
+	echo "Command required, available commands are \"test\" and \"build\"" >&2
+	exit 1
 fi
 
 subcommand="$1"
@@ -90,9 +90,9 @@ do
 		"s")
 			STORAGELIST="$OPTARG"
 			;;
-    "b")
-      BUILD_DIR="$OPTARG"
-      ;;
+		"b")
+			BUILD_DIR="$OPTARG"
+			;;
 		[?])
 			exit 1
 			;;
