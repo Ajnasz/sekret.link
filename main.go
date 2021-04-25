@@ -1,13 +1,18 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
+	"os/signal"
 	"path"
 	"strings"
+	"sync"
+	"syscall"
 	"time"
 )
 
@@ -36,6 +41,76 @@ func init() {
 	flag.BoolVar(&queryVersion, "version", false, "Get version information")
 }
 
+func shutDown(shutdowns ...func() error) chan error {
+	errChan := make(chan error)
+
+	var wg sync.WaitGroup
+	for i, shutdown := range shutdowns {
+		wg.Add(1)
+		go func(i int, shutdown func() error) {
+			defer wg.Done()
+			if err := shutdown(); err != nil {
+				errChan <- err
+			}
+		}(i, shutdown)
+	}
+
+	go func() {
+		wg.Wait()
+		close(errChan)
+	}()
+
+	return errChan
+}
+
+func scheduleDeleteExpired(stopChan chan interface{}) {
+	for {
+		select {
+		case <-time.After(time.Second):
+			entryStorage.DeleteExpired()
+		case <-stopChan:
+			return
+		}
+	}
+}
+
+func listen(apiRoot string) *http.Server {
+	log.Println("Handle Path: ", apiRoot)
+
+	r := http.NewServeMux()
+	r.Handle(apiRoot, http.StripPrefix(apiRoot, secretHandler{}))
+	httpServer := &http.Server{
+		Addr:    ":8080",
+		Handler: r,
+	}
+
+	go func() {
+		if err := httpServer.ListenAndServe(); err != nil {
+			if err.Error() != "http: Server closed" {
+				log.Fatal(err)
+			}
+		}
+	}()
+
+	return httpServer
+}
+
+func getAPIRoot(webExternalURL *url.URL) string {
+	apiRoot := ""
+
+	if webExternalURL.Path != "" {
+		apiRoot = webExternalURL.Path
+	}
+
+	apiRoot = path.Clean(apiRoot)
+
+	if !strings.HasSuffix(apiRoot, "/") {
+		apiRoot += "/"
+	}
+
+	return apiRoot
+}
+
 func main() {
 	flag.Parse()
 
@@ -54,43 +129,40 @@ func main() {
 		log.Fatal(err)
 	}
 
-	webExternalURL = extURL
-
 	entryStorage = getStorage()
 	if entryStorage == nil {
 		log.Fatal("No database backend selected")
 	}
 
 	stopChan := make(chan interface{})
-	go func() {
-		for {
-			select {
-			case <-time.After(time.Second):
-				entryStorage.DeleteExpired()
-			case <-stopChan:
-				return
-			}
+	go scheduleDeleteExpired(stopChan)
+
+	webExternalURL = extURL
+	httpServer := listen(getAPIRoot(extURL))
+
+	termChan := make(chan os.Signal)
+	signal.Notify(termChan, syscall.SIGTERM, syscall.SIGINT)
+
+	defer close(termChan)
+	<-termChan
+	ctx := context.Background()
+	// on close
+	c := shutDown(func() error {
+		ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+		defer cancel()
+		return httpServer.Shutdown(ctx)
+	}, func() error {
+		return entryStorage.Close()
+	}, func() error {
+		stopChan <- struct{}{}
+		return nil
+	})
+
+	for err := range c {
+		if err != nil {
+			log.Fatal(err)
 		}
-	}()
-
-	defer entryStorage.Close()
-	defer func() { stopChan <- struct{}{} }()
-
-	apiRoot := ""
-
-	if webExternalURL.Path != "" {
-		apiRoot = webExternalURL.Path
 	}
 
-	apiRoot = path.Clean(apiRoot)
-
-	if !strings.HasSuffix(apiRoot, "/") {
-		apiRoot += "/"
-	}
-
-	log.Println("Handle Path: ", apiRoot)
-
-	http.Handle(apiRoot, http.StripPrefix(apiRoot, secretHandler{}))
-
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	os.Exit(0)
 }
