@@ -1,4 +1,4 @@
-package main
+package storage
 
 import (
 	"context"
@@ -7,22 +7,26 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Ajnasz/sekret.link/storage"
-	_ "github.com/lib/pq"
+	"github.com/Ajnasz/sekret.link/entries"
+	"github.com/Ajnasz/sekret.link/key"
 )
 
-type postgresqlStorage struct {
+type PostgresqlStorage struct {
 	db *sql.DB
 }
 
-func (s postgresqlStorage) Close() error {
+func NewPostgresqlStorage(db *sql.DB) *PostgresqlStorage {
+	return &PostgresqlStorage{db}
+}
+
+func (s PostgresqlStorage) Close() error {
 	return s.db.Close()
 }
 
-func (s postgresqlStorage) Create(UUID string, entry []byte, expire time.Duration, remainingReads int) error {
+func (s PostgresqlStorage) Create(UUID string, entry []byte, expire time.Duration, remainingReads int) error {
 	ctx := context.Background()
 	now := time.Now()
-	_, deleteKey, err := createKey()
+	_, deleteKey, err := key.CreateKey()
 	if err != nil {
 		return err
 	}
@@ -30,7 +34,7 @@ func (s postgresqlStorage) Create(UUID string, entry []byte, expire time.Duratio
 	return err
 }
 
-func (s postgresqlStorage) GetMeta(UUID string) (*storage.EntryMeta, error) {
+func (s PostgresqlStorage) GetMeta(UUID string) (*entries.EntryMeta, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -49,7 +53,7 @@ func (s postgresqlStorage) GetMeta(UUID string) (*storage.EntryMeta, error) {
 	if err != nil {
 		tx.Rollback()
 		if err == sql.ErrNoRows {
-			return nil, ErrEntryNotFound
+			return nil, entries.ErrEntryNotFound
 		}
 		return nil, err
 	}
@@ -72,7 +76,7 @@ func (s postgresqlStorage) GetMeta(UUID string) (*storage.EntryMeta, error) {
 		deleteKey = strings.TrimSpace(deleteKeyNullString.String)
 	}
 
-	meta := &storage.EntryMeta{
+	meta := &entries.EntryMeta{
 		UUID:      UUID,
 		Created:   created,
 		Accessed:  accessed,
@@ -93,7 +97,7 @@ func (s postgresqlStorage) GetMeta(UUID string) (*storage.EntryMeta, error) {
 			return nil, err
 		}
 
-		return nil, ErrEntryExpired
+		return nil, entries.ErrEntryExpired
 	}
 
 	err = tx.Commit()
@@ -105,7 +109,7 @@ func (s postgresqlStorage) GetMeta(UUID string) (*storage.EntryMeta, error) {
 	return meta, nil
 }
 
-func (s postgresqlStorage) Get(UUID string) (*storage.Entry, error) {
+func (s PostgresqlStorage) Get(UUID string) (*entries.Entry, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -123,7 +127,7 @@ func (s postgresqlStorage) Get(UUID string) (*storage.Entry, error) {
 	if err != nil {
 		tx.Rollback()
 		if err == sql.ErrNoRows {
-			return nil, ErrEntryNotFound
+			return nil, entries.ErrEntryNotFound
 		}
 
 		return nil, err
@@ -139,7 +143,7 @@ func (s postgresqlStorage) Get(UUID string) (*storage.Entry, error) {
 		expire = expireNullTime.Time
 	}
 
-	meta := storage.EntryMeta{
+	meta := entries.EntryMeta{
 		UUID:     UUID,
 		Created:  created,
 		Accessed: accessed,
@@ -158,7 +162,7 @@ func (s postgresqlStorage) Get(UUID string) (*storage.Entry, error) {
 			return nil, err
 		}
 
-		return nil, ErrEntryExpired
+		return nil, entries.ErrEntryExpired
 	}
 
 	err = tx.Commit()
@@ -167,13 +171,13 @@ func (s postgresqlStorage) Get(UUID string) (*storage.Entry, error) {
 		return nil, err
 	}
 
-	return &storage.Entry{
+	return &entries.Entry{
 		EntryMeta: meta,
 		Data:      data,
 	}, nil
 }
 
-func (s postgresqlStorage) GetAndDelete(UUID string) (*storage.Entry, error) {
+func (s PostgresqlStorage) GetAndDelete(UUID string) (*entries.Entry, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -191,7 +195,7 @@ func (s postgresqlStorage) GetAndDelete(UUID string) (*storage.Entry, error) {
 	if err != nil {
 		tx.Rollback()
 		if err == sql.ErrNoRows {
-			return nil, ErrEntryNotFound
+			return nil, entries.ErrEntryNotFound
 		}
 		return nil, err
 	}
@@ -223,7 +227,7 @@ func (s postgresqlStorage) GetAndDelete(UUID string) (*storage.Entry, error) {
 		expire = expireNullTime.Time
 	}
 
-	meta := storage.EntryMeta{
+	meta := entries.EntryMeta{
 		UUID:     UUID,
 		Created:  created,
 		Accessed: accessed,
@@ -231,16 +235,16 @@ func (s postgresqlStorage) GetAndDelete(UUID string) (*storage.Entry, error) {
 	}
 
 	if meta.IsExpired() {
-		return nil, ErrEntryExpired
+		return nil, entries.ErrEntryExpired
 	}
 
-	return &storage.Entry{
+	return &entries.Entry{
 		EntryMeta: meta,
 		Data:      data,
 	}, nil
 }
 
-func (s postgresqlStorage) Delete(UUID string) error {
+func (s PostgresqlStorage) Delete(UUID string) error {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -257,7 +261,7 @@ func (s postgresqlStorage) Delete(UUID string) error {
 	return tx.Commit()
 }
 
-func (s postgresqlStorage) VerifyDelete(UUID string, deleteKey string) (bool, error) {
+func (s PostgresqlStorage) VerifyDelete(UUID string, deleteKey string) (bool, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -281,7 +285,7 @@ func (s postgresqlStorage) VerifyDelete(UUID string, deleteKey string) (bool, er
 	return found, nil
 }
 
-func (s postgresqlStorage) GetDeleteKey(UUID string) (string, error) {
+func (s PostgresqlStorage) GetDeleteKey(UUID string) (string, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -305,7 +309,7 @@ func (s postgresqlStorage) GetDeleteKey(UUID string) (string, error) {
 	return deleteKey, nil
 }
 
-func (s postgresqlStorage) DeleteExpired() error {
+func (s PostgresqlStorage) DeleteExpired() error {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -322,11 +326,11 @@ func (s postgresqlStorage) DeleteExpired() error {
 	return tx.Commit()
 }
 
-type postgresCleanableStorage struct {
-	*postgresqlStorage
+type PostgresCleanableStorage struct {
+	*PostgresqlStorage
 }
 
-func (s postgresCleanableStorage) Clean() {
+func (s PostgresCleanableStorage) Clean() {
 	_, err := s.db.Exec("TRUNCATE entries;")
 
 	if err != nil {

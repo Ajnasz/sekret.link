@@ -1,4 +1,4 @@
-package storage
+package entries
 
 type Entry struct {
 	EntryMeta

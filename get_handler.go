@@ -5,15 +5,20 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+
+	"github.com/Ajnasz/sekret.link/aesencrypter"
+	"github.com/Ajnasz/sekret.link/entries"
+	"github.com/Ajnasz/sekret.link/storage"
+	"github.com/Ajnasz/sekret.link/uuid"
 )
 
 func onGetError(w http.ResponseWriter, err error) {
-	if err == ErrEntryExpired {
+	if err == entries.ErrEntryExpired {
 		http.Error(w, "Gone", http.StatusGone)
 		return
 	}
 
-	if err == ErrEntryNotFound {
+	if err == entries.ErrEntryNotFound {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
@@ -23,7 +28,7 @@ func onGetError(w http.ResponseWriter, err error) {
 }
 
 func handleGetEntry(w http.ResponseWriter, r *http.Request) {
-	UUID, keyString, err := getUUIDAndSecretFromPath(r.URL.Path)
+	UUID, keyString, err := uuid.GetUUIDAndSecretFromPath(r.URL.Path)
 
 	if err != nil {
 		log.Println(err)
@@ -38,7 +43,7 @@ func handleGetEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	secretStore := &secretStorage{entryStorage, &AESEncrypter{key}}
+	secretStore := storage.NewSecretStorage(entryStorage, aesencrypter.New(key))
 	entry, err := secretStore.GetAndDelete(UUID)
 
 	if err != nil {
@@ -47,7 +52,7 @@ func handleGetEntry(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Header.Get("Accept") == "application/json" {
-		response := secretResponseFromEntryMeta(entry.EntryMeta)
+		response := entries.SecretResponseFromEntryMeta(entry.EntryMeta)
 
 		response.Data = string(entry.Data)
 		response.Key = keyString

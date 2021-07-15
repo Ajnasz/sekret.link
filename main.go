@@ -14,10 +14,13 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/Ajnasz/sekret.link/config"
+	"github.com/Ajnasz/sekret.link/storage"
 )
 
 var (
-	entryStorage     verifyStorage
+	entryStorage     storage.VerifyStorage
 	externalURLParam string
 	expireSeconds    int
 	maxExpireSeconds int
@@ -28,8 +31,8 @@ var (
 	queryVersion     bool
 )
 
-func getStorage() verifyStorage {
-	return newStorage()
+func getStorage() storage.VerifyStorage {
+	return storage.NewStorage(config.GetConnectionString(postgresDB))
 }
 
 func init() {
@@ -80,8 +83,10 @@ func listen(apiRoot string) *http.Server {
 	r := http.NewServeMux()
 	r.Handle(apiRoot, http.StripPrefix(apiRoot, secretHandler{}))
 	httpServer := &http.Server{
-		Addr:    ":8080",
-		Handler: r,
+		Addr:         ":8080",
+		Handler:      r,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	}
 
 	go func() {

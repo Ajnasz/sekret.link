@@ -1,20 +1,18 @@
-package main
+package storage
 
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"testing"
 	"time"
+
+	"github.com/Ajnasz/sekret.link/testhelper"
+	"github.com/Ajnasz/sekret.link/uuid"
 )
 
-func getPSQLTestConn() string {
-	return getConnectionString(fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", "secret_link_test", "Km61HJgJbBjNA0FdABpjDmQxEz008PHAQMA8TLpUbnlaKN7U8G1bQGHk0wsm", "localhost", 5432, "secret_link_test"), "POSTGRES_URL")
-}
-
 func clearPSQLDatabase(dbname string) {
-	psqlConn := getPSQLTestConn()
-	storage := newPostgresqlStorage(psqlConn)
+	psqlConn := testhelper.GetPSQLTestConn()
+	storage := ConnectToPostgresql(psqlConn)
 	defer storage.Close()
 	ctx := context.Background()
 	_, err := storage.db.ExecContext(ctx, "TRUNCATE entries;")
@@ -25,7 +23,7 @@ func clearPSQLDatabase(dbname string) {
 }
 
 func TestPostgresqlStorageCreateGet(t *testing.T) {
-	psqlConn := getPSQLTestConn()
+	psqlConn := testhelper.GetPSQLTestConn()
 	testCases := []string{
 		"foo",
 	}
@@ -34,10 +32,10 @@ func TestPostgresqlStorageCreateGet(t *testing.T) {
 		t.Run(testCase, func(t *testing.T) {
 			clearPSQLDatabase(psqlConn)
 
-			storage := newPostgresqlStorage(psqlConn)
+			storage := ConnectToPostgresql(psqlConn)
 			defer storage.Close()
 
-			UUID := newUUIDString()
+			UUID := uuid.NewUUIDString()
 			err := storage.Create(UUID, []byte("foo"), time.Second*10, 1)
 
 			if err != nil {
@@ -57,7 +55,7 @@ func TestPostgresqlStorageCreateGet(t *testing.T) {
 }
 
 func TestPostgresqlStorageCreateGetAndDelete(t *testing.T) {
-	psqlConn := getPSQLTestConn()
+	psqlConn := testhelper.GetPSQLTestConn()
 
 	testCases := []struct {
 		Name         string
@@ -93,10 +91,10 @@ func TestPostgresqlStorageCreateGetAndDelete(t *testing.T) {
 		t.Run(testCase.Name, func(t *testing.T) {
 			clearPSQLDatabase(psqlConn)
 
-			storage := newPostgresqlStorage(psqlConn)
+			storage := ConnectToPostgresql(psqlConn)
 			defer storage.Close()
 
-			UUID := newUUIDString()
+			UUID := uuid.NewUUIDString()
 			err := storage.Create(UUID, []byte(testCase.Secret), time.Second*10, testCase.Reads)
 
 			if err != nil {
@@ -129,7 +127,7 @@ func TestPostgresqlStorageCreateGetAndDelete(t *testing.T) {
 }
 
 func TestPostgresqlStorageVerifyDelete(t *testing.T) {
-	psqlConn := getPSQLTestConn()
+	psqlConn := testhelper.GetPSQLTestConn()
 	testCases := []struct {
 		UUID        string
 		Key         string
@@ -153,7 +151,7 @@ func TestPostgresqlStorageVerifyDelete(t *testing.T) {
 	for _, testCase := range testCases {
 		clearPSQLDatabase(psqlConn)
 
-		storage := newPostgresqlStorage(psqlConn)
+		storage := ConnectToPostgresql(psqlConn)
 		defer storage.Close()
 
 		err := storage.Create(testCase.UUID, []byte("foo"), time.Second*10, 1)

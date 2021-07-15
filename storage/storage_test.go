@@ -1,19 +1,24 @@
-package main
+package storage
 
 import (
 	"testing"
 	"time"
+
+	"github.com/Ajnasz/sekret.link/entries"
+	"github.com/Ajnasz/sekret.link/testhelper"
+	"github.com/Ajnasz/sekret.link/uuid"
 )
 
 func TestStorages(t *testing.T) {
-	psqlStorage := postgresCleanableStorage{newPostgresqlStorage(getPSQLTestConn())}
+	psqlStorage := PostgresCleanableStorage{ConnectToPostgresql(testhelper.GetPSQLTestConn())}
+
 	storages := map[string]CleanableStorage{
 		"Postgres": psqlStorage,
 		"Secret": CleanableSecretStorage{
-			&secretStorage{
+			NewSecretStorage(
 				psqlStorage,
 				NewDummyEncrypter(),
-			},
+			),
 			psqlStorage,
 		},
 	}
@@ -22,7 +27,7 @@ func TestStorages(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Run("GetMeta", func(t *testing.T) {
 				storage.Clean()
-				UUID := newUUIDString()
+				UUID := uuid.NewUUIDString()
 				err := storage.Create(UUID, []byte("foo"), time.Second*-10, 1)
 
 				if err != nil {
@@ -35,13 +40,13 @@ func TestStorages(t *testing.T) {
 					t.Errorf("Expected expired data to be nil")
 				}
 
-				if err != ErrEntryExpired {
+				if err != entries.ErrEntryExpired {
 					t.Errorf("Expected expire error but got %v", err)
 				}
 			})
 			t.Run("GetAndDelete", func(t *testing.T) {
 				storage.Clean()
-				UUID := newUUIDString()
+				UUID := uuid.NewUUIDString()
 				err := storage.Create(UUID, []byte("foo"), time.Second*-10, 1)
 
 				if err != nil {
@@ -54,13 +59,13 @@ func TestStorages(t *testing.T) {
 					t.Errorf("Expected expired data to be nil")
 				}
 
-				if err != ErrEntryExpired {
+				if err != entries.ErrEntryExpired {
 					t.Errorf("Expected expire error but got %v", err)
 				}
 			})
 			t.Run("Delete", func(t *testing.T) {
 				storage.Clean()
-				UUID := newUUIDString()
+				UUID := uuid.NewUUIDString()
 				err := storage.Create(UUID, []byte("foo"), time.Second*-10, 1)
 
 				if err != nil {
@@ -75,7 +80,7 @@ func TestStorages(t *testing.T) {
 
 				retMeta, err := storage.GetMeta(UUID)
 
-				if err != ErrEntryNotFound {
+				if err != entries.ErrEntryNotFound {
 					t.Errorf("Storage GetMeta should return an entry not found error, but returned %v", err)
 				}
 
@@ -85,7 +90,7 @@ func TestStorages(t *testing.T) {
 
 				ret, err := storage.GetAndDelete(UUID)
 
-				if err != ErrEntryNotFound {
+				if err != entries.ErrEntryNotFound {
 					t.Errorf("Storage GetAndDelete should return an entry not found error, but returned %v", err)
 				}
 
@@ -103,13 +108,13 @@ func TestStorages(t *testing.T) {
 					ShouldExpire bool
 				}{
 					{
-						UUID:         newUUIDString(),
+						UUID:         uuid.NewUUIDString(),
 						Expire:       time.Second * 10,
 						Value:        []byte("FOO"),
 						ShouldExpire: false,
 					},
 					{
-						UUID:         newUUIDString(),
+						UUID:         uuid.NewUUIDString(),
 						Expire:       time.Second * -10,
 						Value:        []byte("BAR"),
 						ShouldExpire: true,
@@ -132,7 +137,7 @@ func TestStorages(t *testing.T) {
 					ret, err := storage.GetMeta(item.UUID)
 
 					if item.ShouldExpire {
-						if err != ErrEntryNotFound {
+						if err != entries.ErrEntryNotFound {
 							t.Errorf("Expected entry to return a not found error, but got %s", err)
 						}
 

@@ -1,10 +1,8 @@
-package main
+package entries
 
 import (
 	"fmt"
 	"time"
-
-	"github.com/Ajnasz/sekret.link/storage"
 )
 
 type SecretResponse struct {
@@ -17,7 +15,7 @@ type SecretResponse struct {
 	DeleteKey string
 }
 
-func secretResponseFromEntryMeta(meta storage.EntryMeta) *SecretResponse {
+func SecretResponseFromEntryMeta(meta EntryMeta) *SecretResponse {
 	return &SecretResponse{
 		UUID:      meta.UUID,
 		Created:   meta.Created,

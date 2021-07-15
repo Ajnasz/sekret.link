@@ -1,9 +1,12 @@
-package main
+package storage
 
 import (
 	"context"
 	"database/sql"
 	"log"
+
+	"github.com/Ajnasz/sekret.link/key"
+	_ "github.com/lib/pq"
 )
 
 type dbExec func(*sql.DB) error
@@ -64,7 +67,7 @@ func addDeleteKey(db *sql.DB) error {
 			return err
 		}
 
-		_, deleteKey, err := createKey()
+		_, deleteKey, err := key.CreateKey()
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -84,7 +87,7 @@ func addDeleteKey(db *sql.DB) error {
 	return tx.Commit()
 }
 
-func newPostgresqlStorage(psqlconn string) *postgresqlStorage {
+func ConnectToPostgresql(psqlconn string) *PostgresqlStorage {
 	db, err := sql.Open("postgres", psqlconn)
 
 	if err != nil {
@@ -106,9 +109,9 @@ func newPostgresqlStorage(psqlconn string) *postgresqlStorage {
 		}
 	}
 
-	return &postgresqlStorage{db}
+	return NewPostgresqlStorage(db)
 }
 
-func newStorage() verifyStorage {
-	return newPostgresqlStorage(getConnectionString(postgresDB, "POSTGRES_URL"))
+func NewStorage(connectionString string) VerifyStorage {
+	return ConnectToPostgresql(connectionString)
 }

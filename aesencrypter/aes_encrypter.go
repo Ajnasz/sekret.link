@@ -1,4 +1,4 @@
-package main
+package aesencrypter
 
 import (
 	"crypto/aes"
@@ -8,11 +8,16 @@ import (
 )
 
 type AESEncrypter struct {
-	key []byte
+	Key []byte
+}
+
+// New Creates AESEncrypter
+func New(key []byte) *AESEncrypter {
+	return &AESEncrypter{key}
 }
 
 func (e *AESEncrypter) Encrypt(data []byte) ([]byte, error) {
-	block, err := aes.NewCipher(e.key)
+	block, err := aes.NewCipher(e.Key)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +41,7 @@ func (e *AESEncrypter) Encrypt(data []byte) ([]byte, error) {
 }
 
 func (e *AESEncrypter) Decrypt(data []byte) ([]byte, error) {
-	block, err := aes.NewCipher(e.key)
+	block, err := aes.NewCipher(e.Key)
 	if err != nil {
 		return nil, err
 	}

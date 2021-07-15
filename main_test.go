@@ -14,56 +14,38 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Ajnasz/sekret.link/aesencrypter"
+	"github.com/Ajnasz/sekret.link/entries"
+	"github.com/Ajnasz/sekret.link/key"
+	"github.com/Ajnasz/sekret.link/storage"
+	"github.com/Ajnasz/sekret.link/testhelper"
+	"github.com/Ajnasz/sekret.link/uuid"
 )
 
 func cleanEntries() {
 	extURL, _ := url.Parse("http://example.com")
 	webExternalURL = extURL
-	psqlConnection := newPostgresqlStorage(getPSQLTestConn())
+	psqlConnection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
 	entryStorage = psqlConnection
-	// postgresCleanableStorage{psqlConnection}.Clean()
-}
-
-func TestGetUUIDFromPath(t *testing.T) {
-	testCases := []struct {
-		Name     string
-		Value    string
-		Expected string
-	}{
-		{
-			"simple uuid",
-			"/3f356f6c-c8b1-4b48-8243-aa04d07b8873",
-			"3f356f6c-c8b1-4b48-8243-aa04d07b8873",
-		},
-	}
-
-	for _, testCase := range testCases {
-		t.Run(testCase.Name, func(t *testing.T) {
-			t.Cleanup(cleanEntries)
-			actual, err := getUUIDFromPath(testCase.Value)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if testCase.Expected != actual {
-				t.Errorf("expected: %q, actual: %q", testCase.Expected, actual)
-			}
-		})
-	}
+	storage.PostgresCleanableStorage{psqlConnection}.Clean()
 }
 
 func TestCreateEntry(t *testing.T) {
 	value := "Foo"
 	expireSeconds = 10
+	cleanEntries()
 	t.Cleanup(cleanEntries)
 	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(value)))
 	w := httptest.NewRecorder()
-	secretHandler{}.ServeHTTP(w, req)
+	h := secretHandler{}
+	h.ServeHTTP(w, req)
 
 	resp := w.Result()
 	body, _ := io.ReadAll(resp.Body)
 
 	responseURL := string(body)
-	savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
+	savedUUID, keyString, err := uuid.GetUUIDAndSecretFromPath(responseURL)
 
 	if resp.Header.Get("x-entry-uuid") != savedUUID {
 		t.Errorf("Expected x-entry-uuid header to be %q, but got %q", savedUUID, resp.Header.Get("x-entry-uuid"))
@@ -83,7 +65,7 @@ func TestCreateEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := &secretStorage{entryStorage, &AESEncrypter{key}}
+	secretStore := storage.NewSecretStorage(entryStorage, aesencrypter.New(key))
 	entry, err := secretStore.GetAndDelete(savedUUID)
 
 	if err != nil {
@@ -107,7 +89,7 @@ func TestCreateEntryJSON(t *testing.T) {
 	secretHandler{}.ServeHTTP(w, req)
 
 	resp := w.Result()
-	var encode SecretResponse
+	var encode entries.SecretResponse
 	err := json.NewDecoder(resp.Body).Decode(&encode)
 
 	if err != nil {
@@ -124,7 +106,7 @@ func TestCreateEntryJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := &secretStorage{entryStorage, &AESEncrypter{key}}
+	secretStore := storage.NewSecretStorage(entryStorage, aesencrypter.New(key))
 	entry, err := secretStore.GetAndDelete(encode.UUID)
 
 	if err != nil {
@@ -189,7 +171,7 @@ func TestCreateEntryForm(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 
 	responseURL := string(body)
-	savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
+	savedUUID, keyString, err := uuid.GetUUIDAndSecretFromPath(responseURL)
 
 	if err != nil {
 		t.Fatal(err)
@@ -201,7 +183,7 @@ func TestCreateEntryForm(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := &secretStorage{entryStorage, &AESEncrypter{key}}
+	secretStore := storage.NewSecretStorage(entryStorage, aesencrypter.New(key))
 	entry, err := secretStore.GetAndDelete(savedUUID)
 
 	if err != nil {
@@ -269,11 +251,11 @@ func TestGetEntry(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
 			t.Cleanup(cleanEntries)
-			key, err := generateRSAKey()
+			rsakey, err := key.GenerateRSAKey()
 			if err != nil {
 				t.Fatal(err)
 			}
-			encrypter := AESEncrypter{key}
+			encrypter := aesencrypter.New(rsakey)
 			encryptedData, err := encrypter.Encrypt([]byte(testCase.Value))
 			if err != nil {
 				t.Fatal(err)
@@ -281,7 +263,7 @@ func TestGetEntry(t *testing.T) {
 
 			entryStorage.Create(testCase.UUID, encryptedData, time.Second*10, 1)
 
-			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(key)), nil)
+			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(rsakey)), nil)
 			w := httptest.NewRecorder()
 			secretHandler{}.ServeHTTP(w, req)
 
@@ -311,11 +293,11 @@ func TestGetEntryJSON(t *testing.T) {
 		"3f356f6c-c8b1-4b48-8243-aa04d07b8873",
 	}
 
-	key, err := generateRSAKey()
+	rsakey, err := key.GenerateRSAKey()
 	if err != nil {
 		t.Error(err)
 	}
-	encrypter := AESEncrypter{key}
+	encrypter := aesencrypter.New(rsakey)
 	encryptedData, err := encrypter.Encrypt([]byte(testCase.Value))
 	if err != nil {
 		t.Error(err)
@@ -323,13 +305,13 @@ func TestGetEntryJSON(t *testing.T) {
 
 	entryStorage.Create(testCase.UUID, encryptedData, time.Second*10, 1)
 
-	req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(key)), nil)
+	req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(rsakey)), nil)
 	req.Header.Add("Accept", "application/json")
 	w := httptest.NewRecorder()
 	secretHandler{}.ServeHTTP(w, req)
 
 	resp := w.Result()
-	var encode SecretResponse
+	var encode entries.SecretResponse
 	err = json.NewDecoder(resp.Body).Decode(&encode)
 
 	if err != nil {
@@ -353,7 +335,7 @@ func TestSetAndGetEntry(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 
 	responseURL := string(body)
-	savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
+	savedUUID, keyString, err := uuid.GetUUIDAndSecretFromPath(responseURL)
 
 	if err != nil {
 		t.Fatal(err)
@@ -391,19 +373,19 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 	}
 
 	responseURL := string(body)
-	savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
+	savedUUID, keyString, err := uuid.GetUUIDAndSecretFromPath(responseURL)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	key, err := hex.DecodeString(keyString)
+	decodedKey, err := hex.DecodeString(keyString)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	secretStore := &secretStorage{entryStorage, &AESEncrypter{key}}
+	secretStore := storage.NewSecretStorage(entryStorage, aesencrypter.New(decodedKey))
 	entry, err := secretStore.GetAndDelete(savedUUID)
 
 	if err != nil {
@@ -452,19 +434,19 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 
 	responseURL := string(body)
-	savedUUID, keyString, err := getUUIDAndSecretFromPath(responseURL)
+	savedUUID, keyString, err := uuid.GetUUIDAndSecretFromPath(responseURL)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	key, err := hex.DecodeString(keyString)
+	decodedKey, err := hex.DecodeString(keyString)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	secretStore := &secretStorage{entryStorage, &AESEncrypter{key}}
+	secretStore := storage.NewSecretStorage(entryStorage, aesencrypter.New(decodedKey))
 	entry, err := secretStore.GetMeta(savedUUID)
 
 	if err != nil {

@@ -2,10 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"log"
 	"net/http"
 	"path"
+
+	"github.com/Ajnasz/sekret.link/aesencrypter"
+	"github.com/Ajnasz/sekret.link/storage"
+	"github.com/google/uuid"
 )
 
 func parseDeleteEntryPath(urlPath string) (string, string, string, error) {
@@ -36,7 +39,7 @@ func handleDeleteEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	secretStore := &secretStorage{entryStorage, &AESEncrypter{}}
+	secretStore := storage.NewSecretStorage(entryStorage, aesencrypter.New(nil))
 
 	validDeleteKey, err := secretStore.VerifyDelete(UUID, deleteKey)
 

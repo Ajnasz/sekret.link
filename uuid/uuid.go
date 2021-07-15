@@ -1,4 +1,4 @@
-package main
+package uuid
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func getUUIDUrlWithSecret(u *url.URL, UUID string, key string) (*url.URL, error) {
+func GetUUIDUrlWithSecret(u *url.URL, UUID string, key string) (*url.URL, error) {
 	newURL, err := url.Parse(fmt.Sprintf("%s/%s/%s", u.String(), UUID, key))
 	if err != nil {
 		return nil, err
@@ -17,7 +17,7 @@ func getUUIDUrlWithSecret(u *url.URL, UUID string, key string) (*url.URL, error)
 	return newURL, nil
 }
 
-func getUUIDAndSecretFromPath(urlPath string) (string, string, error) {
+func GetUUIDAndSecretFromPath(urlPath string) (string, string, error) {
 	pathDir, key := path.Split(urlPath)
 	if len(pathDir) < 1 {
 		return "", "", fmt.Errorf("Invalid URL %q", urlPath)
@@ -41,7 +41,7 @@ func getUUIDFromPath(urlPath string) (string, error) {
 	return UUID.String(), nil
 }
 
-func newUUIDString() string {
+func NewUUIDString() string {
 
 	newUUID := uuid.New()
 

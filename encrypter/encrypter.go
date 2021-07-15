@@ -1,4 +1,4 @@
-package main
+package encrypter
 
 type Encrypter interface {
 	Encrypt([]byte) ([]byte, error)

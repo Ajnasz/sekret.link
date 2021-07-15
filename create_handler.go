@@ -1,24 +1,18 @@
 package main
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/Ajnasz/sekret.link/aesencrypter"
+	"github.com/Ajnasz/sekret.link/entries"
+	"github.com/Ajnasz/sekret.link/key"
+	"github.com/Ajnasz/sekret.link/storage"
+	"github.com/Ajnasz/sekret.link/uuid"
 )
-
-func createKey() ([]byte, string, error) {
-	key, err := generateRSAKey()
-	if err != nil {
-		return nil, "", err
-	}
-
-	keyString := hex.EncodeToString(key)
-
-	return key, keyString, nil
-}
 
 func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxDataSize)
@@ -42,7 +36,7 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key, keyString, err := createKey()
+	key, keyString, err := key.CreateKey()
 
 	if err != nil {
 		log.Println(err)
@@ -50,9 +44,9 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	secretStore := &secretStorage{entryStorage, &AESEncrypter{key}}
+	secretStore := storage.NewSecretStorage(entryStorage, aesencrypter.New(key))
 
-	UUID := newUUIDString()
+	UUID := uuid.NewUUIDString()
 
 	err = secretStore.Create(UUID, data.body, data.expiration, data.maxReads)
 
@@ -76,12 +70,12 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("Accept") == "application/json" {
 		w.Header().Set("Content-Type", "application/json")
 
-		response := secretResponseFromEntryMeta(*entry)
+		response := entries.SecretResponseFromEntryMeta(*entry)
 		response.Key = keyString
 
 		json.NewEncoder(w).Encode(response)
 	} else {
-		newURL, err := getUUIDUrlWithSecret(webExternalURL, UUID, keyString)
+		newURL, err := uuid.GetUUIDUrlWithSecret(webExternalURL, UUID, keyString)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, "Internal error", http.StatusInternalServerError)

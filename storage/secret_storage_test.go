@@ -1,9 +1,12 @@
-package main
+package storage
 
 import (
 	"encoding/base64"
 	"testing"
 	"time"
+
+	"github.com/Ajnasz/sekret.link/testhelper"
+	"github.com/Ajnasz/sekret.link/uuid"
 )
 
 type DummyEncrypter struct{}
@@ -31,18 +34,18 @@ func NewDummyEncrypter() *DummyEncrypter {
 func TestSecretStorage(t *testing.T) {
 
 	testData := "Lorem ipusm dolor sit amet"
-	psqlStorage := postgresCleanableStorage{newPostgresqlStorage(getPSQLTestConn())}
+	psqlStorage := PostgresCleanableStorage{ConnectToPostgresql(testhelper.GetPSQLTestConn())}
 	storage := &CleanableSecretStorage{
-		&secretStorage{
+		NewSecretStorage(
 			psqlStorage,
 			NewDummyEncrypter(),
-		},
+		),
 		psqlStorage,
 	}
 	defer storage.Clean()
 	// TODO defer storage.Close()
 
-	UUID := newUUIDString()
+	UUID := uuid.NewUUIDString()
 	err := storage.Create(UUID, []byte(testData), time.Second*10, 1)
 
 	if err != nil {
