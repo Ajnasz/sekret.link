@@ -14,7 +14,7 @@ import (
 	"github.com/Ajnasz/sekret.link/uuid"
 )
 
-func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
+func handleCreateEntry(entryStorage storage.VerifyStorage, w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxDataSize)
 
 	data, err := parseCreateRequest(r)
@@ -30,7 +30,11 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 			log.Println(err)
 			http.Error(w, "Invalid max read", http.StatusBadRequest)
 			return
+		} else if err.Error() == "Invalid data" {
+			log.Println(err)
+			http.Error(w, "Invalid max read", http.StatusBadRequest)
 		} else {
+			log.Println("Request parse error", err)
 			http.Error(w, "Internal error", http.StatusInternalServerError)
 		}
 		return
@@ -39,7 +43,7 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 	key, keyString, err := key.CreateKey()
 
 	if err != nil {
-		log.Println(err)
+		log.Println("Create key failed", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
@@ -51,20 +55,20 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 	err = secretStore.Create(UUID, data.body, data.expiration, data.maxReads)
 
 	if err != nil {
-		log.Println(err)
+		log.Println("Create secret failed", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+		return
+	}
+
+	entry, err := secretStore.GetMeta(UUID)
+	if err != nil {
+		log.Println("Getting meta failed", err, UUID)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Add("x-entry-uuid", UUID)
 	w.Header().Add("x-entry-key", keyString)
-	entry, err := secretStore.GetMeta(UUID)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
-	}
-
 	w.Header().Add("x-entry-expire", entry.Expire.Format(time.RFC3339))
 	w.Header().Add("x-entry-delete-key", entry.DeleteKey)
 	if r.Header.Get("Accept") == "application/json" {
@@ -77,7 +81,7 @@ func handleCreateEntry(w http.ResponseWriter, r *http.Request) {
 	} else {
 		newURL, err := uuid.GetUUIDUrlWithSecret(webExternalURL, UUID, keyString)
 		if err != nil {
-			log.Println(err)
+			log.Println("Get UUID URL with secret failed", err)
 			http.Error(w, "Internal error", http.StatusInternalServerError)
 			return
 		}

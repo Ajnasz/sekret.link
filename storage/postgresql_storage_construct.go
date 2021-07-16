@@ -12,7 +12,16 @@ import (
 type dbExec func(*sql.DB) error
 
 func createTable(db *sql.DB) error {
-	q, err := db.Prepare("CREATE TABLE IF NOT EXISTS entries (uuid uuid PRIMARY KEY, data BYTEA, remaining_reads SMALLINT DEFAULT 1, delete_key CHAR(256) NOT NULL, created TIMESTAMPTZ, accessed TIMESTAMPTZ, expire TIMESTAMPTZ);")
+	q, err := db.Prepare(`CREATE TABLE IF NOT EXISTS
+	entries (
+		uuid uuid PRIMARY KEY,
+		data BYTEA,
+		remaining_reads SMALLINT DEFAULT 1,
+		delete_key CHAR(256) NOT NULL,
+		created TIMESTAMPTZ,
+		accessed TIMESTAMPTZ,
+		expire TIMESTAMPTZ
+	);`)
 
 	if err != nil {
 		return err
@@ -87,8 +96,8 @@ func addDeleteKey(db *sql.DB) error {
 	return tx.Commit()
 }
 
-func ConnectToPostgresql(psqlconn string) *PostgresqlStorage {
-	db, err := sql.Open("postgres", psqlconn)
+func ConnectToPostgresql(psqlURL string) *PostgresqlStorage {
+	db, err := sql.Open("postgres", psqlURL)
 
 	if err != nil {
 		log.Fatal(err)
@@ -98,14 +107,14 @@ func ConnectToPostgresql(psqlconn string) *PostgresqlStorage {
 
 	if err != nil {
 		defer db.Close()
-		log.Fatal("DB ping failed", err)
+		log.Fatal("DB ping failed: ", err)
 	}
 
 	for _, f := range []dbExec{createTable, addRemainingRead, addDeleteKey} {
 		err = f(db)
 		if err != nil {
 			defer db.Close()
-			log.Fatal("Migrate db failed", err)
+			log.Fatal("Migrate db failed: ", err)
 		}
 	}
 

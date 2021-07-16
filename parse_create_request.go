@@ -60,6 +60,7 @@ func getBody(r *http.Request) ([]byte, error) {
 	if ct == "" {
 		ct = "application/octet-stream"
 	}
+
 	ct, _, err := mime.ParseMediaType(ct)
 
 	if err != nil {
@@ -116,6 +117,10 @@ func parseCreateRequest(r *http.Request) (*requestData, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	if len(body) == 0 {
+		return nil, fmt.Errorf("Invalid data")
 	}
 
 	expiration, err := getSecretExpiration(r)

@@ -31,7 +31,7 @@ func GetUUIDAndSecretFromPath(urlPath string) (string, string, error) {
 	return UUID.String(), key, nil
 }
 
-func getUUIDFromPath(urlPath string) (string, error) {
+func GetUUIDFromPath(urlPath string) (string, error) {
 	_, uuidFromPath := path.Split(urlPath)
 	UUID, err := uuid.Parse(uuidFromPath)
 

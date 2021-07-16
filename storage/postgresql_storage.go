@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -24,13 +25,13 @@ func (s PostgresqlStorage) Close() error {
 }
 
 func (s PostgresqlStorage) Create(UUID string, entry []byte, expire time.Duration, remainingReads int) error {
-	ctx := context.Background()
 	now := time.Now()
 	_, deleteKey, err := key.CreateKey()
 	if err != nil {
 		return err
 	}
-	_, err = s.db.ExecContext(ctx, `INSERT INTO entries (uuid, data, created, expire, remaining_reads, delete_key) VALUES  ($1, $2, $3, $4, $5, $6) RETURNING uuid, delete_key;`, UUID, entry, now, now.Add(expire), remainingReads, deleteKey)
+	_, err = s.db.Exec(`INSERT INTO entries (uuid, data, created, expire, remaining_reads, delete_key) VALUES  ($1, $2, $3, $4, $5, $6) RETURNING uuid, delete_key;`, UUID, entry, now, now.Add(expire), remainingReads, deleteKey)
+
 	return err
 }
 
@@ -271,6 +272,7 @@ func (s PostgresqlStorage) VerifyDelete(UUID string, deleteKey string) (bool, er
 	row := tx.QueryRowContext(ctx, "SELECT 1 FROM entries WHERE uuid=$1 AND delete_key=$2;", UUID, deleteKey)
 
 	if row.Err() != nil {
+		fmt.Println("Error querying verify delete", row.Err())
 		tx.Rollback()
 		return false, row.Err()
 	}
@@ -324,6 +326,11 @@ func (s PostgresqlStorage) DeleteExpired() error {
 	}
 
 	return tx.Commit()
+}
+
+// NewPostgresCleanableStorage Creates a cleanable psql storage instance
+func NewPostgresCleanableStorage(s *PostgresqlStorage) *PostgresCleanableStorage {
+	return &PostgresCleanableStorage{s}
 }
 
 type PostgresCleanableStorage struct {

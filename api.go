@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"net/http"
+
+	"github.com/Ajnasz/sekret.link/storage"
 )
 
 func setupResponse(w *http.ResponseWriter, req *http.Request) {
@@ -13,7 +15,13 @@ func setupResponse(w *http.ResponseWriter, req *http.Request) {
 	}
 }
 
-type secretHandler struct{}
+type secretHandler struct {
+	storage storage.VerifyStorage
+}
+
+func NewSecretHandler(storage storage.VerifyStorage) *secretHandler {
+	return &secretHandler{storage}
+}
 
 func (s secretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if (*r).Method == http.MethodOptions {
@@ -28,13 +36,13 @@ func (s secretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			log.Println("Not found", r.URL.Path)
 			return
 		}
-		handleCreateEntry(w, r)
+		handleCreateEntry(s.storage, w, r)
 	} else if r.Method == http.MethodGet {
 		setupResponse(&w, r)
-		handleGetEntry(w, r)
+		handleGetEntry(s.storage, w, r)
 	} else if r.Method == http.MethodDelete {
 		setupResponse(&w, r)
-		handleDeleteEntry(w, r)
+		handleDeleteEntry(s.storage, w, r)
 	} else {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Bad request"))

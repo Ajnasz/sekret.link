@@ -76,6 +76,7 @@ func (s SecretStorage) VerifyDelete(UUID string, deleteKey string) (bool, error)
 	return s.internalStorage.VerifyDelete(UUID, deleteKey)
 }
 
+// Close Closes the storage connection
 func (s SecretStorage) Close() error {
 	return s.internalStorage.Close()
 }

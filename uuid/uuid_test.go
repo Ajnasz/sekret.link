@@ -17,7 +17,7 @@ func TestGetUUIDFromPath(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
-			actual, err := getUUIDFromPath(testCase.Value)
+			actual, err := GetUUIDFromPath(testCase.Value)
 			if err != nil {
 				t.Fatal(err)
 			}

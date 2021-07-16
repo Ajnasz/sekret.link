@@ -81,7 +81,7 @@ func listen(apiRoot string) *http.Server {
 	log.Println("Handle Path: ", apiRoot)
 
 	r := http.NewServeMux()
-	r.Handle(apiRoot, http.StripPrefix(apiRoot, secretHandler{}))
+	r.Handle(apiRoot, http.StripPrefix(apiRoot, NewSecretHandler(entryStorage)))
 	httpServer := &http.Server{
 		Addr:         ":8080",
 		Handler:      r,

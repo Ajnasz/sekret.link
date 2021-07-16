@@ -23,22 +23,22 @@ import (
 	"github.com/Ajnasz/sekret.link/uuid"
 )
 
-func cleanEntries() {
+func initWebEnv() {
 	extURL, _ := url.Parse("http://example.com")
 	webExternalURL = extURL
-	psqlConnection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
-	entryStorage = psqlConnection
-	storage.PostgresCleanableStorage{psqlConnection}.Clean()
 }
 
 func TestCreateEntry(t *testing.T) {
 	value := "Foo"
 	expireSeconds = 10
-	cleanEntries()
-	t.Cleanup(cleanEntries)
+	initWebEnv()
+	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	t.Cleanup(func() {
+		connection.Close()
+	})
 	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(value)))
 	w := httptest.NewRecorder()
-	h := secretHandler{}
+	h := NewSecretHandler(connection)
 	h.ServeHTTP(w, req)
 
 	resp := w.Result()
@@ -65,7 +65,7 @@ func TestCreateEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := storage.NewSecretStorage(entryStorage, aesencrypter.New(key))
+	secretStore := storage.NewSecretStorage(connection, aesencrypter.New(key))
 	entry, err := secretStore.GetAndDelete(savedUUID)
 
 	if err != nil {
@@ -82,18 +82,23 @@ func TestCreateEntry(t *testing.T) {
 func TestCreateEntryJSON(t *testing.T) {
 	value := "Foo"
 	expireSeconds = 10
-	t.Cleanup(cleanEntries)
+	initWebEnv()
+	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	t.Cleanup(func() {
+		connection.Close()
+	})
 	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(value)))
 	req.Header.Add("Accept", "application/json")
 	w := httptest.NewRecorder()
-	secretHandler{}.ServeHTTP(w, req)
+	NewSecretHandler(connection).ServeHTTP(w, req)
 
 	resp := w.Result()
 	var encode entries.SecretResponse
 	err := json.NewDecoder(resp.Body).Decode(&encode)
 
 	if err != nil {
-		t.Error(err)
+		b, _ := io.ReadAll(resp.Body)
+		t.Error(err, string(b))
 	}
 
 	if encode.DeleteKey == "" {
@@ -106,7 +111,7 @@ func TestCreateEntryJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := storage.NewSecretStorage(entryStorage, aesencrypter.New(key))
+	secretStore := storage.NewSecretStorage(connection, aesencrypter.New(key))
 	entry, err := secretStore.GetAndDelete(encode.UUID)
 
 	if err != nil {
@@ -150,7 +155,11 @@ func createMultipart(values map[string]io.Reader) (*bytes.Buffer, *multipart.Wri
 func TestCreateEntryForm(t *testing.T) {
 	value := "Foo"
 	expireSeconds = 60
-	t.Cleanup(cleanEntries)
+	initWebEnv()
+	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	t.Cleanup(func() {
+		connection.Close()
+	})
 
 	data, multi, err := createMultipart(map[string]io.Reader{
 		"secret": strings.NewReader(value),
@@ -165,7 +174,7 @@ func TestCreateEntryForm(t *testing.T) {
 
 	w := httptest.NewRecorder()
 
-	secretHandler{}.ServeHTTP(w, req)
+	NewSecretHandler(connection).ServeHTTP(w, req)
 
 	resp := w.Result()
 	body, _ := io.ReadAll(resp.Body)
@@ -174,6 +183,7 @@ func TestCreateEntryForm(t *testing.T) {
 	savedUUID, keyString, err := uuid.GetUUIDAndSecretFromPath(responseURL)
 
 	if err != nil {
+		fmt.Println("Get UUID And Secret From Path err", err, responseURL)
 		t.Fatal(err)
 	}
 
@@ -183,11 +193,11 @@ func TestCreateEntryForm(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := storage.NewSecretStorage(entryStorage, aesencrypter.New(key))
+	secretStore := storage.NewSecretStorage(connection, aesencrypter.New(key))
 	entry, err := secretStore.GetAndDelete(savedUUID)
 
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal("Getting entry", err)
 	}
 
 	actual := string(entry.Data)
@@ -220,15 +230,20 @@ func TestRequestPathsCreateEntry(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
-			t.Cleanup(cleanEntries)
+			initWebEnv()
+			connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+			t.Cleanup(func() {
+				connection.Close()
+			})
 			req := httptest.NewRequest("POST", fmt.Sprintf("http://example.com%s", testCase.Path), bytes.NewReader([]byte("ASDF")))
 			w := httptest.NewRecorder()
-			secretHandler{}.ServeHTTP(w, req)
+			NewSecretHandler(connection).ServeHTTP(w, req)
 
 			resp := w.Result()
 
 			if resp.StatusCode != testCase.StatusCode {
-				t.Errorf("Expected statuscode %d, but got %d", testCase.StatusCode, resp.StatusCode)
+				body, _ := io.ReadAll(resp.Body)
+				t.Errorf("Expected statuscode %d, but got %d, err %s", testCase.StatusCode, resp.StatusCode, body)
 			}
 		})
 	}
@@ -250,7 +265,11 @@ func TestGetEntry(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
-			t.Cleanup(cleanEntries)
+			initWebEnv()
+			connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+			t.Cleanup(func() {
+				connection.Close()
+			})
 			rsakey, err := key.GenerateRSAKey()
 			if err != nil {
 				t.Fatal(err)
@@ -261,11 +280,11 @@ func TestGetEntry(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			entryStorage.Create(testCase.UUID, encryptedData, time.Second*10, 1)
+			connection.Create(testCase.UUID, encryptedData, time.Second*10, 1)
 
 			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(rsakey)), nil)
 			w := httptest.NewRecorder()
-			secretHandler{}.ServeHTTP(w, req)
+			NewSecretHandler(connection).ServeHTTP(w, req)
 
 			resp := w.Result()
 			body, _ := io.ReadAll(resp.Body)
@@ -281,7 +300,11 @@ func TestGetEntry(t *testing.T) {
 }
 
 func TestGetEntryJSON(t *testing.T) {
-	t.Cleanup(cleanEntries)
+	initWebEnv()
+	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	t.Cleanup(func() {
+		connection.Close()
+	})
 	testCase := struct {
 		Name  string
 		Value string
@@ -303,12 +326,12 @@ func TestGetEntryJSON(t *testing.T) {
 		t.Error(err)
 	}
 
-	entryStorage.Create(testCase.UUID, encryptedData, time.Second*10, 1)
+	connection.Create(testCase.UUID, encryptedData, time.Second*10, 1)
 
 	req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(rsakey)), nil)
 	req.Header.Add("Accept", "application/json")
 	w := httptest.NewRecorder()
-	secretHandler{}.ServeHTTP(w, req)
+	NewSecretHandler(connection).ServeHTTP(w, req)
 
 	resp := w.Result()
 	var encode entries.SecretResponse
@@ -326,10 +349,15 @@ func TestGetEntryJSON(t *testing.T) {
 func TestSetAndGetEntry(t *testing.T) {
 	testCase := "foo"
 
-	t.Cleanup(cleanEntries)
+	initWebEnv()
+	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+
+	t.Cleanup(func() {
+		connection.Close()
+	})
 	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(testCase)))
 	w := httptest.NewRecorder()
-	secretHandler{}.ServeHTTP(w, req)
+	NewSecretHandler(storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())).ServeHTTP(w, req)
 
 	resp := w.Result()
 	body, _ := io.ReadAll(resp.Body)
@@ -343,7 +371,7 @@ func TestSetAndGetEntry(t *testing.T) {
 
 	req = httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", savedUUID, keyString), nil)
 	w = httptest.NewRecorder()
-	secretHandler{}.ServeHTTP(w, req)
+	NewSecretHandler(connection).ServeHTTP(w, req)
 
 	resp = w.Result()
 	body, _ = io.ReadAll(resp.Body)
@@ -356,14 +384,18 @@ func TestSetAndGetEntry(t *testing.T) {
 }
 
 func TestCreateEntryWithExpiration(t *testing.T) {
-	t.Cleanup(cleanEntries)
+	initWebEnv()
+	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	t.Cleanup(func() {
+		connection.Close()
+	})
 	maxExpireSeconds = 120
 	expireSeconds = -10
 	testCase := "foo"
 
 	req := httptest.NewRequest("POST", "http://example.com?expire=1m", bytes.NewReader([]byte(testCase)))
 	w := httptest.NewRecorder()
-	secretHandler{}.ServeHTTP(w, req)
+	NewSecretHandler(connection).ServeHTTP(w, req)
 
 	resp := w.Result()
 	body, _ := io.ReadAll(resp.Body)
@@ -385,7 +417,7 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := storage.NewSecretStorage(entryStorage, aesencrypter.New(decodedKey))
+	secretStore := storage.NewSecretStorage(connection, aesencrypter.New(decodedKey))
 	entry, err := secretStore.GetAndDelete(savedUUID)
 
 	if err != nil {
@@ -402,7 +434,11 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 }
 
 func TestCreateEntrySizeLimit(t *testing.T) {
-	t.Cleanup(cleanEntries)
+	initWebEnv()
+	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	t.Cleanup(func() {
+		connection.Close()
+	})
 	maxExpireSeconds = 120
 	expireSeconds = 10
 	testCase := "ff"
@@ -412,7 +448,7 @@ func TestCreateEntrySizeLimit(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "http://example.com?expire=1m", bytes.NewReader([]byte(testCase)))
 	w := httptest.NewRecorder()
-	secretHandler{}.ServeHTTP(w, req)
+	NewSecretHandler(connection).ServeHTTP(w, req)
 
 	resp := w.Result()
 
@@ -425,10 +461,14 @@ func TestCreateEntrySizeLimit(t *testing.T) {
 func TestCreateEntryWithMaxReads(t *testing.T) {
 	value := "FooBarBAzdd"
 	expireSeconds = 10
-	t.Cleanup(cleanEntries)
+	initWebEnv()
+	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	t.Cleanup(func() {
+		connection.Close()
+	})
 	req := httptest.NewRequest("POST", "http://example.com?maxReads=2", bytes.NewReader([]byte(value)))
 	w := httptest.NewRecorder()
-	secretHandler{}.ServeHTTP(w, req)
+	NewSecretHandler(connection).ServeHTTP(w, req)
 
 	resp := w.Result()
 	body, _ := io.ReadAll(resp.Body)
@@ -446,7 +486,7 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := storage.NewSecretStorage(entryStorage, aesencrypter.New(decodedKey))
+	secretStore := storage.NewSecretStorage(connection, aesencrypter.New(decodedKey))
 	entry, err := secretStore.GetMeta(savedUUID)
 
 	if err != nil {
@@ -459,10 +499,14 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 }
 
 func TestDeleteEntry(t *testing.T) {
-	t.Cleanup(cleanEntries)
+	initWebEnv()
+	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	t.Cleanup(func() {
+		connection.Close()
+	})
 	req := httptest.NewRequest(http.MethodPost, "http://example.com", bytes.NewReader([]byte("foobarbaz")))
 	w := httptest.NewRecorder()
-	handler := secretHandler{}
+	handler := NewSecretHandler(connection)
 	handler.ServeHTTP(w, req)
 
 	resp := w.Result()

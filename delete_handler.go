@@ -30,11 +30,11 @@ func parseDeleteEntryPath(urlPath string) (string, string, string, error) {
 	return UUID.String(), keyPart, delKey, nil
 }
 
-func handleDeleteEntry(w http.ResponseWriter, r *http.Request) {
+func handleDeleteEntry(entryStorage storage.VerifyStorage, w http.ResponseWriter, r *http.Request) {
 	UUID, _, deleteKey, err := parseDeleteEntryPath(r.URL.Path)
 
 	if err != nil {
-		log.Println(err)
+		log.Println("Request parse error", err)
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
@@ -44,12 +44,13 @@ func handleDeleteEntry(w http.ResponseWriter, r *http.Request) {
 	validDeleteKey, err := secretStore.VerifyDelete(UUID, deleteKey)
 
 	if err != nil {
-		log.Println(err)
+		log.Println("Verifying delete failed", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
 
 	if !validDeleteKey {
+		log.Println("Invalid delete key")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -57,7 +58,7 @@ func handleDeleteEntry(w http.ResponseWriter, r *http.Request) {
 	err = secretStore.Delete(UUID)
 
 	if err != nil {
-		log.Println(err)
+		log.Println("Delete failed", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 		return
 	}
