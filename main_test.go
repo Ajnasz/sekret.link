@@ -351,13 +351,14 @@ func TestSetAndGetEntry(t *testing.T) {
 
 	initWebEnv()
 	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
-
 	t.Cleanup(func() {
 		connection.Close()
 	})
+
 	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(testCase)))
 	w := httptest.NewRecorder()
-	NewSecretHandler(storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())).ServeHTTP(w, req)
+
+	NewSecretHandler(connection).ServeHTTP(w, req)
 
 	resp := w.Result()
 	body, _ := io.ReadAll(resp.Body)
