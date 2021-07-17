@@ -466,6 +466,7 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 	t.Cleanup(func() {
 		connection.Close()
 	})
+
 	req := httptest.NewRequest("POST", "http://example.com?maxReads=2", bytes.NewReader([]byte(value)))
 	w := httptest.NewRecorder()
 	NewSecretHandler(connection).ServeHTTP(w, req)

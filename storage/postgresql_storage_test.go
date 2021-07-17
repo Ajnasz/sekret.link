@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"context"
 	"database/sql"
 	"testing"
 	"time"
@@ -9,18 +8,6 @@ import (
 	"github.com/Ajnasz/sekret.link/testhelper"
 	"github.com/Ajnasz/sekret.link/uuid"
 )
-
-func clearPSQLDatabase(dbname string) {
-	psqlConn := testhelper.GetPSQLTestConn()
-	storage := ConnectToPostgresql(psqlConn)
-	defer storage.Close()
-	ctx := context.Background()
-	_, err := storage.db.ExecContext(ctx, "TRUNCATE entries;")
-
-	if err != nil {
-		panic(err)
-	}
-}
 
 func TestPostgresqlStorageCreateGet(t *testing.T) {
 	psqlConn := testhelper.GetPSQLTestConn()
@@ -30,8 +17,6 @@ func TestPostgresqlStorageCreateGet(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase, func(t *testing.T) {
-			clearPSQLDatabase(psqlConn)
-
 			storage := ConnectToPostgresql(psqlConn)
 			defer storage.Close()
 
@@ -89,8 +74,6 @@ func TestPostgresqlStorageCreateGetAndDelete(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
-			clearPSQLDatabase(psqlConn)
-
 			storage := ConnectToPostgresql(psqlConn)
 			defer storage.Close()
 
@@ -136,21 +119,19 @@ func TestPostgresqlStorageVerifyDelete(t *testing.T) {
 		ExpectedErr error
 	}{
 		{
-			UUID:        "5e8e0330-1f9c-45eb-99ef-d49eeb4952f5",
+			UUID:        uuid.NewUUIDString(),
 			DeleteKey:   "",
 			Expected:    true,
 			ExpectedErr: nil,
 		},
 		{
-			UUID:        "9d436e32-1914-4d9f-a9b4-51f8e58b271a",
-			DeleteKey:   "2e573753-93f6-4b39-918f-b3448b050d01",
+			UUID:        uuid.NewUUIDString(),
+			DeleteKey:   uuid.NewUUIDString(),
 			Expected:    false,
 			ExpectedErr: nil,
 		},
 	}
 	for _, testCase := range testCases {
-		clearPSQLDatabase(psqlConn)
-
 		storage := ConnectToPostgresql(psqlConn)
 		defer storage.Close()
 

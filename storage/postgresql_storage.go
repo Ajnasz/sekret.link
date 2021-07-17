@@ -42,7 +42,18 @@ func (s PostgresqlStorage) GetMeta(UUID string) (*entries.EntryMeta, error) {
 		return nil, err
 	}
 
-	row := tx.QueryRowContext(ctx, "SELECT created, accessed, expire, remaining_reads, delete_key FROM entries WHERE uuid=$1", UUID)
+	row := tx.QueryRowContext(ctx, `
+	SELECT
+		created,
+		accessed,
+		expire,
+		remaining_reads,
+		delete_key
+	FROM
+		entries
+	WHERE
+		uuid=$1
+		`, UUID)
 
 	var created time.Time
 	var accessedNullTime sql.NullTime
@@ -87,7 +98,11 @@ func (s PostgresqlStorage) GetMeta(UUID string) (*entries.EntryMeta, error) {
 	}
 
 	if meta.IsExpired() {
-		_, err = tx.ExecContext(ctx, "UPDATE entries SET data=$1, accessed=$2 WHERE uuid=$3", nil, time.Now(), UUID)
+		_, err = tx.ExecContext(ctx, `
+			UPDATE entries
+			SET data=$1, accessed=$2
+			WHERE uuid=$3
+			`, nil, time.Now(), UUID)
 
 		if err != nil {
 			tx.Rollback()

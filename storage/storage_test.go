@@ -10,7 +10,11 @@ import (
 )
 
 func TestStorages(t *testing.T) {
-	psqlStorage := PostgresCleanableStorage{ConnectToPostgresql(testhelper.GetPSQLTestConn())}
+	connection := ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	t.Cleanup(func() {
+		connection.Close()
+	})
+	psqlStorage := PostgresCleanableStorage{connection}
 
 	storages := map[string]CleanableStorage{
 		"Postgres": psqlStorage,
@@ -26,7 +30,6 @@ func TestStorages(t *testing.T) {
 	for name, storage := range storages {
 		t.Run(name, func(t *testing.T) {
 			t.Run("GetMeta", func(t *testing.T) {
-				storage.Clean()
 				UUID := uuid.NewUUIDString()
 				err := storage.Create(UUID, []byte("foo"), time.Second*-10, 1)
 
@@ -45,7 +48,6 @@ func TestStorages(t *testing.T) {
 				}
 			})
 			t.Run("GetAndDelete", func(t *testing.T) {
-				storage.Clean()
 				UUID := uuid.NewUUIDString()
 				err := storage.Create(UUID, []byte("foo"), time.Second*-10, 1)
 
@@ -64,7 +66,6 @@ func TestStorages(t *testing.T) {
 				}
 			})
 			t.Run("Delete", func(t *testing.T) {
-				storage.Clean()
 				UUID := uuid.NewUUIDString()
 				err := storage.Create(UUID, []byte("foo"), time.Second*-10, 1)
 
@@ -100,7 +101,6 @@ func TestStorages(t *testing.T) {
 			})
 
 			t.Run("DeleteExpired", func(t *testing.T) {
-				storage.Clean()
 				items := []struct {
 					UUID         string
 					Expire       time.Duration
@@ -155,7 +155,6 @@ func TestStorages(t *testing.T) {
 					}
 				}
 			})
-			storage.Clean()
 		})
 	}
 }

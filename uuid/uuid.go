@@ -41,6 +41,7 @@ func GetUUIDFromPath(urlPath string) (string, error) {
 	return UUID.String(), nil
 }
 
+// NewUUIDString Generates an uuid and returns as a string
 func NewUUIDString() string {
 
 	newUUID := uuid.New()
