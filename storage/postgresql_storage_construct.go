@@ -76,11 +76,13 @@ func addDeleteKey(db *sql.DB) error {
 			return err
 		}
 
-		_, deleteKey, err := key.CreateKey()
+		k, err := key.NewGeneratedKey()
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
+
+		deleteKey := k.ToHex()
 
 		_, err = db.ExecContext(ctx, "UPDATE entries SET delete_key=$2 WHERE uuid=$1", UUID, deleteKey)
 		if err != nil {

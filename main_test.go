@@ -270,10 +270,12 @@ func TestGetEntry(t *testing.T) {
 			t.Cleanup(func() {
 				connection.Close()
 			})
-			rsakey, err := key.GenerateRSAKey()
-			if err != nil {
-				t.Fatal(err)
+
+			k := key.NewKey()
+			if err := k.Generate(); err != nil {
+				t.Error(err)
 			}
+			rsakey := k.Get()
 			encrypter := aesencrypter.New(rsakey)
 			encryptedData, err := encrypter.Encrypt([]byte(testCase.Value))
 			if err != nil {
@@ -316,10 +318,12 @@ func TestGetEntryJSON(t *testing.T) {
 		"3f356f6c-c8b1-4b48-8243-aa04d07b8873",
 	}
 
-	rsakey, err := key.GenerateRSAKey()
-	if err != nil {
+	k := key.NewKey()
+	if err := k.Generate(); err != nil {
 		t.Error(err)
 	}
+	rsakey := k.Get()
+
 	encrypter := aesencrypter.New(rsakey)
 	encryptedData, err := encrypter.Encrypt([]byte(testCase.Value))
 	if err != nil {

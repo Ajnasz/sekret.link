@@ -40,7 +40,7 @@ func handleCreateEntry(entryStorage storage.VerifyStorage, w http.ResponseWriter
 		return
 	}
 
-	key, keyString, err := key.CreateKey()
+	k, err := key.NewGeneratedKey()
 
 	if err != nil {
 		log.Println("Create key failed", err)
@@ -48,7 +48,7 @@ func handleCreateEntry(entryStorage storage.VerifyStorage, w http.ResponseWriter
 		return
 	}
 
-	secretStore := storage.NewSecretStorage(entryStorage, aesencrypter.New(key))
+	secretStore := storage.NewSecretStorage(entryStorage, aesencrypter.New(k.Get()))
 
 	UUID := uuid.NewUUIDString()
 
@@ -68,18 +68,18 @@ func handleCreateEntry(entryStorage storage.VerifyStorage, w http.ResponseWriter
 	}
 
 	w.Header().Add("x-entry-uuid", UUID)
-	w.Header().Add("x-entry-key", keyString)
+	w.Header().Add("x-entry-key", k.ToHex())
 	w.Header().Add("x-entry-expire", entry.Expire.Format(time.RFC3339))
 	w.Header().Add("x-entry-delete-key", entry.DeleteKey)
 	if r.Header.Get("Accept") == "application/json" {
 		w.Header().Set("Content-Type", "application/json")
 
 		response := entries.SecretResponseFromEntryMeta(*entry)
-		response.Key = keyString
+		response.Key = k.ToHex()
 
 		json.NewEncoder(w).Encode(response)
 	} else {
-		newURL, err := uuid.GetUUIDUrlWithSecret(webExternalURL, UUID, keyString)
+		newURL, err := uuid.GetUUIDUrlWithSecret(webExternalURL, UUID, k.ToHex())
 		if err != nil {
 			log.Println("Get UUID URL with secret failed", err)
 			http.Error(w, "Internal error", http.StatusInternalServerError)
