@@ -72,7 +72,8 @@ type HandlerConfig struct {
 	WebExternalURL   *url.URL
 }
 
-func listen(entryStorage storage.VerifyStorage, handlerConfig HandlerConfig, apiRoot string) *http.Server {
+func listen(handlerConfig HandlerConfig) *http.Server {
+	apiRoot := getAPIRoot(handlerConfig.WebExternalURL)
 	log.Println("Handle Path: ", apiRoot)
 
 	r := http.NewServeMux()
@@ -111,7 +112,7 @@ func getAPIRoot(webExternalURL *url.URL) string {
 	return apiRoot
 }
 
-func main() {
+func getConfig() (*HandlerConfig, error) {
 	var (
 		externalURLParam string
 		expireSeconds    int
@@ -130,35 +131,47 @@ func main() {
 
 	if queryVersion {
 		fmt.Println(version)
-		return
-	}
-
-	if maxExpireSeconds < expireSeconds {
-		log.Fatal("`expireSeconds` must be less or equal then `maxExpireSeconds`")
+		os.Exit(0)
 	}
 
 	extURL, err := url.Parse(externalURLParam)
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
+
+	config := HandlerConfig{
+		ExpireSeconds:    expireSeconds,
+		MaxExpireSeconds: maxExpireSeconds,
+		MaxDataSize:      maxDataSize,
+	}
+
+	if maxExpireSeconds < expireSeconds {
+		return nil, fmt.Errorf("`expireSeconds` must be less or equal then `maxExpireSeconds`")
+	}
+	config.WebExternalURL = extURL
 
 	var entryStorage storage.VerifyStorage
 	entryStorage = getStorage(postgresDB)
 	if entryStorage == nil {
-		log.Fatal("No database backend selected")
+		return nil, fmt.Errorf("No database backend selected")
+	}
+
+	config.EntryStorage = entryStorage
+
+	return &config, nil
+}
+
+func main() {
+	handlerConfig, err := getConfig()
+
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	stopChan := make(chan interface{})
-	go scheduleDeleteExpired(entryStorage, stopChan)
-	handlerConfig := HandlerConfig{
-		ExpireSeconds:    expireSeconds,
-		EntryStorage:     entryStorage,
-		MaxDataSize:      maxDataSize,
-		MaxExpireSeconds: maxExpireSeconds,
-		WebExternalURL:   extURL,
-	}
-	httpServer := listen(entryStorage, handlerConfig, getAPIRoot(extURL))
+	go scheduleDeleteExpired(handlerConfig.EntryStorage, stopChan)
+	httpServer := listen(*handlerConfig)
 
 	termChan := make(chan os.Signal)
 	signal.Notify(termChan, syscall.SIGTERM, syscall.SIGINT)
@@ -172,7 +185,7 @@ func main() {
 		defer cancel()
 		return httpServer.Shutdown(ctx)
 	}, func() error {
-		return entryStorage.Close()
+		return handlerConfig.EntryStorage.Close()
 	}, func() error {
 		stopChan <- struct{}{}
 		return nil
