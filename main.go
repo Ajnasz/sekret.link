@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -74,7 +73,7 @@ type HandlerConfig struct {
 
 func listen(handlerConfig HandlerConfig) *http.Server {
 	apiRoot := getAPIRoot(handlerConfig.WebExternalURL)
-	log.Println("Handle Path: ", apiRoot)
+	fmt.Println("Handle Path: ", apiRoot)
 
 	r := http.NewServeMux()
 	r.Handle(apiRoot, http.StripPrefix(apiRoot, NewSecretHandler(handlerConfig)))
@@ -88,7 +87,8 @@ func listen(handlerConfig HandlerConfig) *http.Server {
 	go func() {
 		if err := httpServer.ListenAndServe(); err != nil {
 			if err.Error() != "http: Server closed" {
-				log.Fatal(err)
+				fmt.Fprintf(os.Stderr, "error: %s", err)
+				os.Exit(1)
 			}
 		}
 	}()
@@ -166,7 +166,8 @@ func main() {
 	handlerConfig, err := getConfig()
 
 	if err != nil {
-		log.Fatal(err)
+		fmt.Fprintf(os.Stderr, "error: %s", err)
+		os.Exit(1)
 	}
 
 	stopChan := make(chan interface{})
@@ -193,7 +194,8 @@ func main() {
 
 	for err := range c {
 		if err != nil {
-			log.Fatal(err)
+			fmt.Fprintf(os.Stderr, "error: %s", err)
+			os.Exit(1)
 		}
 	}
 
