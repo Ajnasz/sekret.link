@@ -91,7 +91,7 @@ func (c CreateHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 		json.NewEncoder(w).Encode(response)
 	} else {
-		newURL, err := uuid.GetUUIDUrlWithSecret(webExternalURL, UUID, k.ToHex())
+		newURL, err := uuid.GetUUIDUrlWithSecret(c.config.WebExternalURL, UUID, k.ToHex())
 		if err != nil {
 			log.Println("Get UUID URL with secret failed", err)
 			http.Error(w, "Internal error", http.StatusInternalServerError)

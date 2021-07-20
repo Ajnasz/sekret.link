@@ -23,23 +23,19 @@ import (
 	"github.com/Ajnasz/sekret.link/uuid"
 )
 
-func initWebEnv() {
-	extURL, _ := url.Parse("http://example.com")
-	webExternalURL = extURL
-}
-
 func NewHandlerConfig(storage storage.VerifyStorage) HandlerConfig {
+	extURL, _ := url.Parse("http://example.com")
 	return HandlerConfig{
+		ExpireSeconds:    10,
 		EntryStorage:     storage,
 		MaxDataSize:      1024 * 1024,
 		MaxExpireSeconds: 60 * 60 * 24 * 30,
+		WebExternalURL:   extURL,
 	}
 }
 
 func TestCreateEntry(t *testing.T) {
 	value := "Foo"
-	expireSeconds = 10
-	initWebEnv()
 	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
 		connection.Close()
@@ -90,8 +86,6 @@ func TestCreateEntry(t *testing.T) {
 
 func TestCreateEntryJSON(t *testing.T) {
 	value := "Foo"
-	expireSeconds = 10
-	initWebEnv()
 	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
 		connection.Close()
@@ -163,8 +157,6 @@ func createMultipart(values map[string]io.Reader) (*bytes.Buffer, *multipart.Wri
 
 func TestCreateEntryForm(t *testing.T) {
 	value := "Foo"
-	expireSeconds = 60
-	initWebEnv()
 	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
 		connection.Close()
@@ -177,13 +169,14 @@ func TestCreateEntryForm(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-
-	req := httptest.NewRequest("POST", fmt.Sprintf("http://example.com/?expire=%ds", expireSeconds), data)
+	handlerConfig := NewHandlerConfig(connection)
+	handlerConfig.ExpireSeconds = 60
+	req := httptest.NewRequest("POST", fmt.Sprintf("http://example.com/?expire=%ds", handlerConfig.ExpireSeconds), data)
 	req.Header.Set("Content-Type", multi.FormDataContentType())
 
 	w := httptest.NewRecorder()
 
-	NewSecretHandler(NewHandlerConfig(connection)).ServeHTTP(w, req)
+	NewSecretHandler(handlerConfig).ServeHTTP(w, req)
 
 	resp := w.Result()
 	body, _ := io.ReadAll(resp.Body)
@@ -225,8 +218,6 @@ func TestCreateEntryForm(t *testing.T) {
 }
 
 func TestRequestPathsCreateEntry(t *testing.T) {
-	expireSeconds = 10
-
 	testCases := []struct {
 		Name       string
 		Path       string
@@ -239,7 +230,6 @@ func TestRequestPathsCreateEntry(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
-			initWebEnv()
 			connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
 			t.Cleanup(func() {
 				connection.Close()
@@ -274,7 +264,6 @@ func TestGetEntry(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
-			initWebEnv()
 			connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
 			t.Cleanup(func() {
 				connection.Close()
@@ -311,7 +300,6 @@ func TestGetEntry(t *testing.T) {
 }
 
 func TestGetEntryJSON(t *testing.T) {
-	initWebEnv()
 	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
 		connection.Close()
@@ -362,7 +350,6 @@ func TestGetEntryJSON(t *testing.T) {
 func TestSetAndGetEntry(t *testing.T) {
 	testCase := "foo"
 
-	initWebEnv()
 	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
 		connection.Close()
@@ -398,12 +385,10 @@ func TestSetAndGetEntry(t *testing.T) {
 }
 
 func TestCreateEntryWithExpiration(t *testing.T) {
-	initWebEnv()
 	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
 		connection.Close()
 	})
-	expireSeconds = -10
 	testCase := "foo"
 
 	req := httptest.NewRequest("POST", "http://example.com?expire=1m", bytes.NewReader([]byte(testCase)))
@@ -449,12 +434,10 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 }
 
 func TestCreateEntrySizeLimit(t *testing.T) {
-	initWebEnv()
 	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
 		connection.Close()
 	})
-	expireSeconds = 10
 	testCase := "ff"
 
 	req := httptest.NewRequest("POST", "http://example.com?expire=1m", bytes.NewReader([]byte(testCase)))
@@ -474,8 +457,6 @@ func TestCreateEntrySizeLimit(t *testing.T) {
 
 func TestCreateEntryWithMaxReads(t *testing.T) {
 	value := "FooBarBAzdd"
-	expireSeconds = 10
-	initWebEnv()
 	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
 		connection.Close()
@@ -514,7 +495,6 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 }
 
 func TestDeleteEntry(t *testing.T) {
-	initWebEnv()
 	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
 		connection.Close()

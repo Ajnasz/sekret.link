@@ -109,7 +109,7 @@ func (c CreateHandler) getSecretExpiration(r *http.Request) (time.Duration, erro
 	r.ParseForm()
 	expiration = r.Form.Get("expire")
 
-	return c.calculateExpiration(expiration, time.Second*time.Duration(expireSeconds))
+	return c.calculateExpiration(expiration, time.Second*time.Duration(c.config.ExpireSeconds))
 }
 
 func (c CreateHandler) parseCreateRequest(r *http.Request) (*requestData, error) {

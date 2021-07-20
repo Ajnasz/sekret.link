@@ -20,27 +20,14 @@ import (
 )
 
 var (
-	externalURLParam string
-	expireSeconds    int
-	maxExpireSeconds int
-	postgresDB       string
-	webExternalURL   *url.URL
-	maxDataSize      int64
-	version          string
-	queryVersion     bool
+	version string
 )
 
-func getStorage() storage.VerifyStorage {
+func getStorage(postgresDB string) storage.VerifyStorage {
 	return storage.NewStorage(config.GetConnectionString(postgresDB))
 }
 
 func init() {
-	flag.StringVar(&externalURLParam, "webExternalURL", "", "Web server external url")
-	flag.StringVar(&postgresDB, "postgresDB", "", "Connection string for postgresql database backend")
-	flag.IntVar(&expireSeconds, "expireSeconds", 60*60*24*7, "Default expiration time in seconds")
-	flag.IntVar(&maxExpireSeconds, "maxExpireSeconds", 60*60*24*30, "Max expiration time in seconds")
-	flag.Int64Var(&maxDataSize, "maxDataSize", 1024*1024, "Max data size")
-	flag.BoolVar(&queryVersion, "version", false, "Get version information")
 }
 
 func shutDown(shutdowns ...func() error) chan error {
@@ -78,20 +65,18 @@ func scheduleDeleteExpired(entryStorage storage.VerifyStorage, stopChan chan int
 
 // HandlerConfig configuration for http handlers
 type HandlerConfig struct {
+	ExpireSeconds    int
+	MaxExpireSeconds int
 	EntryStorage     storage.VerifyStorage
 	MaxDataSize      int64
-	MaxExpireSeconds int
+	WebExternalURL   *url.URL
 }
 
-func listen(entryStorage storage.VerifyStorage, apiRoot string) *http.Server {
+func listen(entryStorage storage.VerifyStorage, handlerConfig HandlerConfig, apiRoot string) *http.Server {
 	log.Println("Handle Path: ", apiRoot)
 
 	r := http.NewServeMux()
-	r.Handle(apiRoot, http.StripPrefix(apiRoot, NewSecretHandler(HandlerConfig{
-		entryStorage,
-		maxDataSize,
-		maxExpireSeconds,
-	})))
+	r.Handle(apiRoot, http.StripPrefix(apiRoot, NewSecretHandler(handlerConfig)))
 	httpServer := &http.Server{
 		Addr:         ":8080",
 		Handler:      r,
@@ -127,6 +112,20 @@ func getAPIRoot(webExternalURL *url.URL) string {
 }
 
 func main() {
+	var (
+		externalURLParam string
+		expireSeconds    int
+		maxExpireSeconds int
+		postgresDB       string
+		maxDataSize      int64
+		queryVersion     bool
+	)
+	flag.StringVar(&externalURLParam, "webExternalURL", "", "Web server external url")
+	flag.StringVar(&postgresDB, "postgresDB", "", "Connection string for postgresql database backend")
+	flag.IntVar(&expireSeconds, "expireSeconds", 60*60*24*7, "Default expiration time in seconds")
+	flag.IntVar(&maxExpireSeconds, "maxExpireSeconds", 60*60*24*30, "Max expiration time in seconds")
+	flag.Int64Var(&maxDataSize, "maxDataSize", 1024*1024, "Max data size")
+	flag.BoolVar(&queryVersion, "version", false, "Get version information")
 	flag.Parse()
 
 	if queryVersion {
@@ -145,16 +144,21 @@ func main() {
 	}
 
 	var entryStorage storage.VerifyStorage
-	entryStorage = getStorage()
+	entryStorage = getStorage(postgresDB)
 	if entryStorage == nil {
 		log.Fatal("No database backend selected")
 	}
 
 	stopChan := make(chan interface{})
 	go scheduleDeleteExpired(entryStorage, stopChan)
-
-	webExternalURL = extURL
-	httpServer := listen(entryStorage, getAPIRoot(extURL))
+	handlerConfig := HandlerConfig{
+		ExpireSeconds:    expireSeconds,
+		EntryStorage:     entryStorage,
+		MaxDataSize:      maxDataSize,
+		MaxExpireSeconds: maxExpireSeconds,
+		WebExternalURL:   extURL,
+	}
+	httpServer := listen(entryStorage, handlerConfig, getAPIRoot(extURL))
 
 	termChan := make(chan os.Signal)
 	signal.Notify(termChan, syscall.SIGTERM, syscall.SIGINT)
