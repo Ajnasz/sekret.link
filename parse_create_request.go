@@ -15,7 +15,7 @@ type requestData struct {
 	maxReads   int
 }
 
-func calculateExpiration(expire string, defaultExpire time.Duration) (time.Duration, error) {
+func (c CreateHandler) calculateExpiration(expire string, defaultExpire time.Duration) (time.Duration, error) {
 	if expire == "" {
 		return defaultExpire, nil
 	}
@@ -25,7 +25,7 @@ func calculateExpiration(expire string, defaultExpire time.Duration) (time.Durat
 		return 0, err
 	}
 
-	maxExpire := time.Duration(maxExpireSeconds) * time.Second
+	maxExpire := time.Duration(c.config.MaxExpireSeconds) * time.Second
 
 	if userExpire > maxExpire {
 		return 0, fmt.Errorf("Invalid expiration date")
@@ -104,15 +104,15 @@ func getSecretMaxReads(r *http.Request) (int, error) {
 	return maxReads, nil
 }
 
-func getSecretExpiration(r *http.Request) (time.Duration, error) {
+func (c CreateHandler) getSecretExpiration(r *http.Request) (time.Duration, error) {
 	var expiration string
 	r.ParseForm()
 	expiration = r.Form.Get("expire")
 
-	return calculateExpiration(expiration, time.Second*time.Duration(expireSeconds))
+	return c.calculateExpiration(expiration, time.Second*time.Duration(expireSeconds))
 }
 
-func parseCreateRequest(r *http.Request) (*requestData, error) {
+func (c CreateHandler) parseCreateRequest(r *http.Request) (*requestData, error) {
 	body, err := getBody(r)
 
 	if err != nil {
@@ -123,7 +123,7 @@ func parseCreateRequest(r *http.Request) (*requestData, error) {
 		return nil, fmt.Errorf("Invalid data")
 	}
 
-	expiration, err := getSecretExpiration(r)
+	expiration, err := c.getSecretExpiration(r)
 
 	if err != nil {
 		return nil, err

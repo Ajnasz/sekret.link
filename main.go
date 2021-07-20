@@ -20,7 +20,6 @@ import (
 )
 
 var (
-	entryStorage     storage.VerifyStorage
 	externalURLParam string
 	expireSeconds    int
 	maxExpireSeconds int
@@ -66,7 +65,7 @@ func shutDown(shutdowns ...func() error) chan error {
 	return errChan
 }
 
-func scheduleDeleteExpired(stopChan chan interface{}) {
+func scheduleDeleteExpired(entryStorage storage.VerifyStorage, stopChan chan interface{}) {
 	for {
 		select {
 		case <-time.After(time.Second):
@@ -77,11 +76,22 @@ func scheduleDeleteExpired(stopChan chan interface{}) {
 	}
 }
 
-func listen(apiRoot string) *http.Server {
+// HandlerConfig configuration for http handlers
+type HandlerConfig struct {
+	EntryStorage     storage.VerifyStorage
+	MaxDataSize      int64
+	MaxExpireSeconds int
+}
+
+func listen(entryStorage storage.VerifyStorage, apiRoot string) *http.Server {
 	log.Println("Handle Path: ", apiRoot)
 
 	r := http.NewServeMux()
-	r.Handle(apiRoot, http.StripPrefix(apiRoot, NewSecretHandler(entryStorage)))
+	r.Handle(apiRoot, http.StripPrefix(apiRoot, NewSecretHandler(HandlerConfig{
+		entryStorage,
+		maxDataSize,
+		maxExpireSeconds,
+	})))
 	httpServer := &http.Server{
 		Addr:         ":8080",
 		Handler:      r,
@@ -134,16 +144,17 @@ func main() {
 		log.Fatal(err)
 	}
 
+	var entryStorage storage.VerifyStorage
 	entryStorage = getStorage()
 	if entryStorage == nil {
 		log.Fatal("No database backend selected")
 	}
 
 	stopChan := make(chan interface{})
-	go scheduleDeleteExpired(stopChan)
+	go scheduleDeleteExpired(entryStorage, stopChan)
 
 	webExternalURL = extURL
-	httpServer := listen(getAPIRoot(extURL))
+	httpServer := listen(entryStorage, getAPIRoot(extURL))
 
 	termChan := make(chan os.Signal)
 	signal.Notify(termChan, syscall.SIGTERM, syscall.SIGINT)

@@ -14,29 +14,41 @@ import (
 	"github.com/Ajnasz/sekret.link/uuid"
 )
 
-func handleCreateEntry(entryStorage storage.VerifyStorage, w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, maxDataSize)
+func handleParseError(w http.ResponseWriter, err error) {
+	if err.Error() == "http: request body too large" {
+		http.Error(w, "Too large", http.StatusRequestEntityTooLarge)
+	} else if err.Error() == "Invalid expiration date" {
+		log.Println(err)
+		http.Error(w, "Invalid expiration", http.StatusBadRequest)
+		return
+	} else if err.Error() == "Invalid max read" {
+		log.Println(err)
+		http.Error(w, "Invalid max read", http.StatusBadRequest)
+		return
+	} else if err.Error() == "Invalid data" {
+		log.Println(err)
+		http.Error(w, "Invalid max read", http.StatusBadRequest)
+	} else {
+		log.Println("Request parse error", err)
+		http.Error(w, "Internal error", http.StatusInternalServerError)
+	}
+}
 
-	data, err := parseCreateRequest(r)
+type CreateHandler struct {
+	config HandlerConfig
+}
+
+func NewCreateHandler(c HandlerConfig) *CreateHandler {
+	return &CreateHandler{c}
+}
+
+func (c CreateHandler) Handle(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, c.config.MaxDataSize)
+
+	data, err := c.parseCreateRequest(r)
 
 	if err != nil {
-		if err.Error() == "http: request body too large" {
-			http.Error(w, "Too large", http.StatusRequestEntityTooLarge)
-		} else if err.Error() == "Invalid expiration date" {
-			log.Println(err)
-			http.Error(w, "Invalid expiration", http.StatusBadRequest)
-			return
-		} else if err.Error() == "Invalid max read" {
-			log.Println(err)
-			http.Error(w, "Invalid max read", http.StatusBadRequest)
-			return
-		} else if err.Error() == "Invalid data" {
-			log.Println(err)
-			http.Error(w, "Invalid max read", http.StatusBadRequest)
-		} else {
-			log.Println("Request parse error", err)
-			http.Error(w, "Internal error", http.StatusInternalServerError)
-		}
+		handleParseError(w, err)
 		return
 	}
 
@@ -48,7 +60,7 @@ func handleCreateEntry(entryStorage storage.VerifyStorage, w http.ResponseWriter
 		return
 	}
 
-	secretStore := storage.NewSecretStorage(entryStorage, aesencrypter.New(k.Get()))
+	secretStore := storage.NewSecretStorage(c.config.EntryStorage, aesencrypter.New(k.Get()))
 
 	UUID := uuid.NewUUIDString()
 
