@@ -181,8 +181,8 @@ func main() {
 
 	defer close(termChan)
 	<-termChan
+
 	ctx := context.Background()
-	// on close
 	shutdownErrors := shutDown(func() error {
 		ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 		defer cancel()
@@ -198,19 +198,18 @@ func main() {
 	for {
 		select {
 		case err, ok := <-shutdownErrors:
-			if err != nil {
-				errored = true
-				fmt.Fprintf(os.Stderr, "error: %s", err)
-			}
 			if !ok {
 				shutdownErrors = nil
+			} else if err != nil {
+				errored = true
+				fmt.Fprintf(os.Stderr, "error: %s", err)
 			}
 		case _, ok := <-stopChan:
 			if !ok {
 				stopChan = nil
 			}
 		case <-time.After(time.Second * 15):
-			fmt.Println("error: force quit")
+			fmt.Fprint(os.Stderr, "error: force quit")
 			os.Exit(2)
 		}
 
