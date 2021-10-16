@@ -57,6 +57,8 @@ func scheduleDeleteExpired(entryStorage storage.VerifyStorage, stopChan chan int
 		case <-time.After(time.Second):
 			entryStorage.DeleteExpired()
 		case <-stopChan:
+			stopChan <- struct{}{}
+			close(stopChan)
 			return
 		}
 	}
@@ -181,7 +183,7 @@ func main() {
 	<-termChan
 	ctx := context.Background()
 	// on close
-	c := shutDown(func() error {
+	shutdownErrors := shutDown(func() error {
 		ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 		defer cancel()
 		return httpServer.Shutdown(ctx)
@@ -192,12 +194,31 @@ func main() {
 		return nil
 	})
 
-	for err := range c {
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %s", err)
-			os.Exit(1)
+	errored := false
+	for {
+		select {
+		case err, ok := <-shutdownErrors:
+			if err != nil {
+				errored = true
+				fmt.Fprintf(os.Stderr, "error: %s", err)
+			}
+			if !ok {
+				shutdownErrors = nil
+			}
+		case _, ok := <-stopChan:
+			if !ok {
+				stopChan = nil
+			}
+		case <-time.After(time.Second * 15):
+			fmt.Println("error: force quit")
+			os.Exit(2)
+		}
+
+		if shutdownErrors == nil && stopChan == nil {
+			if errored {
+				os.Exit(1)
+			}
+			return
 		}
 	}
-
-	os.Exit(0)
 }
