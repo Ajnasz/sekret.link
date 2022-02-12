@@ -14,6 +14,7 @@ build() {
 	echo "$BUILD"
 
 	mkdir -p "$BUILD_DIR"
+	cd cmd/sekret.link/
 
 	for os in $OSLIST
 	do
@@ -50,7 +51,7 @@ REMOVE=0
 OSLIST="linux"
 ARCHLIST="amd64 386"
 STORAGELIST="postgres"
-BUILD_DIR="./build"
+BUILD_DIR="$PWD/build"
 STORAGE=""
 BUILD=0
 
@@ -91,7 +92,7 @@ do
 			STORAGELIST="$OPTARG"
 			;;
 		"b")
-			BUILD_DIR="$OPTARG"
+			BUILD_DIR="$PWD/$OPTARG"
 			;;
 		[?])
 			exit 1

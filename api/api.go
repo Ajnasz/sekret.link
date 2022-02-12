@@ -1,9 +1,21 @@
-package main
+package api
 
 import (
 	"log"
 	"net/http"
+	"net/url"
+
+	"github.com/Ajnasz/sekret.link/storage"
 )
+
+// HandlerConfig configuration for http handlers
+type HandlerConfig struct {
+	ExpireSeconds    int
+	MaxExpireSeconds int
+	EntryStorage     storage.VerifyStorage
+	MaxDataSize      int64
+	WebExternalURL   *url.URL
+}
 
 func setupResponse(w *http.ResponseWriter, req *http.Request) {
 	if req.Header.Get("ORIGIN") != "" {

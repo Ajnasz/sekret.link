@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Ajnasz/sekret.link/api"
 	"github.com/Ajnasz/sekret.link/config"
 	"github.com/Ajnasz/sekret.link/storage"
 )
@@ -64,21 +65,12 @@ func scheduleDeleteExpired(entryStorage storage.VerifyStorage, stopChan chan int
 	}
 }
 
-// HandlerConfig configuration for http handlers
-type HandlerConfig struct {
-	ExpireSeconds    int
-	MaxExpireSeconds int
-	EntryStorage     storage.VerifyStorage
-	MaxDataSize      int64
-	WebExternalURL   *url.URL
-}
-
-func listen(handlerConfig HandlerConfig) *http.Server {
+func listen(handlerConfig api.HandlerConfig) *http.Server {
 	apiRoot := getAPIRoot(handlerConfig.WebExternalURL)
 	fmt.Println("Handle Path: ", apiRoot)
 
 	r := http.NewServeMux()
-	r.Handle(apiRoot, http.StripPrefix(apiRoot, NewSecretHandler(handlerConfig)))
+	r.Handle(apiRoot, http.StripPrefix(apiRoot, api.NewSecretHandler(handlerConfig)))
 	httpServer := &http.Server{
 		Addr:         ":8080",
 		Handler:      r,
@@ -114,7 +106,7 @@ func getAPIRoot(webExternalURL *url.URL) string {
 	return apiRoot
 }
 
-func getConfig() (*HandlerConfig, error) {
+func getConfig() (*api.HandlerConfig, error) {
 	var (
 		externalURLParam string
 		expireSeconds    int
@@ -142,7 +134,7 @@ func getConfig() (*HandlerConfig, error) {
 		return nil, err
 	}
 
-	config := HandlerConfig{
+	config := api.HandlerConfig{
 		ExpireSeconds:    expireSeconds,
 		MaxExpireSeconds: maxExpireSeconds,
 		MaxDataSize:      maxDataSize,
