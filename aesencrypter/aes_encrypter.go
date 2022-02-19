@@ -7,6 +7,7 @@ import (
 	"io"
 )
 
+// AESEncrypter simplified interface around crypto/aes
 type AESEncrypter struct {
 	Key []byte
 }
@@ -16,6 +17,7 @@ func New(key []byte) *AESEncrypter {
 	return &AESEncrypter{key}
 }
 
+// Encrypt will encrypt the data with the AESEncrypter.Key
 func (e *AESEncrypter) Encrypt(data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(e.Key)
 	if err != nil {
@@ -40,6 +42,7 @@ func (e *AESEncrypter) Encrypt(data []byte) ([]byte, error) {
 	return aesGCM.Seal(nonce, nonce, data, nil), nil
 }
 
+// Decrypt will dencrypt the data with the AESEncrypter.Key
 func (e *AESEncrypter) Decrypt(data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(e.Key)
 	if err != nil {
