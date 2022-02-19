@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// GetUUIDUrlWithSecret is a formatter function which creates a path for a secret id and it's key
 func GetUUIDUrlWithSecret(u *url.URL, UUID string, key string) (*url.URL, error) {
 	newURL, err := url.Parse(fmt.Sprintf("%s/%s/%s", u.String(), UUID, key))
 	if err != nil {
@@ -17,6 +18,7 @@ func GetUUIDUrlWithSecret(u *url.URL, UUID string, key string) (*url.URL, error)
 	return newURL, nil
 }
 
+// GetUUIDAndSecretFromPath extracts the secret id and it's key from a path
 func GetUUIDAndSecretFromPath(urlPath string) (string, string, error) {
 	pathDir, key := path.Split(urlPath)
 	if len(pathDir) < 1 {
@@ -31,6 +33,7 @@ func GetUUIDAndSecretFromPath(urlPath string) (string, string, error) {
 	return UUID.String(), key, nil
 }
 
+// GetUUIDFromPath gets an uuid from a path
 func GetUUIDFromPath(urlPath string) (string, error) {
 	_, uuidFromPath := path.Split(urlPath)
 	UUID, err := uuid.Parse(uuidFromPath)
