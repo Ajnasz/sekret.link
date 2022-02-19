@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/Ajnasz/sekret.link/aesencrypter"
+	"github.com/Ajnasz/sekret.link/encrypter/aesencrypter"
 	"github.com/Ajnasz/sekret.link/entries"
 	"github.com/Ajnasz/sekret.link/storage"
 	"github.com/Ajnasz/sekret.link/uuid"

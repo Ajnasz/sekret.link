@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/Ajnasz/sekret.link/aesencrypter"
+	"github.com/Ajnasz/sekret.link/encrypter/aesencrypter"
 	"github.com/Ajnasz/sekret.link/storage"
 	"github.com/google/uuid"
 )
