@@ -34,14 +34,17 @@ func handleParseError(w http.ResponseWriter, err error) {
 	}
 }
 
-type CreateHandler struct {
-	config HandlerConfig
-}
-
+// NewCreateHandler creates a CreateHandler instance
 func NewCreateHandler(c HandlerConfig) *CreateHandler {
 	return &CreateHandler{c}
 }
 
+// CreateHandler is an http.Handler implementaton which creates secrets
+type CreateHandler struct {
+	config HandlerConfig
+}
+
+// Handle handles http request to create secret
 func (c CreateHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, c.config.MaxDataSize)
 

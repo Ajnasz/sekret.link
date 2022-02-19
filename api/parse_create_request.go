@@ -79,13 +79,13 @@ func (b requestData) ContentType() string {
 	return "plain/text"
 }
 
-const MIN_MAX_READ_COUNT int = 1
+const minMaxReadCount int = 1
 
 func getSecretMaxReads(r *http.Request) (int, error) {
 	r.ParseForm()
 	val := r.Form.Get("maxReads")
 	if val == "" {
-		return MIN_MAX_READ_COUNT, nil
+		return minMaxReadCount, nil
 	}
 
 	maxReads, err := strconv.Atoi(val)
@@ -97,7 +97,7 @@ func getSecretMaxReads(r *http.Request) (int, error) {
 		return 0, err
 	}
 
-	if maxReads < MIN_MAX_READ_COUNT {
+	if maxReads < minMaxReadCount {
 		return 0, fmt.Errorf("Invalid maxReads")
 	}
 

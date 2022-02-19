@@ -25,16 +25,19 @@ func setupResponse(w *http.ResponseWriter, req *http.Request) {
 	}
 }
 
-type secretHandler struct {
+// NewSecretHandler creates a SecretHandler instance
+func NewSecretHandler(config HandlerConfig) SecretHandler {
+	return SecretHandler{config}
+}
+
+// SecretHandler is an http.Handler implementation which handles requests to
+// encode or decode the post body
+type SecretHandler struct {
 	config HandlerConfig
 }
 
-func NewSecretHandler(config HandlerConfig) *secretHandler {
-	return &secretHandler{config}
-}
-
-func (s secretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if (*r).Method == http.MethodOptions {
+func (s SecretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodOptions {
 		setupResponse(&w, r)
 		return
 	}
@@ -54,7 +57,6 @@ func (s secretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		setupResponse(&w, r)
 		handleDeleteEntry(s.config.EntryStorage, w, r)
 	} else {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Bad request"))
+		http.Error(w, "Bad request", http.StatusBadRequest)
 	}
 }
