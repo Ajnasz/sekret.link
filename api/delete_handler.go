@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/Ajnasz/sekret.link/encrypter/aesencrypter"
+	"github.com/Ajnasz/sekret.link/encrypter/aes"
 	"github.com/Ajnasz/sekret.link/storage"
 	"github.com/google/uuid"
 )
@@ -39,7 +39,7 @@ func handleDeleteEntry(entryStorage storage.VerifyStorage, w http.ResponseWriter
 		return
 	}
 
-	secretStore := storage.NewSecretStorage(entryStorage, aesencrypter.New(nil))
+	secretStore := storage.NewSecretStorage(entryStorage, aes.New(nil))
 
 	validDeleteKey, err := secretStore.VerifyDelete(UUID, deleteKey)
 

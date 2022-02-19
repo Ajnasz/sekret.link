@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Ajnasz/sekret.link/encrypter/aesencrypter"
+	"github.com/Ajnasz/sekret.link/encrypter/aes"
 	"github.com/Ajnasz/sekret.link/entries"
 	"github.com/Ajnasz/sekret.link/key"
 	"github.com/Ajnasz/sekret.link/storage"
@@ -70,7 +70,7 @@ func TestCreateEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := storage.NewSecretStorage(connection, aesencrypter.New(key))
+	secretStore := storage.NewSecretStorage(connection, aes.New(key))
 	entry, err := secretStore.GetAndDelete(savedUUID)
 
 	if err != nil {
@@ -114,7 +114,7 @@ func TestCreateEntryJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := storage.NewSecretStorage(connection, aesencrypter.New(key))
+	secretStore := storage.NewSecretStorage(connection, aes.New(key))
 	entry, err := secretStore.GetAndDelete(encode.UUID)
 
 	if err != nil {
@@ -195,7 +195,7 @@ func TestCreateEntryForm(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := storage.NewSecretStorage(connection, aesencrypter.New(key))
+	secretStore := storage.NewSecretStorage(connection, aes.New(key))
 	entry, err := secretStore.GetAndDelete(savedUUID)
 
 	if err != nil {
@@ -274,7 +274,7 @@ func TestGetEntry(t *testing.T) {
 				t.Error(err)
 			}
 			rsakey := k.Get()
-			encrypter := aesencrypter.New(rsakey)
+			encrypter := aes.New(rsakey)
 			encryptedData, err := encrypter.Encrypt([]byte(testCase.Value))
 			if err != nil {
 				t.Fatal(err)
@@ -321,7 +321,7 @@ func TestGetEntryJSON(t *testing.T) {
 	}
 	rsakey := k.Get()
 
-	encrypter := aesencrypter.New(rsakey)
+	encrypter := aes.New(rsakey)
 	encryptedData, err := encrypter.Encrypt([]byte(testCase.Value))
 	if err != nil {
 		t.Error(err)
@@ -417,7 +417,7 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := storage.NewSecretStorage(connection, aesencrypter.New(decodedKey))
+	secretStore := storage.NewSecretStorage(connection, aes.New(decodedKey))
 	entry, err := secretStore.GetAndDelete(savedUUID)
 
 	if err != nil {
@@ -482,7 +482,7 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := storage.NewSecretStorage(connection, aesencrypter.New(decodedKey))
+	secretStore := storage.NewSecretStorage(connection, aes.New(decodedKey))
 	entry, err := secretStore.GetMeta(savedUUID)
 
 	if err != nil {

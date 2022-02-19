@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Ajnasz/sekret.link/encrypter/aesencrypter"
+	"github.com/Ajnasz/sekret.link/encrypter/aes"
 	"github.com/Ajnasz/sekret.link/entries"
 	"github.com/Ajnasz/sekret.link/key"
 	"github.com/Ajnasz/sekret.link/storage"
@@ -63,7 +63,7 @@ func (c CreateHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	secretStore := storage.NewSecretStorage(c.config.EntryStorage, aesencrypter.New(k.Get()))
+	secretStore := storage.NewSecretStorage(c.config.EntryStorage, aes.New(k.Get()))
 
 	UUID := uuid.NewUUIDString()
 
