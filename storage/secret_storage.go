@@ -7,20 +7,26 @@ import (
 	"github.com/Ajnasz/sekret.link/entries"
 )
 
+// VerifyStorage an interface which extends the EntryStorage with a
+// VerifyDelete method
 type VerifyStorage interface {
 	EntryStorage
 	VerifyDelete(string, string) (bool, error)
 }
 
+// SecretStorage connects the encrypter.Encrypter with a VerifyStorage
+// so the encrypted data will be stored in the storage
 type SecretStorage struct {
 	internalStorage VerifyStorage
 	Encrypter       encrypter.Encrypter
 }
 
+// NewSecretStorage creates a secretStore instance
 func NewSecretStorage(v VerifyStorage, e encrypter.Encrypter) *SecretStorage {
 	return &SecretStorage{v, e}
 }
 
+// Create stores the encrypted secret in the VerifyStorage
 func (s SecretStorage) Create(UUID string, entry []byte, expire time.Duration, remainingReads int) error {
 	encrypted, err := s.Encrypter.Encrypt(entry)
 
@@ -31,6 +37,7 @@ func (s SecretStorage) Create(UUID string, entry []byte, expire time.Duration, r
 	return s.internalStorage.Create(UUID, encrypted, expire, remainingReads)
 }
 
+// GetMeta returns the entry's metadata
 func (s SecretStorage) GetMeta(UUID string) (*entries.EntryMeta, error) {
 	entryMeta, err := s.internalStorage.GetMeta(UUID)
 
@@ -45,6 +52,7 @@ func (s SecretStorage) GetMeta(UUID string) (*entries.EntryMeta, error) {
 	return entryMeta, nil
 }
 
+// GetAndDelete deletes the secret from VerifyStorage
 func (s SecretStorage) GetAndDelete(UUID string) (*entries.Entry, error) {
 	entry, err := s.internalStorage.GetAndDelete(UUID)
 
@@ -72,6 +80,7 @@ func (s SecretStorage) GetAndDelete(UUID string) (*entries.Entry, error) {
 	return &ret, nil
 }
 
+// VerifyDelete checks if the given deleteKey belongs to the given UUID
 func (s SecretStorage) VerifyDelete(UUID string, deleteKey string) (bool, error) {
 	return s.internalStorage.VerifyDelete(UUID, deleteKey)
 }
@@ -81,9 +90,12 @@ func (s SecretStorage) Close() error {
 	return s.internalStorage.Close()
 }
 
+// Delete Deletes the entry from the storage
 func (s SecretStorage) Delete(UUID string) error {
 	return s.internalStorage.Delete(UUID)
 }
+
+// DeleteExpired removes all expired entries from the storage
 func (s SecretStorage) DeleteExpired() error {
 	return s.internalStorage.DeleteExpired()
 }
