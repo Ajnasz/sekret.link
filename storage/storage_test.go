@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Ajnasz/sekret.link/encrypter/dummy"
 	"github.com/Ajnasz/sekret.link/entries"
 	"github.com/Ajnasz/sekret.link/testhelper"
 	"github.com/Ajnasz/sekret.link/uuid"
@@ -21,7 +22,7 @@ func TestStorages(t *testing.T) {
 		"Secret": CleanableSecretStorage{
 			NewSecretStorage(
 				psqlStorage,
-				NewDummyEncrypter(),
+				dummy.NewEncrypter(),
 			),
 			psqlStorage,
 		},
