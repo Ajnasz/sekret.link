@@ -8,7 +8,7 @@ func TestAESEncrypter(t *testing.T) {
 	testData := "Lorem ipsum dolor sit amet"
 	encKey := []byte("B629C0156C0FEBDF1B1DC244052E3EC9")
 
-	encrypter := AESEncrypter{encKey}
+	encrypter := Encrypter{encKey}
 
 	data, err := encrypter.Encrypt([]byte(testData))
 
@@ -36,7 +36,7 @@ func TestAESEncrypterBase64(t *testing.T) {
 	testData := "Lorem ipsum dolor sit amet"
 	encKey := []byte("B629C0156C0FEBDF1B1DC244052E3EC9")
 
-	encrypter := AESEncrypter{encKey}
+	encrypter := Encrypter{encKey}
 
 	data, err := encrypter.Encrypt([]byte(testData))
 
