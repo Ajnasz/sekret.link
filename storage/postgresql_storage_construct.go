@@ -6,7 +6,6 @@ import (
 	"log"
 
 	"github.com/Ajnasz/sekret.link/key"
-	_ "github.com/lib/pq"
 )
 
 type dbExec func(*sql.DB) error

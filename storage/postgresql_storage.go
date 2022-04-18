@@ -10,6 +10,9 @@ import (
 
 	"github.com/Ajnasz/sekret.link/entries"
 	"github.com/Ajnasz/sekret.link/key"
+
+	// Register postgresql driver
+	_ "github.com/lib/pq"
 )
 
 type PostgresqlStorage struct {

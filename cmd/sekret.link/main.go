@@ -27,9 +27,6 @@ func getStorage(postgresDB string) storage.VerifyStorage {
 	return storage.NewStorage(config.GetConnectionString(postgresDB))
 }
 
-func init() {
-}
-
 func shutDown(shutdowns ...func() error) chan error {
 	errChan := make(chan error)
 
