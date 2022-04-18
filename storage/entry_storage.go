@@ -6,6 +6,7 @@ import (
 	"github.com/Ajnasz/sekret.link/entries"
 )
 
+// EntryStorageReader interface to get stored entry
 type EntryStorageReader interface {
 	GetAndDelete(string) (*entries.Entry, error)
 	GetMeta(string) (*entries.EntryMeta, error)
@@ -14,6 +15,7 @@ type EntryStorageReader interface {
 	Close() error
 }
 
+// EntryStorageWriter interface to store and delete entry
 type EntryStorageWriter interface {
 	// Writes the secret into the remote data storege
 	Create(UUID string, entry []byte, expiration time.Duration, maxReads int) error
@@ -24,6 +26,7 @@ type EntryStorageWriter interface {
 	Close() error
 }
 
+// EntryStorage interface to storea, read and delete entries
 type EntryStorage interface {
 	EntryStorageReader
 	EntryStorageWriter

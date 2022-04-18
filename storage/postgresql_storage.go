@@ -15,18 +15,22 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// PostgresqlStorage stores secrets in postgresql
 type PostgresqlStorage struct {
 	db *sql.DB
 }
 
+// NewPostgresqlStorage creates a new PostgresqlStorage instance
 func NewPostgresqlStorage(db *sql.DB) *PostgresqlStorage {
 	return &PostgresqlStorage{db}
 }
 
+// Close closes connection to the database
 func (s PostgresqlStorage) Close() error {
 	return s.db.Close()
 }
 
+// Create stores a new entry in database
 func (s PostgresqlStorage) Create(UUID string, entry []byte, expire time.Duration, remainingReads int) error {
 	now := time.Now()
 	k, err := key.NewGeneratedKey()
@@ -39,6 +43,9 @@ func (s PostgresqlStorage) Create(UUID string, entry []byte, expire time.Duratio
 	return err
 }
 
+// GetMeta to get entry metadata (without the actual secret)
+// returns the metadata if the secret not expired yet
+// does not update read count
 func (s PostgresqlStorage) GetMeta(UUID string) (*entries.EntryMeta, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -129,6 +136,9 @@ func (s PostgresqlStorage) GetMeta(UUID string) (*entries.EntryMeta, error) {
 	return meta, nil
 }
 
+// Get to get entry including the actual secret
+// returns the data if the secret not expired yet
+// updates read count
 func (s PostgresqlStorage) Get(UUID string) (*entries.Entry, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -197,6 +207,10 @@ func (s PostgresqlStorage) Get(UUID string) (*entries.Entry, error) {
 	}, nil
 }
 
+// GetAndDelete to get entry including the actual secret then delete it
+// returns the data if the secret not expired yet
+// updates read count
+// deletes the data after the read
 func (s PostgresqlStorage) GetAndDelete(UUID string) (*entries.Entry, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -264,6 +278,7 @@ func (s PostgresqlStorage) GetAndDelete(UUID string) (*entries.Entry, error) {
 	}, nil
 }
 
+// Delete deletes the entry from the database
 func (s PostgresqlStorage) Delete(UUID string) error {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -281,6 +296,7 @@ func (s PostgresqlStorage) Delete(UUID string) error {
 	return tx.Commit()
 }
 
+// VerifyDelete returns true if the given deleteKey belongs to the given UUID
 func (s PostgresqlStorage) VerifyDelete(UUID string, deleteKey string) (bool, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -306,6 +322,7 @@ func (s PostgresqlStorage) VerifyDelete(UUID string, deleteKey string) (bool, er
 	return found, nil
 }
 
+// GetDeleteKey returns the delete key for the uuid
 func (s PostgresqlStorage) GetDeleteKey(UUID string) (string, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -330,6 +347,7 @@ func (s PostgresqlStorage) GetDeleteKey(UUID string) (string, error) {
 	return deleteKey, nil
 }
 
+// DeleteExpired removes expired entries from the database
 func (s PostgresqlStorage) DeleteExpired() error {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -352,10 +370,13 @@ func NewPostgresCleanableStorage(s *PostgresqlStorage) *PostgresCleanableStorage
 	return &PostgresCleanableStorage{s}
 }
 
+// PostgresCleanableStorage extends the regular PostgresqlStorage with a Clean
+// method to remove all entries
 type PostgresCleanableStorage struct {
 	*PostgresqlStorage
 }
 
+// Clean deletes all entries from the database
 func (s PostgresCleanableStorage) Clean() {
 	_, err := s.db.Exec("TRUNCATE entries;")
 
