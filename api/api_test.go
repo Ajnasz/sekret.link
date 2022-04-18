@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Ajnasz/sekret.link/api/entries"
 	"github.com/Ajnasz/sekret.link/encrypter/aes"
-	"github.com/Ajnasz/sekret.link/entries"
 	"github.com/Ajnasz/sekret.link/key"
 	"github.com/Ajnasz/sekret.link/storage"
 	"github.com/Ajnasz/sekret.link/testhelper"

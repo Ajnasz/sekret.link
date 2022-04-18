@@ -2,13 +2,14 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/Ajnasz/sekret.link/api/entries"
 	"github.com/Ajnasz/sekret.link/encrypter/aes"
-	"github.com/Ajnasz/sekret.link/entries"
 	"github.com/Ajnasz/sekret.link/key"
 	"github.com/Ajnasz/sekret.link/storage"
 	"github.com/Ajnasz/sekret.link/uuid"
@@ -17,17 +18,17 @@ import (
 func handleParseError(w http.ResponseWriter, err error) {
 	if err.Error() == "http: request body too large" {
 		http.Error(w, "Too large", http.StatusRequestEntityTooLarge)
-	} else if err.Error() == "Invalid expiration date" {
+	} else if errors.Is(err, ErrInvalidExpirationDate) {
 		log.Println(err)
 		http.Error(w, "Invalid expiration", http.StatusBadRequest)
 		return
-	} else if err.Error() == "Invalid max read" {
+	} else if errors.Is(err, ErrInvalidMaxRead) {
 		log.Println(err)
 		http.Error(w, "Invalid max read", http.StatusBadRequest)
 		return
-	} else if err.Error() == "Invalid data" {
+	} else if errors.Is(err, ErrInvalidData) {
 		log.Println(err)
-		http.Error(w, "Invalid max read", http.StatusBadRequest)
+		http.Error(w, "Invalid data", http.StatusBadRequest)
 	} else {
 		log.Println("Request parse error", err)
 		http.Error(w, "Internal error", http.StatusInternalServerError)

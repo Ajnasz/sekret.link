@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 
+	apientries "github.com/Ajnasz/sekret.link/api/entries"
 	"github.com/Ajnasz/sekret.link/encrypter/aes"
 	"github.com/Ajnasz/sekret.link/entries"
 	"github.com/Ajnasz/sekret.link/storage"
@@ -52,7 +53,7 @@ func handleGetEntry(entryStorage storage.VerifyStorage, w http.ResponseWriter, r
 	}
 
 	if r.Header.Get("Accept") == "application/json" {
-		response := entries.SecretResponseFromEntryMeta(entry.EntryMeta)
+		response := apientries.SecretResponseFromEntryMeta(entry.EntryMeta)
 
 		response.Data = string(entry.Data)
 		response.Key = keyString

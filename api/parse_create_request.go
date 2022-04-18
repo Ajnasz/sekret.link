@@ -1,13 +1,24 @@
 package api
 
 import (
-	"fmt"
+	"errors"
 	"io"
 	"mime"
 	"net/http"
 	"strconv"
 	"time"
 )
+
+// ErrInvalidExpirationDate request parse error happens when the user set
+// expiration date is larger than the system maximum expiration date
+var ErrInvalidExpirationDate = errors.New("Invalid expiration date")
+
+// ErrInvalidMaxRead request parse error happens when the user maximum read
+// number is greater than the system maximum read number
+var ErrInvalidMaxRead = errors.New("Invalid max read")
+
+// ErrInvalidData request parse error happens if the post data can not be accepted
+var ErrInvalidData = errors.New("Invalid data")
 
 type requestData struct {
 	body       []byte
@@ -28,7 +39,7 @@ func (c CreateHandler) calculateExpiration(expire string, defaultExpire time.Dur
 	maxExpire := time.Duration(c.config.MaxExpireSeconds) * time.Second
 
 	if userExpire > maxExpire {
-		return 0, fmt.Errorf("Invalid expiration date")
+		return 0, ErrInvalidExpirationDate
 	}
 
 	return userExpire, nil
@@ -91,14 +102,14 @@ func getSecretMaxReads(r *http.Request) (int, error) {
 	maxReads, err := strconv.Atoi(val)
 	if err != nil {
 		if _, isNumError := err.(*strconv.NumError); isNumError {
-			return 0, fmt.Errorf("Invalid maxReads")
+			return 0, ErrInvalidMaxRead
 		}
 
 		return 0, err
 	}
 
 	if maxReads < minMaxReadCount {
-		return 0, fmt.Errorf("Invalid maxReads")
+		return 0, ErrInvalidMaxRead
 	}
 
 	return maxReads, nil
@@ -120,7 +131,7 @@ func (c CreateHandler) parseCreateRequest(r *http.Request) (*requestData, error)
 	}
 
 	if len(body) == 0 {
-		return nil, fmt.Errorf("Invalid data")
+		return nil, ErrInvalidData
 	}
 
 	expiration, err := c.getSecretExpiration(r)
