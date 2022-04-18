@@ -2,6 +2,7 @@ package entries
 
 import "time"
 
+// EntryMeta represents the meta information of an entry, without the actual data
 type EntryMeta struct {
 	UUID      string
 	Created   time.Time
@@ -11,6 +12,7 @@ type EntryMeta struct {
 	MaxReads  int32
 }
 
+// IsExpired returns true if the entry is already expired
 func (e *EntryMeta) IsExpired() bool {
 	return e.Expire.Before(time.Now())
 }
