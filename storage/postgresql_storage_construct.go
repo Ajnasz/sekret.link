@@ -97,6 +97,7 @@ func addDeleteKey(db *sql.DB) error {
 	return tx.Commit()
 }
 
+// ConnectToPostgresql connects to postgresql database
 func ConnectToPostgresql(psqlURL string) *PostgresqlStorage {
 	db, err := sql.Open("postgres", psqlURL)
 
@@ -122,6 +123,8 @@ func ConnectToPostgresql(psqlURL string) *PostgresqlStorage {
 	return NewPostgresqlStorage(db)
 }
 
+// NewStorage creates a postgresql connection to the given connectionString
+// then returns the storage which uses this connection
 func NewStorage(connectionString string) VerifyStorage {
 	return ConnectToPostgresql(connectionString)
 }
