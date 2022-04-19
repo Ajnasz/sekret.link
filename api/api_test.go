@@ -19,6 +19,7 @@ import (
 	"github.com/Ajnasz/sekret.link/encrypter/aes"
 	"github.com/Ajnasz/sekret.link/key"
 	"github.com/Ajnasz/sekret.link/storage"
+	"github.com/Ajnasz/sekret.link/storage/postgresql"
 	"github.com/Ajnasz/sekret.link/testhelper"
 	"github.com/Ajnasz/sekret.link/uuid"
 )
@@ -36,7 +37,7 @@ func NewHandlerConfig(storage storage.VerifyStorage) HandlerConfig {
 
 func TestCreateEntry(t *testing.T) {
 	value := "Foo"
-	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
 		connection.Close()
 	})
@@ -86,7 +87,7 @@ func TestCreateEntry(t *testing.T) {
 
 func TestCreateEntryJSON(t *testing.T) {
 	value := "Foo"
-	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
 		connection.Close()
 	})
@@ -157,7 +158,7 @@ func createMultipart(values map[string]io.Reader) (*bytes.Buffer, *multipart.Wri
 
 func TestCreateEntryForm(t *testing.T) {
 	value := "Foo"
-	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
 		connection.Close()
 	})
@@ -230,7 +231,7 @@ func TestRequestPathsCreateEntry(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
-			connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+			connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
 			t.Cleanup(func() {
 				connection.Close()
 			})
@@ -264,7 +265,7 @@ func TestGetEntry(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
-			connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+			connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
 			t.Cleanup(func() {
 				connection.Close()
 			})
@@ -300,7 +301,7 @@ func TestGetEntry(t *testing.T) {
 }
 
 func TestGetEntryJSON(t *testing.T) {
-	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
 		connection.Close()
 	})
@@ -350,7 +351,7 @@ func TestGetEntryJSON(t *testing.T) {
 func TestSetAndGetEntry(t *testing.T) {
 	testCase := "foo"
 
-	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
 		connection.Close()
 	})
@@ -385,7 +386,7 @@ func TestSetAndGetEntry(t *testing.T) {
 }
 
 func TestCreateEntryWithExpiration(t *testing.T) {
-	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
 		connection.Close()
 	})
@@ -434,7 +435,7 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 }
 
 func TestCreateEntrySizeLimit(t *testing.T) {
-	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
 		connection.Close()
 	})
@@ -457,7 +458,7 @@ func TestCreateEntrySizeLimit(t *testing.T) {
 
 func TestCreateEntryWithMaxReads(t *testing.T) {
 	value := "FooBarBAzdd"
-	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
 		connection.Close()
 	})
@@ -495,7 +496,7 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 }
 
 func TestDeleteEntry(t *testing.T) {
-	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
 		connection.Close()
 	})

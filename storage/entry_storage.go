@@ -10,6 +10,7 @@ import (
 type EntryStorageReader interface {
 	GetAndDelete(string) (*entries.Entry, error)
 	GetMeta(string) (*entries.EntryMeta, error)
+	// Get(UUID string) (*entries.Entry, error)
 	// Closes connection to data storage, like database
 	// Executed on application shutdown
 	Close() error

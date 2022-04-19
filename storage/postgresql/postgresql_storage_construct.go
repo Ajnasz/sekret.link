@@ -6,7 +6,6 @@ import (
 	"log"
 
 	"github.com/Ajnasz/sekret.link/key"
-	"github.com/Ajnasz/sekret.link/storage"
 )
 
 type dbExec func(*sql.DB) error
@@ -126,7 +125,7 @@ func ConnectToPostgresql(psqlURL string) *sql.DB {
 
 // NewStorage creates a postgresql connection to the given connectionString
 // then returns the storage which uses this connection
-func NewStorage(connectionString string) storage.VerifyStorage {
+func NewStorage(connectionString string) *Storage {
 	db := ConnectToPostgresql(connectionString)
 	return &Storage{db}
 }

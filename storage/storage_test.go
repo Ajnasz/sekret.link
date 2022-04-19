@@ -6,16 +6,17 @@ import (
 
 	"github.com/Ajnasz/sekret.link/encrypter/dummy"
 	"github.com/Ajnasz/sekret.link/entries"
+	"github.com/Ajnasz/sekret.link/storage/postgresql"
 	"github.com/Ajnasz/sekret.link/testhelper"
 	"github.com/Ajnasz/sekret.link/uuid"
 )
 
 func TestStorages(t *testing.T) {
-	connection := ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
 		connection.Close()
 	})
-	psqlStorage := PostgresCleanableStorage{connection}
+	psqlStorage := postgresql.PostgresCleanableStorage{connection}
 
 	storages := map[string]CleanableStorage{
 		"Postgres": psqlStorage,

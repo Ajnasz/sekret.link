@@ -9,41 +9,41 @@ import (
 	"github.com/Ajnasz/sekret.link/uuid"
 )
 
-func TestPostgresqlStorageCreateGet(t *testing.T) {
-	psqlConn := testhelper.GetPSQLTestConn()
-	storage := ConnectToPostgresql(psqlConn)
-	t.Cleanup(func() {
-		defer storage.Close()
-	})
-	testCases := []string{
-		"foo",
-	}
+// func TestPostgresqlStorageCreateGet(t *testing.T) {
+// 	psqlConn := testhelper.GetPSQLTestConn()
+// 	storage := NewStorage(psqlConn)
+// 	t.Cleanup(func() {
+// 		defer storage.Close()
+// 	})
+// 	testCases := []string{
+// 		"foo",
+// 	}
 
-	for _, testCase := range testCases {
-		t.Run(testCase, func(t *testing.T) {
+// 	for _, testCase := range testCases {
+// 		t.Run(testCase, func(t *testing.T) {
 
-			UUID := uuid.NewUUIDString()
-			err := storage.Create(UUID, []byte("foo"), time.Second*10, 1)
+// 			UUID := uuid.NewUUIDString()
+// 			err := storage.Create(UUID, []byte("foo"), time.Second*10, 1)
 
-			if err != nil {
-				t.Fatal(err)
-			}
-			res, err := storage.Get(UUID)
-			if err != nil {
-				t.Fatal(err)
-			}
+// 			if err != nil {
+// 				t.Fatal(err)
+// 			}
+// 			res, err := storage.Get(UUID)
+// 			if err != nil {
+// 				t.Fatal(err)
+// 			}
 
-			actual := string(res.Data)
-			if actual != testCase {
-				t.Errorf("expected: %s, actual: %s", testCase, actual)
-			}
-		})
-	}
-}
+// 			actual := string(res.Data)
+// 			if actual != testCase {
+// 				t.Errorf("expected: %s, actual: %s", testCase, actual)
+// 			}
+// 		})
+// 	}
+// }
 
 func TestPostgresqlStorageCreateGetAndDelete(t *testing.T) {
 	psqlConn := testhelper.GetPSQLTestConn()
-	storage := ConnectToPostgresql(psqlConn)
+	storage := NewStorage(psqlConn)
 	t.Cleanup(func() {
 		storage.Close()
 	})
@@ -115,7 +115,7 @@ func TestPostgresqlStorageCreateGetAndDelete(t *testing.T) {
 
 func TestPostgresqlStorageVerifyDelete(t *testing.T) {
 	psqlConn := testhelper.GetPSQLTestConn()
-	storage := ConnectToPostgresql(psqlConn)
+	storage := NewStorage(psqlConn)
 	t.Cleanup(func() {
 		storage.Close()
 	})
