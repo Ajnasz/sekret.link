@@ -7,13 +7,6 @@ import (
 	"github.com/Ajnasz/sekret.link/entries"
 )
 
-// VerifyStorage an interface which extends the EntryStorage with a
-// VerifyDelete method
-type VerifyStorage interface {
-	EntryStorage
-	VerifyDelete(string, string) (bool, error)
-}
-
 // SecretStorage connects the encrypter.Encrypter with a VerifyStorage
 // so the encrypted data will be stored in the storage
 type SecretStorage struct {

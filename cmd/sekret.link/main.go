@@ -17,6 +17,7 @@ import (
 	"github.com/Ajnasz/sekret.link/api"
 	"github.com/Ajnasz/sekret.link/config"
 	"github.com/Ajnasz/sekret.link/storage"
+	"github.com/Ajnasz/sekret.link/storage/postgresql"
 )
 
 var (
@@ -24,7 +25,7 @@ var (
 )
 
 func getStorage(postgresDB string) storage.VerifyStorage {
-	return storage.NewStorage(config.GetConnectionString(postgresDB))
+	return postgresql.NewStorage(config.GetConnectionString(postgresDB))
 }
 
 func shutDown(shutdowns ...func() error) chan error {

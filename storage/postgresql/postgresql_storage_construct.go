@@ -1,4 +1,4 @@
-package storage
+package postgresql
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/Ajnasz/sekret.link/key"
+	"github.com/Ajnasz/sekret.link/storage"
 )
 
 type dbExec func(*sql.DB) error
@@ -98,7 +99,7 @@ func addDeleteKey(db *sql.DB) error {
 }
 
 // ConnectToPostgresql connects to postgresql database
-func ConnectToPostgresql(psqlURL string) *PostgresqlStorage {
+func ConnectToPostgresql(psqlURL string) *sql.DB {
 	db, err := sql.Open("postgres", psqlURL)
 
 	if err != nil {
@@ -120,11 +121,12 @@ func ConnectToPostgresql(psqlURL string) *PostgresqlStorage {
 		}
 	}
 
-	return NewPostgresqlStorage(db)
+	return db
 }
 
 // NewStorage creates a postgresql connection to the given connectionString
 // then returns the storage which uses this connection
-func NewStorage(connectionString string) VerifyStorage {
-	return ConnectToPostgresql(connectionString)
+func NewStorage(connectionString string) storage.VerifyStorage {
+	db := ConnectToPostgresql(connectionString)
+	return &Storage{db}
 }

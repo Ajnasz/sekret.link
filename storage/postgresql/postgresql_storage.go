@@ -1,4 +1,4 @@
-package storage
+package postgresql
 
 import (
 	"context"
@@ -15,23 +15,18 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// PostgresqlStorage stores secrets in postgresql
-type PostgresqlStorage struct {
+// Storage stores secrets in postgresql
+type Storage struct {
 	db *sql.DB
 }
 
-// NewPostgresqlStorage creates a new PostgresqlStorage instance
-func NewPostgresqlStorage(db *sql.DB) *PostgresqlStorage {
-	return &PostgresqlStorage{db}
-}
-
 // Close closes connection to the database
-func (s PostgresqlStorage) Close() error {
+func (s Storage) Close() error {
 	return s.db.Close()
 }
 
 // Create stores a new entry in database
-func (s PostgresqlStorage) Create(UUID string, entry []byte, expire time.Duration, remainingReads int) error {
+func (s Storage) Create(UUID string, entry []byte, expire time.Duration, remainingReads int) error {
 	now := time.Now()
 	k, err := key.NewGeneratedKey()
 	if err != nil {
@@ -46,7 +41,7 @@ func (s PostgresqlStorage) Create(UUID string, entry []byte, expire time.Duratio
 // GetMeta to get entry metadata (without the actual secret)
 // returns the metadata if the secret not expired yet
 // does not update read count
-func (s PostgresqlStorage) GetMeta(UUID string) (*entries.EntryMeta, error) {
+func (s Storage) GetMeta(UUID string) (*entries.EntryMeta, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -139,7 +134,7 @@ func (s PostgresqlStorage) GetMeta(UUID string) (*entries.EntryMeta, error) {
 // Get to get entry including the actual secret
 // returns the data if the secret not expired yet
 // updates read count
-func (s PostgresqlStorage) Get(UUID string) (*entries.Entry, error) {
+func (s Storage) Get(UUID string) (*entries.Entry, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -211,7 +206,7 @@ func (s PostgresqlStorage) Get(UUID string) (*entries.Entry, error) {
 // returns the data if the secret not expired yet
 // updates read count
 // deletes the data after the read
-func (s PostgresqlStorage) GetAndDelete(UUID string) (*entries.Entry, error) {
+func (s Storage) GetAndDelete(UUID string) (*entries.Entry, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -279,7 +274,7 @@ func (s PostgresqlStorage) GetAndDelete(UUID string) (*entries.Entry, error) {
 }
 
 // Delete deletes the entry from the database
-func (s PostgresqlStorage) Delete(UUID string) error {
+func (s Storage) Delete(UUID string) error {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -297,7 +292,7 @@ func (s PostgresqlStorage) Delete(UUID string) error {
 }
 
 // VerifyDelete returns true if the given deleteKey belongs to the given UUID
-func (s PostgresqlStorage) VerifyDelete(UUID string, deleteKey string) (bool, error) {
+func (s Storage) VerifyDelete(UUID string, deleteKey string) (bool, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -323,7 +318,7 @@ func (s PostgresqlStorage) VerifyDelete(UUID string, deleteKey string) (bool, er
 }
 
 // GetDeleteKey returns the delete key for the uuid
-func (s PostgresqlStorage) GetDeleteKey(UUID string) (string, error) {
+func (s Storage) GetDeleteKey(UUID string) (string, error) {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -348,7 +343,7 @@ func (s PostgresqlStorage) GetDeleteKey(UUID string) (string, error) {
 }
 
 // DeleteExpired removes expired entries from the database
-func (s PostgresqlStorage) DeleteExpired() error {
+func (s Storage) DeleteExpired() error {
 	ctx := context.Background()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -366,14 +361,14 @@ func (s PostgresqlStorage) DeleteExpired() error {
 }
 
 // NewPostgresCleanableStorage Creates a cleanable psql storage instance
-func NewPostgresCleanableStorage(s *PostgresqlStorage) *PostgresCleanableStorage {
+func NewPostgresCleanableStorage(s *Storage) *PostgresCleanableStorage {
 	return &PostgresCleanableStorage{s}
 }
 
 // PostgresCleanableStorage extends the regular PostgresqlStorage with a Clean
 // method to remove all entries
 type PostgresCleanableStorage struct {
-	*PostgresqlStorage
+	*Storage
 }
 
 // Clean deletes all entries from the database
