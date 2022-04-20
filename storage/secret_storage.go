@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"time"
 
 	"github.com/Ajnasz/sekret.link/encrypter"
@@ -20,19 +21,19 @@ func NewSecretStorage(v VerifyStorage, e encrypter.Encrypter) *SecretStorage {
 }
 
 // Create stores the encrypted secret in the VerifyStorage
-func (s SecretStorage) Create(UUID string, entry []byte, expire time.Duration, remainingReads int) error {
+func (s SecretStorage) Create(ctx context.Context, UUID string, entry []byte, expire time.Duration, remainingReads int) error {
 	encrypted, err := s.Encrypter.Encrypt(entry)
 
 	if err != nil {
 		return err
 	}
 
-	return s.internalStorage.Create(UUID, encrypted, expire, remainingReads)
+	return s.internalStorage.Create(ctx, UUID, encrypted, expire, remainingReads)
 }
 
 // GetMeta returns the entry's metadata
-func (s SecretStorage) GetMeta(UUID string) (*entries.EntryMeta, error) {
-	entryMeta, err := s.internalStorage.GetMeta(UUID)
+func (s SecretStorage) GetMeta(ctx context.Context, UUID string) (*entries.EntryMeta, error) {
+	entryMeta, err := s.internalStorage.GetMeta(ctx, UUID)
 
 	if err != nil {
 		return nil, err
@@ -46,8 +47,8 @@ func (s SecretStorage) GetMeta(UUID string) (*entries.EntryMeta, error) {
 }
 
 // GetAndDelete deletes the secret from VerifyStorage
-func (s SecretStorage) GetAndDelete(UUID string) (*entries.Entry, error) {
-	entry, err := s.internalStorage.GetAndDelete(UUID)
+func (s SecretStorage) GetAndDelete(ctx context.Context, UUID string) (*entries.Entry, error) {
+	entry, err := s.internalStorage.GetAndDelete(ctx, UUID)
 
 	if err != nil {
 		return nil, err
@@ -74,8 +75,8 @@ func (s SecretStorage) GetAndDelete(UUID string) (*entries.Entry, error) {
 }
 
 // VerifyDelete checks if the given deleteKey belongs to the given UUID
-func (s SecretStorage) VerifyDelete(UUID string, deleteKey string) (bool, error) {
-	return s.internalStorage.VerifyDelete(UUID, deleteKey)
+func (s SecretStorage) VerifyDelete(ctx context.Context, UUID string, deleteKey string) (bool, error) {
+	return s.internalStorage.VerifyDelete(ctx, UUID, deleteKey)
 }
 
 // Close Closes the storage connection
@@ -84,13 +85,13 @@ func (s SecretStorage) Close() error {
 }
 
 // Delete Deletes the entry from the storage
-func (s SecretStorage) Delete(UUID string) error {
-	return s.internalStorage.Delete(UUID)
+func (s SecretStorage) Delete(ctx context.Context, UUID string) error {
+	return s.internalStorage.Delete(ctx, UUID)
 }
 
 // DeleteExpired removes all expired entries from the storage
-func (s SecretStorage) DeleteExpired() error {
-	return s.internalStorage.DeleteExpired()
+func (s SecretStorage) DeleteExpired(ctx context.Context) error {
+	return s.internalStorage.DeleteExpired(ctx)
 }
 
 // CleanableSecretStorage Storage which implements CleanableStorage interface,

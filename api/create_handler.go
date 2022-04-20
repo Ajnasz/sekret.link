@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -68,7 +69,8 @@ func (c CreateHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	UUID := uuid.NewUUIDString()
 
-	err = secretStore.Create(UUID, data.body, data.expiration, data.maxReads)
+	ctx := context.Background()
+	err = secretStore.Create(ctx, UUID, data.body, data.expiration, data.maxReads)
 
 	if err != nil {
 		log.Println("Create secret failed", err)
@@ -76,7 +78,7 @@ func (c CreateHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entry, err := secretStore.GetMeta(UUID)
+	entry, err := secretStore.GetMeta(ctx, UUID)
 	if err != nil {
 		log.Println("Getting meta failed", err, UUID)
 		http.Error(w, "Internal error", http.StatusInternalServerError)

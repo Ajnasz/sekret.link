@@ -1,6 +1,7 @@
 package postgresql
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 	"time"
@@ -82,12 +83,13 @@ func TestPostgresqlStorageCreateGetAndDelete(t *testing.T) {
 		t.Run(testCase.Name, func(t *testing.T) {
 
 			UUID := uuid.NewUUIDString()
-			err := storage.Create(UUID, []byte(testCase.Secret), time.Second*10, testCase.Reads)
+			ctx := context.Background()
+			err := storage.Create(ctx, UUID, []byte(testCase.Secret), time.Second*10, testCase.Reads)
 
 			if err != nil {
 				t.Fatal(err)
 			}
-			res, err := storage.GetAndDelete(UUID)
+			res, err := storage.GetAndDelete(ctx, UUID)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -142,7 +144,8 @@ func TestPostgresqlStorageVerifyDelete(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 
-		err := storage.Create(testCase.UUID, []byte("foo"), time.Second*10, 1)
+		ctx := context.Background()
+		err := storage.Create(ctx, testCase.UUID, []byte("foo"), time.Second*10, 1)
 		if err != testCase.ExpectedErr {
 			t.Error(err)
 		}
@@ -156,7 +159,7 @@ func TestPostgresqlStorageVerifyDelete(t *testing.T) {
 			deleteKey = testCase.DeleteKey
 		}
 
-		actual, err := storage.VerifyDelete(testCase.UUID, deleteKey)
+		actual, err := storage.VerifyDelete(ctx, testCase.UUID, deleteKey)
 
 		if err != nil {
 			t.Errorf("Expected error to be %+v, but got %+v", testCase.ExpectedErr, err)

@@ -54,7 +54,8 @@ func scheduleDeleteExpired(entryStorage storage.VerifyStorage, stopChan chan int
 	for {
 		select {
 		case <-time.After(time.Second):
-			entryStorage.DeleteExpired()
+			ctx := context.Background()
+			entryStorage.DeleteExpired(ctx)
 		case <-stopChan:
 			stopChan <- struct{}{}
 			close(stopChan)

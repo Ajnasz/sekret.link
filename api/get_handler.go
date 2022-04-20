@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"log"
@@ -45,7 +46,8 @@ func handleGetEntry(entryStorage storage.VerifyStorage, w http.ResponseWriter, r
 	}
 
 	secretStore := storage.NewSecretStorage(entryStorage, aes.New(key))
-	entry, err := secretStore.GetAndDelete(UUID)
+	ctx := context.Background()
+	entry, err := secretStore.GetAndDelete(ctx, UUID)
 
 	if err != nil {
 		onGetError(w, err)

@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -72,7 +73,8 @@ func TestCreateEntry(t *testing.T) {
 	}
 
 	secretStore := storage.NewSecretStorage(connection, aes.New(key))
-	entry, err := secretStore.GetAndDelete(savedUUID)
+	ctx := context.Background()
+	entry, err := secretStore.GetAndDelete(ctx, savedUUID)
 
 	if err != nil {
 		t.Fatal(err)
@@ -116,7 +118,8 @@ func TestCreateEntryJSON(t *testing.T) {
 	}
 
 	secretStore := storage.NewSecretStorage(connection, aes.New(key))
-	entry, err := secretStore.GetAndDelete(encode.UUID)
+	ctx := context.Background()
+	entry, err := secretStore.GetAndDelete(ctx, encode.UUID)
 
 	if err != nil {
 		t.Fatal(err)
@@ -197,7 +200,8 @@ func TestCreateEntryForm(t *testing.T) {
 	}
 
 	secretStore := storage.NewSecretStorage(connection, aes.New(key))
-	entry, err := secretStore.GetAndDelete(savedUUID)
+	ctx := context.Background()
+	entry, err := secretStore.GetAndDelete(ctx, savedUUID)
 
 	if err != nil {
 		t.Fatal("Getting entry", err)
@@ -281,7 +285,8 @@ func TestGetEntry(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			connection.Create(testCase.UUID, encryptedData, time.Second*10, 1)
+			ctx := context.Background()
+			connection.Create(ctx, testCase.UUID, encryptedData, time.Second*10, 1)
 
 			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(rsakey)), nil)
 			w := httptest.NewRecorder()
@@ -328,7 +333,8 @@ func TestGetEntryJSON(t *testing.T) {
 		t.Error(err)
 	}
 
-	connection.Create(testCase.UUID, encryptedData, time.Second*10, 1)
+	ctx := context.Background()
+	connection.Create(ctx, testCase.UUID, encryptedData, time.Second*10, 1)
 
 	req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(rsakey)), nil)
 	req.Header.Add("Accept", "application/json")
@@ -419,7 +425,8 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 	}
 
 	secretStore := storage.NewSecretStorage(connection, aes.New(decodedKey))
-	entry, err := secretStore.GetAndDelete(savedUUID)
+	ctx := context.Background()
+	entry, err := secretStore.GetAndDelete(ctx, savedUUID)
 
 	if err != nil {
 		t.Fatal(err)
@@ -484,7 +491,8 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 	}
 
 	secretStore := storage.NewSecretStorage(connection, aes.New(decodedKey))
-	entry, err := secretStore.GetMeta(savedUUID)
+	ctx := context.Background()
+	entry, err := secretStore.GetMeta(ctx, savedUUID)
 
 	if err != nil {
 		t.Fatal(err)
