@@ -26,14 +26,14 @@ func (s Storage) Close() error {
 }
 
 // Create stores a new entry in database
-func (s Storage) Create(UUID string, entry []byte, expire time.Duration, remainingReads int) error {
+func (s Storage) Create(ctx context.Context, UUID string, entry []byte, expire time.Duration, remainingReads int) error {
 	now := time.Now()
 	k, err := key.NewGeneratedKey()
 	if err != nil {
 		return err
 	}
 	deleteKey := k.ToHex()
-	_, err = s.db.Exec(`INSERT INTO entries (uuid, data, created, expire, remaining_reads, delete_key) VALUES  ($1, $2, $3, $4, $5, $6) RETURNING uuid, delete_key;`, UUID, entry, now, now.Add(expire), remainingReads, deleteKey)
+	_, err = s.db.ExecContext(ctx, `INSERT INTO entries (uuid, data, created, expire, remaining_reads, delete_key) VALUES  ($1, $2, $3, $4, $5, $6) RETURNING uuid, delete_key;`, UUID, entry, now, now.Add(expire), remainingReads, deleteKey)
 
 	return err
 }
@@ -41,8 +41,7 @@ func (s Storage) Create(UUID string, entry []byte, expire time.Duration, remaini
 // GetMeta to get entry metadata (without the actual secret)
 // returns the metadata if the secret not expired yet
 // does not update read count
-func (s Storage) GetMeta(UUID string) (*entries.EntryMeta, error) {
-	ctx := context.Background()
+func (s Storage) GetMeta(ctx context.Context, UUID string) (*entries.EntryMeta, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -134,8 +133,7 @@ func (s Storage) GetMeta(UUID string) (*entries.EntryMeta, error) {
 // Get to get entry including the actual secret
 // returns the data if the secret not expired yet
 // updates read count
-func (s Storage) Get(UUID string) (*entries.Entry, error) {
-	ctx := context.Background()
+func (s Storage) Get(ctx context.Context, UUID string) (*entries.Entry, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -206,8 +204,7 @@ func (s Storage) Get(UUID string) (*entries.Entry, error) {
 // returns the data if the secret not expired yet
 // updates read count
 // deletes the data after the read
-func (s Storage) GetAndDelete(UUID string) (*entries.Entry, error) {
-	ctx := context.Background()
+func (s Storage) GetAndDelete(ctx context.Context, UUID string) (*entries.Entry, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -274,8 +271,7 @@ func (s Storage) GetAndDelete(UUID string) (*entries.Entry, error) {
 }
 
 // Delete deletes the entry from the database
-func (s Storage) Delete(UUID string) error {
-	ctx := context.Background()
+func (s Storage) Delete(ctx context.Context, UUID string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -292,8 +288,7 @@ func (s Storage) Delete(UUID string) error {
 }
 
 // VerifyDelete returns true if the given deleteKey belongs to the given UUID
-func (s Storage) VerifyDelete(UUID string, deleteKey string) (bool, error) {
-	ctx := context.Background()
+func (s Storage) VerifyDelete(ctx context.Context, UUID string, deleteKey string) (bool, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return false, err
@@ -318,8 +313,7 @@ func (s Storage) VerifyDelete(UUID string, deleteKey string) (bool, error) {
 }
 
 // GetDeleteKey returns the delete key for the uuid
-func (s Storage) GetDeleteKey(UUID string) (string, error) {
-	ctx := context.Background()
+func (s Storage) GetDeleteKey(ctx context.Context, UUID string) (string, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return "", err
@@ -343,8 +337,7 @@ func (s Storage) GetDeleteKey(UUID string) (string, error) {
 }
 
 // DeleteExpired removes expired entries from the database
-func (s Storage) DeleteExpired() error {
-	ctx := context.Background()
+func (s Storage) DeleteExpired(ctx context.Context) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err

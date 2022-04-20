@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -29,17 +30,19 @@ func TestStorages(t *testing.T) {
 		},
 	}
 
+	ctx := context.TODO()
+
 	for name, storage := range storages {
 		t.Run(name, func(t *testing.T) {
 			t.Run("GetMeta", func(t *testing.T) {
 				UUID := uuid.NewUUIDString()
-				err := storage.Create(UUID, []byte("foo"), time.Second*-10, 1)
+				err := storage.Create(ctx, UUID, []byte("foo"), time.Second*-10, 1)
 
 				if err != nil {
 					t.Fatal(err)
 				}
 
-				data, err := storage.GetMeta(UUID)
+				data, err := storage.GetMeta(ctx, UUID)
 
 				if data != nil {
 					t.Errorf("Expected expired data to be nil")
@@ -51,13 +54,13 @@ func TestStorages(t *testing.T) {
 			})
 			t.Run("GetAndDelete", func(t *testing.T) {
 				UUID := uuid.NewUUIDString()
-				err := storage.Create(UUID, []byte("foo"), time.Second*-10, 1)
+				err := storage.Create(ctx, UUID, []byte("foo"), time.Second*-10, 1)
 
 				if err != nil {
 					t.Fatal(err)
 				}
 
-				data, err := storage.GetAndDelete(UUID)
+				data, err := storage.GetAndDelete(ctx, UUID)
 
 				if data != nil {
 					t.Errorf("Expected expired data to be nil")
@@ -69,19 +72,19 @@ func TestStorages(t *testing.T) {
 			})
 			t.Run("Delete", func(t *testing.T) {
 				UUID := uuid.NewUUIDString()
-				err := storage.Create(UUID, []byte("foo"), time.Second*-10, 1)
+				err := storage.Create(ctx, UUID, []byte("foo"), time.Second*-10, 1)
 
 				if err != nil {
 					t.Fatal(err)
 				}
 
-				err = storage.Delete(UUID)
+				err = storage.Delete(ctx, UUID)
 
 				if err != nil {
 					t.Error(err)
 				}
 
-				retMeta, err := storage.GetMeta(UUID)
+				retMeta, err := storage.GetMeta(ctx, UUID)
 
 				if err != entries.ErrEntryNotFound {
 					t.Errorf("Storage GetMeta should return an entry not found error, but returned %v", err)
@@ -91,7 +94,7 @@ func TestStorages(t *testing.T) {
 					t.Errorf("Expected to not be able to retreive deleted item, but got: %v", retMeta)
 				}
 
-				ret, err := storage.GetAndDelete(UUID)
+				ret, err := storage.GetAndDelete(ctx, UUID)
 
 				if err != entries.ErrEntryNotFound {
 					t.Errorf("Storage GetAndDelete should return an entry not found error, but returned %v", err)
@@ -124,19 +127,19 @@ func TestStorages(t *testing.T) {
 				}
 
 				for _, item := range items {
-					err := storage.Create(item.UUID, item.Value, item.Expire, 1)
+					err := storage.Create(ctx, item.UUID, item.Value, item.Expire, 1)
 
 					if err != nil {
 						t.Fatal(err)
 					}
 
-					err = storage.DeleteExpired()
+					err = storage.DeleteExpired(ctx)
 
 					if err != nil {
 						t.Error(err)
 					}
 
-					ret, err := storage.GetMeta(item.UUID)
+					ret, err := storage.GetMeta(ctx, item.UUID)
 
 					if item.ShouldExpire {
 						if err != entries.ErrEntryNotFound {

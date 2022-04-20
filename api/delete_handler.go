@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -41,7 +42,8 @@ func handleDeleteEntry(entryStorage storage.VerifyStorage, w http.ResponseWriter
 
 	secretStore := storage.NewSecretStorage(entryStorage, aes.New(nil))
 
-	validDeleteKey, err := secretStore.VerifyDelete(UUID, deleteKey)
+	ctx := context.Background()
+	validDeleteKey, err := secretStore.VerifyDelete(ctx, UUID, deleteKey)
 
 	if err != nil {
 		log.Println("Verifying delete failed", err)
@@ -55,7 +57,7 @@ func handleDeleteEntry(entryStorage storage.VerifyStorage, w http.ResponseWriter
 		return
 	}
 
-	err = secretStore.Delete(UUID)
+	err = secretStore.Delete(ctx, UUID)
 
 	if err != nil {
 		log.Println("Delete failed", err)

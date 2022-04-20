@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -28,13 +29,14 @@ func TestSecretStorage(t *testing.T) {
 	// TODO defer storage.Close()
 
 	UUID := uuid.NewUUIDString()
-	err := storage.Create(UUID, []byte(testData), time.Second*10, 1)
+	ctx := context.Background()
+	err := storage.Create(ctx, UUID, []byte(testData), time.Second*10, 1)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	data, err := storage.GetAndDelete(UUID)
+	data, err := storage.GetAndDelete(ctx, UUID)
 
 	if err != nil {
 		t.Fatal(err)
