@@ -30,31 +30,18 @@ func onGetError(w http.ResponseWriter, err error) {
 	http.Error(w, "Internal error", http.StatusInternalServerError)
 }
 
-func handleGetEntry(entryStorage storage.Verifyable, w http.ResponseWriter, r *http.Request) {
-	UUID, keyString, err := uuid.GetUUIDAndSecretFromPath(r.URL.Path)
-
-	if err != nil {
-		log.Println(err)
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
-
+func handleGetSecret(entryStorage storage.Verifyable, UUID, keyString string) (*entries.Entry, error) {
 	key, err := hex.DecodeString(keyString)
 	if err != nil {
-		log.Println(err)
-		http.Error(w, "Internal error", http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
 	secretStore := secret.NewSecretStorage(entryStorage, aes.New(key))
 	ctx := context.Background()
-	entry, err := secretStore.GetAndDelete(ctx, UUID)
+	return secretStore.GetAndDelete(ctx, UUID)
+}
 
-	if err != nil {
-		onGetError(w, err)
-		return
-	}
-
+func sendGetSecretResponse(entry *entries.Entry, keyString string, w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("Accept") == "application/json" {
 		response := apientries.SecretResponseFromEntryMeta(entry.EntryMeta)
 
@@ -65,4 +52,27 @@ func handleGetEntry(entryStorage storage.Verifyable, w http.ResponseWriter, r *h
 		w.WriteHeader(http.StatusOK)
 		w.Write(entry.Data)
 	}
+}
+
+func handleGetEntry(entryStorage storage.Verifyable, w http.ResponseWriter, r *http.Request) {
+	UUID, keyString, err := uuid.GetUUIDAndSecretFromPath(r.URL.Path)
+
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	if err != nil {
+		onGetError(w, err)
+		return
+	}
+
+	entry, err := handleGetSecret(entryStorage, UUID, keyString)
+	if err != nil {
+		onGetError(w, err)
+		return
+	}
+
+	sendGetSecretResponse(entry, keyString, w, r)
 }
