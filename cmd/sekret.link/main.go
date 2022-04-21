@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Ajnasz/sekret.link/api"
+	"github.com/Ajnasz/sekret.link/api/middlewares"
 	"github.com/Ajnasz/sekret.link/config"
 	"github.com/Ajnasz/sekret.link/storage"
 	"github.com/Ajnasz/sekret.link/storage/postgresql"
@@ -69,7 +70,15 @@ func listen(handlerConfig api.HandlerConfig) *http.Server {
 	fmt.Println("Handle Path: ", apiRoot)
 
 	r := http.NewServeMux()
-	r.Handle(apiRoot, http.StripPrefix(apiRoot, api.NewSecretHandler(handlerConfig)))
+	r.Handle(
+		apiRoot,
+		http.StripPrefix(
+			apiRoot,
+			middlewares.SetupLogging(
+				middlewares.SetupHeaders(api.NewSecretHandler(handlerConfig)),
+			),
+		),
+	)
 	httpServer := &http.Server{
 		Addr:         ":8080",
 		Handler:      r,
