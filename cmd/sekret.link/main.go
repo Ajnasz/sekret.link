@@ -96,6 +96,10 @@ func getAPIRoot(webExternalURL *url.URL) string {
 		apiRoot = webExternalURL.Path
 	}
 
+	if apiRoot == "" {
+		return "/"
+	}
+
 	apiRoot = path.Clean(apiRoot)
 
 	if !strings.HasSuffix(apiRoot, "/") {
