@@ -50,16 +50,13 @@ func shutDown(shutdowns ...func() error) chan error {
 	return errChan
 }
 
-func scheduleDeleteExpired(entryStorage storage.VerifyStorage, stopChan chan interface{}) {
+func scheduleDeleteExpired(ctx context.Context, entryStorage storage.VerifyStorage) {
 	for {
 		select {
-		case <-time.After(time.Second):
-			ctx := context.Background()
-			entryStorage.DeleteExpired(ctx)
-		case <-stopChan:
-			stopChan <- struct{}{}
-			close(stopChan)
+		case <-ctx.Done():
 			return
+		case <-time.After(time.Second):
+			entryStorage.DeleteExpired(ctx)
 		}
 	}
 }
@@ -167,8 +164,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	stopChan := make(chan interface{})
-	go scheduleDeleteExpired(handlerConfig.EntryStorage, stopChan)
+	ctx, cancel := context.WithCancel(context.Background())
+	go scheduleDeleteExpired(ctx, handlerConfig.EntryStorage)
 	httpServer := listen(*handlerConfig)
 
 	termChan := make(chan os.Signal)
@@ -176,17 +173,14 @@ func main() {
 
 	defer close(termChan)
 	<-termChan
+	cancel()
 
-	ctx := context.Background()
 	shutdownErrors := shutDown(func() error {
-		ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer cancel()
 		return httpServer.Shutdown(ctx)
 	}, func() error {
 		return handlerConfig.EntryStorage.Close()
-	}, func() error {
-		stopChan <- struct{}{}
-		return nil
 	})
 
 	errored := false
@@ -199,16 +193,12 @@ func main() {
 				errored = true
 				fmt.Fprintf(os.Stderr, "error: %s", err)
 			}
-		case _, ok := <-stopChan:
-			if !ok {
-				stopChan = nil
-			}
 		case <-time.After(time.Second * 15):
 			fmt.Fprint(os.Stderr, "error: force quit")
 			os.Exit(2)
 		}
 
-		if shutdownErrors == nil && stopChan == nil {
+		if shutdownErrors == nil {
 			if errored {
 				os.Exit(1)
 			}
