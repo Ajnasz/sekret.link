@@ -538,7 +538,7 @@ func FuzzSetAndGetEntry(f *testing.F) {
 	for _, tc := range testCases {
 		f.Add(tc) // Use f.Add to provide a seed corpus
 	}
-	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
 	f.Cleanup(func() {
 		connection.Close()
 	})
