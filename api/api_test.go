@@ -532,3 +532,47 @@ func TestDeleteEntry(t *testing.T) {
 		t.Errorf("Delete response expected to be %d, but got %d", http.StatusAccepted, resp.StatusCode)
 	}
 }
+
+func FuzzSetAndGetEntry(f *testing.F) {
+	testCases := []string{"foo", " ", "12345", "A3@3!$"}
+	for _, tc := range testCases {
+		f.Add(tc) // Use f.Add to provide a seed corpus
+	}
+	connection := storage.ConnectToPostgresql(testhelper.GetPSQLTestConn())
+	f.Cleanup(func() {
+		connection.Close()
+	})
+
+	f.Fuzz(func(t *testing.T, testCase string) {
+		if testCase == "" {
+			t.Skip()
+		}
+		req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(testCase)))
+		w := httptest.NewRecorder()
+
+		NewSecretHandler(NewHandlerConfig(connection)).ServeHTTP(w, req)
+
+		resp := w.Result()
+		body, _ := io.ReadAll(resp.Body)
+
+		responseURL := string(body)
+		savedUUID, keyString, err := uuid.GetUUIDAndSecretFromPath(responseURL)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req = httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", savedUUID, keyString), nil)
+		w = httptest.NewRecorder()
+		NewSecretHandler(NewHandlerConfig(connection)).ServeHTTP(w, req)
+
+		resp = w.Result()
+		body, _ = io.ReadAll(resp.Body)
+
+		actual := string(body)
+
+		if testCase != actual {
+			t.Errorf("data not saved expected: %q, actual: %q", testCase, actual)
+		}
+	})
+}
