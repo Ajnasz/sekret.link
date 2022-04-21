@@ -30,7 +30,7 @@ func onGetError(w http.ResponseWriter, err error) {
 	http.Error(w, "Internal error", http.StatusInternalServerError)
 }
 
-func handleGetEntry(entryStorage storage.VerifyStorage, w http.ResponseWriter, r *http.Request) {
+func handleGetEntry(entryStorage storage.Verifyable, w http.ResponseWriter, r *http.Request) {
 	UUID, keyString, err := uuid.GetUUIDAndSecretFromPath(r.URL.Path)
 
 	if err != nil {

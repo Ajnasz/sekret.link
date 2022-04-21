@@ -21,7 +21,7 @@ func TestStorages(t *testing.T) {
 	})
 	psqlStorage := postgresql.NewPostgresCleanableStorage(connection)
 
-	storages := map[string]storage.CleanableStorage{
+	storages := map[string]storage.Cleanable{
 		"Postgres": psqlStorage,
 		"Secret": secret.NewCleanableSecretStorage(
 			secret.NewSecretStorage(

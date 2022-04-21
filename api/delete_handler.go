@@ -32,7 +32,7 @@ func parseDeleteEntryPath(urlPath string) (string, string, string, error) {
 	return UUID.String(), keyPart, delKey, nil
 }
 
-func handleDeleteEntry(entryStorage storage.VerifyStorage, w http.ResponseWriter, r *http.Request) {
+func handleDeleteEntry(entryStorage storage.Verifyable, w http.ResponseWriter, r *http.Request) {
 	UUID, _, deleteKey, err := parseDeleteEntryPath(r.URL.Path)
 
 	if err != nil {

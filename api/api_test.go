@@ -26,7 +26,7 @@ import (
 	"github.com/Ajnasz/sekret.link/uuid"
 )
 
-func NewHandlerConfig(storage storage.VerifyStorage) HandlerConfig {
+func NewHandlerConfig(storage storage.Verifyable) HandlerConfig {
 	extURL, _ := url.Parse("http://example.com")
 	return HandlerConfig{
 		ExpireSeconds:    10,

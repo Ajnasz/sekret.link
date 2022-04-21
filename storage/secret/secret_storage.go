@@ -12,12 +12,12 @@ import (
 // SecretStorage connects the encrypter.Encrypter with a VerifyStorage
 // so the encrypted data will be stored in the storage
 type SecretStorage struct {
-	internalStorage storage.VerifyStorage
+	internalStorage storage.Verifyable
 	Encrypter       encrypter.Encrypter
 }
 
 // NewSecretStorage creates a secretStore instance
-func NewSecretStorage(v storage.VerifyStorage, e encrypter.Encrypter) *SecretStorage {
+func NewSecretStorage(v storage.Verifyable, e encrypter.Encrypter) *SecretStorage {
 	return &SecretStorage{v, e}
 }
 
@@ -96,7 +96,7 @@ func (s SecretStorage) DeleteExpired(ctx context.Context) error {
 }
 
 // NewCleanableSecretStorage Creates a cleanable secret storage
-func NewCleanableSecretStorage(s *SecretStorage, internal storage.CleanableStorage) CleanableSecretStorage {
+func NewCleanableSecretStorage(s *SecretStorage, internal storage.Cleanable) CleanableSecretStorage {
 	return CleanableSecretStorage{s, internal}
 }
 
@@ -104,7 +104,7 @@ func NewCleanableSecretStorage(s *SecretStorage, internal storage.CleanableStora
 // to allow to clean every entry from the underlying storage
 type CleanableSecretStorage struct {
 	*SecretStorage
-	internalStorage storage.CleanableStorage
+	internalStorage storage.Cleanable
 }
 
 // Clean Executes the clean call on the storage

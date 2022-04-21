@@ -24,7 +24,7 @@ var (
 	version string
 )
 
-func getStorage(postgresDB string) storage.VerifyStorage {
+func getStorage(postgresDB string) storage.Verifyable {
 	return postgresql.NewStorage(config.GetConnectionString(postgresDB))
 }
 
@@ -50,7 +50,7 @@ func shutDown(shutdowns ...func() error) chan error {
 	return errChan
 }
 
-func scheduleDeleteExpired(entryStorage storage.VerifyStorage, stopChan chan interface{}) {
+func scheduleDeleteExpired(entryStorage storage.Verifyable, stopChan chan interface{}) {
 	for {
 		select {
 		case <-time.After(time.Second):
@@ -148,7 +148,7 @@ func getConfig() (*api.HandlerConfig, error) {
 	}
 	config.WebExternalURL = extURL
 
-	var entryStorage storage.VerifyStorage
+	var entryStorage storage.Verifyable
 	entryStorage = getStorage(postgresDB)
 	if entryStorage == nil {
 		return nil, fmt.Errorf("no database backend selected")
