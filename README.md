@@ -31,3 +31,18 @@ Postgres URL can be set from env var:
 POSTGRES_URL="user=sekret_link password=password host=localhost dbname=sekret_link sslmode=disable"
 ```
 
+## Example usage
+
+### Start the server
+
+```sh
+docker run --name postgres -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_DB=sekret_link_test -d postgres:13-alpine
+# in cmd/sekret.link folder
+POSTGRES_URL="postgres://postgres:password@localhost:5432/sekret_link_test?sslmode=disable" go run . -webExternalURL=/api
+```
+
+### Send and receive data
+```sh
+curl -v --data-binary @go.mod localhost:8080/api/ | xargs -I {} curl localhost:8080{}
+```
+
