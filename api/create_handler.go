@@ -9,8 +9,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Ajnasz/sekret.link/api/entries"
+	apientries "github.com/Ajnasz/sekret.link/api/entries"
 	"github.com/Ajnasz/sekret.link/encrypter/aes"
+	"github.com/Ajnasz/sekret.link/entries"
 	"github.com/Ajnasz/sekret.link/key"
 	"github.com/Ajnasz/sekret.link/storage/secret"
 	"github.com/Ajnasz/sekret.link/uuid"
@@ -44,6 +45,13 @@ func NewCreateHandler(c HandlerConfig) *CreateHandler {
 // CreateHandler is an http.Handler implementaton which creates secrets
 type CreateHandler struct {
 	config HandlerConfig
+}
+
+func addEntryHeaders(entry *entries.EntryMeta, keyString string, w http.ResponseWriter) {
+	w.Header().Add("x-entry-uuid", entry.UUID)
+	w.Header().Add("x-entry-key", keyString)
+	w.Header().Add("x-entry-expire", entry.Expire.Format(time.RFC3339))
+	w.Header().Add("x-entry-delete-key", entry.DeleteKey)
 }
 
 // Handle handles http request to create secret
@@ -85,14 +93,11 @@ func (c CreateHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Add("x-entry-uuid", UUID)
-	w.Header().Add("x-entry-key", k.ToHex())
-	w.Header().Add("x-entry-expire", entry.Expire.Format(time.RFC3339))
-	w.Header().Add("x-entry-delete-key", entry.DeleteKey)
+	addEntryHeaders(entry, k.String(), w)
 	if r.Header.Get("Accept") == "application/json" {
 		w.Header().Set("Content-Type", "application/json")
 
-		response := entries.SecretResponseFromEntryMeta(*entry)
+		response := apientries.SecretResponseFromEntryMeta(*entry)
 		response.Key = k.ToHex()
 
 		json.NewEncoder(w).Encode(response)
