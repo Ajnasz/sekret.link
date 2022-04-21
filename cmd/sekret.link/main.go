@@ -151,7 +151,7 @@ func getConfig() (*api.HandlerConfig, error) {
 	var entryStorage storage.VerifyStorage
 	entryStorage = getStorage(postgresDB)
 	if entryStorage == nil {
-		return nil, fmt.Errorf("No database backend selected")
+		return nil, fmt.Errorf("no database backend selected")
 	}
 
 	config.EntryStorage = entryStorage

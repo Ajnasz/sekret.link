@@ -11,6 +11,7 @@ import (
 	"github.com/Ajnasz/sekret.link/encrypter/aes"
 	"github.com/Ajnasz/sekret.link/entries"
 	"github.com/Ajnasz/sekret.link/storage"
+	"github.com/Ajnasz/sekret.link/storage/secret"
 	"github.com/Ajnasz/sekret.link/uuid"
 )
 
@@ -45,7 +46,7 @@ func handleGetEntry(entryStorage storage.VerifyStorage, w http.ResponseWriter, r
 		return
 	}
 
-	secretStore := storage.NewSecretStorage(entryStorage, aes.New(key))
+	secretStore := secret.NewSecretStorage(entryStorage, aes.New(key))
 	ctx := context.Background()
 	entry, err := secretStore.GetAndDelete(ctx, UUID)
 

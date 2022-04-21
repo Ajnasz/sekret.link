@@ -21,6 +21,7 @@ import (
 	"github.com/Ajnasz/sekret.link/key"
 	"github.com/Ajnasz/sekret.link/storage"
 	"github.com/Ajnasz/sekret.link/storage/postgresql"
+	"github.com/Ajnasz/sekret.link/storage/secret"
 	"github.com/Ajnasz/sekret.link/testhelper"
 	"github.com/Ajnasz/sekret.link/uuid"
 )
@@ -72,7 +73,7 @@ func TestCreateEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := storage.NewSecretStorage(connection, aes.New(key))
+	secretStore := secret.NewSecretStorage(connection, aes.New(key))
 	ctx := context.Background()
 	entry, err := secretStore.GetAndDelete(ctx, savedUUID)
 
@@ -117,7 +118,7 @@ func TestCreateEntryJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := storage.NewSecretStorage(connection, aes.New(key))
+	secretStore := secret.NewSecretStorage(connection, aes.New(key))
 	ctx := context.Background()
 	entry, err := secretStore.GetAndDelete(ctx, encode.UUID)
 
@@ -199,7 +200,7 @@ func TestCreateEntryForm(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := storage.NewSecretStorage(connection, aes.New(key))
+	secretStore := secret.NewSecretStorage(connection, aes.New(key))
 	ctx := context.Background()
 	entry, err := secretStore.GetAndDelete(ctx, savedUUID)
 
@@ -424,7 +425,7 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := storage.NewSecretStorage(connection, aes.New(decodedKey))
+	secretStore := secret.NewSecretStorage(connection, aes.New(decodedKey))
 	ctx := context.Background()
 	entry, err := secretStore.GetAndDelete(ctx, savedUUID)
 
@@ -490,7 +491,7 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := storage.NewSecretStorage(connection, aes.New(decodedKey))
+	secretStore := secret.NewSecretStorage(connection, aes.New(decodedKey))
 	ctx := context.Background()
 	entry, err := secretStore.GetMeta(ctx, savedUUID)
 

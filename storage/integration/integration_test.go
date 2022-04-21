@@ -1,4 +1,4 @@
-package storage
+package integration
 
 import (
 	"context"
@@ -7,7 +7,9 @@ import (
 
 	"github.com/Ajnasz/sekret.link/encrypter/dummy"
 	"github.com/Ajnasz/sekret.link/entries"
+	"github.com/Ajnasz/sekret.link/storage"
 	"github.com/Ajnasz/sekret.link/storage/postgresql"
+	"github.com/Ajnasz/sekret.link/storage/secret"
 	"github.com/Ajnasz/sekret.link/testhelper"
 	"github.com/Ajnasz/sekret.link/uuid"
 )
@@ -17,17 +19,17 @@ func TestStorages(t *testing.T) {
 	t.Cleanup(func() {
 		connection.Close()
 	})
-	psqlStorage := postgresql.PostgresCleanableStorage{connection}
+	psqlStorage := postgresql.NewPostgresCleanableStorage(connection)
 
-	storages := map[string]CleanableStorage{
+	storages := map[string]storage.CleanableStorage{
 		"Postgres": psqlStorage,
-		"Secret": CleanableSecretStorage{
-			NewSecretStorage(
+		"Secret": secret.NewCleanableSecretStorage(
+			secret.NewSecretStorage(
 				psqlStorage,
 				dummy.NewEncrypter(),
 			),
 			psqlStorage,
-		},
+		),
 	}
 
 	ctx := context.TODO()

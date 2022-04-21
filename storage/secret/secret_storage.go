@@ -1,4 +1,4 @@
-package storage
+package secret
 
 import (
 	"context"
@@ -6,17 +6,18 @@ import (
 
 	"github.com/Ajnasz/sekret.link/encrypter"
 	"github.com/Ajnasz/sekret.link/entries"
+	"github.com/Ajnasz/sekret.link/storage"
 )
 
 // SecretStorage connects the encrypter.Encrypter with a VerifyStorage
 // so the encrypted data will be stored in the storage
 type SecretStorage struct {
-	internalStorage VerifyStorage
+	internalStorage storage.VerifyStorage
 	Encrypter       encrypter.Encrypter
 }
 
 // NewSecretStorage creates a secretStore instance
-func NewSecretStorage(v VerifyStorage, e encrypter.Encrypter) *SecretStorage {
+func NewSecretStorage(v storage.VerifyStorage, e encrypter.Encrypter) *SecretStorage {
 	return &SecretStorage{v, e}
 }
 
@@ -94,11 +95,16 @@ func (s SecretStorage) DeleteExpired(ctx context.Context) error {
 	return s.internalStorage.DeleteExpired(ctx)
 }
 
+// NewCleanableSecretStorage Creates a cleanable secret storage
+func NewCleanableSecretStorage(s *SecretStorage, internal storage.CleanableStorage) CleanableSecretStorage {
+	return CleanableSecretStorage{s, internal}
+}
+
 // CleanableSecretStorage Storage which implements CleanableStorage interface,
 // to allow to clean every entry from the underlying storage
 type CleanableSecretStorage struct {
 	*SecretStorage
-	internalStorage CleanableStorage
+	internalStorage storage.CleanableStorage
 }
 
 // Clean Executes the clean call on the storage
