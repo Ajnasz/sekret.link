@@ -2,13 +2,16 @@ package api
 
 import (
 	"context"
+	"crypto/aes"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
 
 	apientries "github.com/Ajnasz/sekret.link/api/entries"
-	"github.com/Ajnasz/sekret.link/encrypter/aes"
+	aesencrypter "github.com/Ajnasz/sekret.link/encrypter/aes"
 	"github.com/Ajnasz/sekret.link/entries"
 	"github.com/Ajnasz/sekret.link/storage"
 	"github.com/Ajnasz/sekret.link/storage/secret"
@@ -16,12 +19,27 @@ import (
 )
 
 func onGetError(w http.ResponseWriter, err error) {
-	if err == entries.ErrEntryExpired {
+	if errors.Is(err, entries.ErrEntryExpired) {
+		log.Println(err)
 		http.Error(w, "Gone", http.StatusGone)
 		return
 	}
 
-	if err == entries.ErrEntryNotFound {
+	if errors.Is(err, entries.ErrEntryNotFound) {
+		log.Println(err)
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	if errors.Is(err, hex.ErrLength) {
+		log.Println(err)
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	var keysizeError *aes.KeySizeError
+	if errors.As(err, &keysizeError) {
+		log.Println(err)
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
@@ -33,10 +51,10 @@ func onGetError(w http.ResponseWriter, err error) {
 func handleGetSecret(entryStorage storage.Verifyable, UUID, keyString string) (*entries.Entry, error) {
 	key, err := hex.DecodeString(keyString)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("hex decode error: %w", err)
 	}
 
-	secretStore := secret.NewSecretStorage(entryStorage, aes.New(key))
+	secretStore := secret.NewSecretStorage(entryStorage, aesencrypter.New(key))
 	ctx := context.Background()
 	return secretStore.GetAndDelete(ctx, UUID)
 }
