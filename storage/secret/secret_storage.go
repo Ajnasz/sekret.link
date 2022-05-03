@@ -13,7 +13,7 @@ import (
 // so the encrypted data will be stored in the storage
 type SecretStorage struct {
 	internalStorage storage.Verifyable
-	Encrypter       encrypter.Encrypter
+	encrypter       encrypter.Encrypter
 }
 
 // NewSecretStorage creates a secretStore instance
@@ -23,7 +23,7 @@ func NewSecretStorage(v storage.Verifyable, e encrypter.Encrypter) *SecretStorag
 
 // Create stores the encrypted secret in the VerifyStorage
 func (s SecretStorage) Create(ctx context.Context, UUID string, entry []byte, expire time.Duration, remainingReads int) error {
-	encrypted, err := s.Encrypter.Encrypt(entry)
+	encrypted, err := s.encrypter.Encrypt(entry)
 
 	if err != nil {
 		return err
@@ -63,7 +63,7 @@ func (s SecretStorage) GetAndDelete(ctx context.Context, UUID string) (*entries.
 		return entry, nil
 	}
 
-	decrypted, err := s.Encrypter.Decrypt(entry.Data)
+	decrypted, err := s.encrypter.Decrypt(entry.Data)
 
 	if err != nil {
 		return nil, err
