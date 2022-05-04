@@ -2,7 +2,6 @@ package postgresql
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 	"time"
 
@@ -10,39 +9,7 @@ import (
 	"github.com/Ajnasz/sekret.link/uuid"
 )
 
-// func TestPostgresqlStorageWriteGet(t *testing.T) {
-// 	psqlConn := testhelper.GetPSQLTestConn()
-// 	storage := NewStorage(psqlConn)
-// 	t.Cleanup(func() {
-// 		defer storage.Close()
-// 	})
-// 	testCases := []string{
-// 		"foo",
-// 	}
-
-// 	for _, testCase := range testCases {
-// 		t.Run(testCase, func(t *testing.T) {
-
-// 			UUID := uuid.NewUUIDString()
-// 			err := storage.Write(UUID, []byte("foo"), time.Second*10, 1)
-
-// 			if err != nil {
-// 				t.Fatal(err)
-// 			}
-// 			res, err := storage.Get(UUID)
-// 			if err != nil {
-// 				t.Fatal(err)
-// 			}
-
-// 			actual := string(res.Data)
-// 			if actual != testCase {
-// 				t.Errorf("expected: %s, actual: %s", testCase, actual)
-// 			}
-// 		})
-// 	}
-// }
-
-func TestPostgresqlStorageWrite(t *testing.T) {
+func Test_PostgresqlStorageWrite(t *testing.T) {
 	psqlConn := testhelper.GetPSQLTestConn()
 	storage := NewStorage(psqlConn)
 	t.Cleanup(func() {
@@ -50,38 +17,34 @@ func TestPostgresqlStorageWrite(t *testing.T) {
 	})
 
 	testCases := []struct {
-		Name         string
-		Secret       string
-		Reads        int
-		Remaining    int
-		ExistanceErr error
+		Name      string
+		Secret    string
+		Reads     int
+		Remaining int
 	}{
 		{
-			Name:         "Simple get",
-			Secret:       "foo",
-			Reads:        1,
-			Remaining:    0,
-			ExistanceErr: sql.ErrNoRows,
+			Name:      "Simple get",
+			Secret:    "foo",
+			Reads:     1,
+			Remaining: 0,
 		},
 		{
-			Name:         "Exist get",
-			Secret:       "bar",
-			Reads:        2,
-			Remaining:    1,
-			ExistanceErr: nil,
+			Name:      "Exist get",
+			Secret:    "bar",
+			Reads:     2,
+			Remaining: 1,
 		},
 		{
-			Name:         "Exist get 2",
-			Secret:       "bar",
-			Reads:        3,
-			Remaining:    2,
-			ExistanceErr: nil,
+			Name:      "Exist get 2",
+			Secret:    "bar",
+			Reads:     3,
+			Remaining: 2,
 		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
-
+			t.Logf("%+v", testCase)
 			UUID := uuid.NewUUIDString()
 			ctx := context.Background()
 			err := storage.Write(ctx, UUID, []byte(testCase.Secret), time.Second*10, testCase.Reads)
@@ -96,16 +59,15 @@ func TestPostgresqlStorageWrite(t *testing.T) {
 
 			actual := string(res.Data)
 			if actual != testCase.Secret {
-				t.Errorf("expected: %s, actual: %s", testCase.Secret, actual)
+				t.Errorf("%s expected: %s, actual: %s", UUID, testCase.Secret, actual)
 			}
 
-			var data []byte
 			var remainingReads int
 
-			row := storage.db.QueryRow("SELECT data, remaining_reads FROM entries WHERE uuid=$1", UUID)
-			err = row.Scan(&data, &remainingReads)
-			if err != testCase.ExistanceErr {
-				t.Fatal(err)
+			row := storage.db.QueryRow("SELECT remaining_reads FROM entries WHERE uuid=$1", UUID)
+			err = row.Scan(&remainingReads)
+			if err != nil {
+				t.Fatalf("%s: %v", UUID, err)
 			}
 
 			if remainingReads != testCase.Remaining {
@@ -121,7 +83,6 @@ func TestPostgresqlStorageVerifyDelete(t *testing.T) {
 	t.Cleanup(func() {
 		storage.Close()
 	})
-	defer storage.Close()
 	testCases := []struct {
 		UUID        string
 		Key         string

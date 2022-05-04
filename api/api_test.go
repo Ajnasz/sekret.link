@@ -164,7 +164,7 @@ func TestCreateEntryForm(t *testing.T) {
 	value := "Foo"
 	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
-		connection.Close()
+		defer connection.Close()
 	})
 
 	data, multi, err := createMultipart(map[string]io.Reader{
@@ -233,13 +233,13 @@ func TestRequestPathsCreateEntry(t *testing.T) {
 		{Name: "/ path", Path: "/", StatusCode: 200},
 		{Name: "Longer path", Path: "/other", StatusCode: 404},
 	}
+	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
+	t.Cleanup(func() {
+		connection.Close()
+	})
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
-			connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
-			t.Cleanup(func() {
-				connection.Close()
-			})
 			req := httptest.NewRequest("POST", fmt.Sprintf("http://example.com%s", testCase.Path), bytes.NewReader([]byte("ASDF")))
 			w := httptest.NewRecorder()
 			NewSecretHandler(NewHandlerConfig(connection)).ServeHTTP(w, req)
@@ -264,17 +264,17 @@ func TestGetEntry(t *testing.T) {
 		{
 			"first",
 			"foo",
-			"3f356f6c-c8b1-4b48-8243-aa04d07b8873",
+			uuid.NewUUIDString(),
 		},
 	}
 
+	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
+	t.Cleanup(func() {
+		connection.Close()
+	})
+
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
-			connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
-			t.Cleanup(func() {
-				connection.Close()
-			})
-
 			k := key.NewKey()
 			if err := k.Generate(); err != nil {
 				t.Error(err)
@@ -303,13 +303,12 @@ func TestGetEntry(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestGetEntryJSON(t *testing.T) {
 	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
-		connection.Close()
+		defer connection.Close()
 	})
 	testCase := struct {
 		Name  string
@@ -319,7 +318,7 @@ func TestGetEntryJSON(t *testing.T) {
 
 		"first",
 		"foo",
-		"3f356f6c-c8b1-4b48-8243-aa04d07b8873",
+		uuid.NewUUIDString(),
 	}
 
 	k := key.NewKey()
@@ -335,7 +334,10 @@ func TestGetEntryJSON(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	connection.Write(ctx, testCase.UUID, encryptedData, time.Second*10, 1)
+	if err := connection.Write(ctx, testCase.UUID, encryptedData, time.Second*10, 1); err != nil {
+		t.Error(err)
+	}
+	fmt.Println("Wrote", testCase.UUID)
 
 	req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(rsakey)), nil)
 	req.Header.Add("Accept", "application/json")
@@ -343,6 +345,10 @@ func TestGetEntryJSON(t *testing.T) {
 	NewSecretHandler(NewHandlerConfig(connection)).ServeHTTP(w, req)
 
 	resp := w.Result()
+	fmt.Println(resp.Header)
+	if resp.StatusCode != 200 {
+		t.Errorf("non 200 http statuscode: %d", resp.StatusCode)
+	}
 	var encode entries.SecretResponse
 	err = json.NewDecoder(resp.Body).Decode(&encode)
 
@@ -540,7 +546,7 @@ func FuzzSetAndGetEntry(f *testing.F) {
 	}
 	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
 	f.Cleanup(func() {
-		connection.Close()
+		defer connection.Close()
 	})
 
 	f.Fuzz(func(t *testing.T, testCase string) {

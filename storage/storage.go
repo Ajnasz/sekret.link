@@ -37,12 +37,6 @@ type Storage interface {
 	Writer
 }
 
-// Cleanable Interface which enables to remove every entry from a storae
-type Cleanable interface {
-	Storage
-	Clean()
-}
-
 // Verifyable an interface which extends the EntryStorage with a
 // VerifyDelete method
 type Verifyable interface {

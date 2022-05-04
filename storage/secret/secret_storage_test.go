@@ -14,20 +14,15 @@ import (
 func TestSecretStorage(t *testing.T) {
 
 	testData := "Lorem ipusm dolor sit amet"
-	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
-	t.Cleanup(func() {
-		connection.Close()
-	})
-	psqlStorage := postgresql.PostgresCleanableStorage{connection}
-	storage := &CleanableSecretStorage{
-		NewSecretStorage(
-			psqlStorage,
-			dummy.NewEncrypter(),
-		),
+	psqlStorage := postgresql.NewStorage(testhelper.GetPSQLTestConn())
+	storage := NewSecretStorage(
 		psqlStorage,
-	}
-	// TODO defer storage.Close()
+		dummy.NewEncrypter(),
+	)
 
+	t.Cleanup(func() {
+		storage.Close()
+	})
 	UUID := uuid.NewUUIDString()
 	ctx := context.Background()
 	err := storage.Write(ctx, UUID, []byte(testData), time.Second*10, 1)

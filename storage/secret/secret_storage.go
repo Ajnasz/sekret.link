@@ -94,20 +94,3 @@ func (s SecretStorage) Delete(ctx context.Context, UUID string) error {
 func (s SecretStorage) DeleteExpired(ctx context.Context) error {
 	return s.internalStorage.DeleteExpired(ctx)
 }
-
-// NewCleanableSecretStorage Creates a cleanable secret storage
-func NewCleanableSecretStorage(s *SecretStorage, internal storage.Cleanable) CleanableSecretStorage {
-	return CleanableSecretStorage{s, internal}
-}
-
-// CleanableSecretStorage Storage which implements CleanableStorage interface,
-// to allow to clean every entry from the underlying storage
-type CleanableSecretStorage struct {
-	*SecretStorage
-	internalStorage storage.Cleanable
-}
-
-// Clean Executes the clean call on the storage
-func (s CleanableSecretStorage) Clean() {
-	s.internalStorage.Clean()
-}

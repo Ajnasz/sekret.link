@@ -15,20 +15,16 @@ import (
 )
 
 func TestStorages(t *testing.T) {
-	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
+	psqlStorage := postgresql.NewStorage(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
-		connection.Close()
+		psqlStorage.Close()
 	})
-	psqlStorage := postgresql.NewPostgresCleanableStorage(connection)
 
-	storages := map[string]storage.Cleanable{
+	storages := map[string]storage.Storage{
 		"Postgres": psqlStorage,
-		"Secret": secret.NewCleanableSecretStorage(
-			secret.NewSecretStorage(
-				psqlStorage,
-				dummy.NewEncrypter(),
-			),
+		"Secret": secret.NewSecretStorage(
 			psqlStorage,
+			dummy.NewEncrypter(),
 		),
 	}
 
@@ -54,6 +50,7 @@ func TestStorages(t *testing.T) {
 					t.Errorf("Expected expire error but got %v", err)
 				}
 			})
+
 			t.Run("Read", func(t *testing.T) {
 				UUID := uuid.NewUUIDString()
 				err := storage.Write(ctx, UUID, []byte("foo"), time.Second*-10, 1)
@@ -72,6 +69,7 @@ func TestStorages(t *testing.T) {
 					t.Errorf("Expected expire error but got %v", err)
 				}
 			})
+
 			t.Run("Delete", func(t *testing.T) {
 				UUID := uuid.NewUUIDString()
 				err := storage.Write(ctx, UUID, []byte("foo"), time.Second*-10, 1)

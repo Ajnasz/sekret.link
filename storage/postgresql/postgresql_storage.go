@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -27,15 +26,18 @@ func (s Storage) Close() error {
 
 // Write stores a new entry in database
 func (s Storage) Write(ctx context.Context, UUID string, entry []byte, expire time.Duration, remainingReads int) error {
-	now := time.Now()
-	k, err := key.NewGeneratedKey()
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	deleteKey := k.ToHex()
-	_, err = s.db.ExecContext(ctx, `INSERT INTO entries (uuid, data, created, expire, remaining_reads, delete_key) VALUES  ($1, $2, $3, $4, $5, $6) RETURNING uuid, delete_key;`, UUID, entry, now, now.Add(expire), remainingReads, deleteKey)
 
-	return err
+	if err = s.write(tx, UUID, entry, expire, remainingReads); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	tx.Commit()
+	return nil
 }
 
 // ReadMeta to get entry metadata (without the actual secret)
@@ -47,7 +49,59 @@ func (s Storage) ReadMeta(ctx context.Context, UUID string) (*entries.EntryMeta,
 		return nil, err
 	}
 
-	row := tx.QueryRowContext(ctx, `
+	meta, err := s.readMeta(tx, UUID)
+	if err != nil {
+		tx.Rollback()
+		if err == sql.ErrNoRows {
+			return nil, entries.ErrEntryNotFound
+		}
+
+		return nil, err
+	}
+
+	if meta.IsExpired() {
+		if err := s.setAccessed(tx, UUID); err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+
+		if err = tx.Commit(); err != nil {
+			return nil, err
+		}
+
+		return nil, entries.ErrEntryExpired
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return meta, nil
+}
+
+func (s Storage) write(tx *sql.Tx, UUID string, entry []byte, expire time.Duration, remainingReads int) error {
+	now := time.Now()
+	k, err := key.NewGeneratedKey()
+	if err != nil {
+		return err
+	}
+	deleteKey := k.ToHex()
+
+	_, err = tx.Exec(`INSERT INTO entries (uuid, data, created, expire, remaining_reads, delete_key) VALUES  ($1, $2, $3, $4, $5, $6) RETURNING uuid, delete_key;`, UUID, entry, now, now.Add(expire), remainingReads, deleteKey)
+
+	return err
+}
+
+func (s Storage) setAccessed(tx *sql.Tx, UUID string) error {
+	if _, err := tx.Exec("UPDATE entries SET accessed=$1 WHERE uuid=$2", time.Now(), UUID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s Storage) readMeta(tx *sql.Tx, UUID string) (*entries.EntryMeta, error) {
+	row := tx.QueryRow(`
 	SELECT
 		created,
 		accessed,
@@ -58,6 +112,7 @@ func (s Storage) ReadMeta(ctx context.Context, UUID string) (*entries.EntryMeta,
 		entries
 	WHERE
 		uuid=$1
+		AND remaining_reads > 0
 		`, UUID)
 
 	var created time.Time
@@ -65,13 +120,9 @@ func (s Storage) ReadMeta(ctx context.Context, UUID string) (*entries.EntryMeta,
 	var expireNullTime sql.NullTime
 	var remainingReadsNullInt32 sql.NullInt32
 	var deleteKeyNullString sql.NullString
-	err = row.Scan(&created, &accessedNullTime, &expireNullTime, &remainingReadsNullInt32, &deleteKeyNullString)
+	err := row.Scan(&created, &accessedNullTime, &expireNullTime, &remainingReadsNullInt32, &deleteKeyNullString)
 
 	if err != nil {
-		tx.Rollback()
-		if err == sql.ErrNoRows {
-			return nil, entries.ErrEntryNotFound
-		}
 		return nil, err
 	}
 
@@ -102,62 +153,36 @@ func (s Storage) ReadMeta(ctx context.Context, UUID string) (*entries.EntryMeta,
 		DeleteKey: deleteKey,
 	}
 
-	if meta.IsExpired() {
-		_, err = tx.ExecContext(ctx, `
-			UPDATE entries
-			SET data=$1, accessed=$2
-			WHERE uuid=$3
-			`, nil, time.Now(), UUID)
-
-		if err != nil {
-			tx.Rollback()
-			return nil, err
-		}
-		err := tx.Commit()
-		if err != nil {
-			return nil, err
-		}
-
-		return nil, entries.ErrEntryExpired
-	}
-
-	err = tx.Commit()
-
-	if err != nil {
-		return nil, err
-	}
-
 	return meta, nil
 }
 
-// Get to get entry including the actual secret
+func (s Storage) updateReadCount(tx *sql.Tx, UUID string) error {
+	_, err := tx.Exec("UPDATE entries SET remaining_reads = remaining_reads - 1 WHERE uuid=$1;", UUID)
+	return err
+}
+
+// read to get entry including the actual secret
 // returns the data if the secret not expired yet
 // updates read count
-func (s Storage) Get(ctx context.Context, UUID string) (*entries.Entry, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
+func (s Storage) read(tx *sql.Tx, UUID string) (*entries.Entry, error) {
 
-	row := tx.QueryRowContext(ctx, "SELECT data, created, accessed, expire FROM entries WHERE uuid=$1", UUID)
+	row := tx.QueryRow(`SELECT data, created, accessed, expire, remaining_reads FROM entries
+		WHERE uuid=$1
+		AND remaining_reads > 0
+		LIMIT 1`, UUID)
 
 	var data []byte
 	var created time.Time
 	var accessedNullTime sql.NullTime
 	var expireNullTime sql.NullTime
-	err = row.Scan(&data, &created, &accessedNullTime, &expireNullTime)
-
-	if err != nil {
-		tx.Rollback()
-		if err == sql.ErrNoRows {
-			return nil, entries.ErrEntryNotFound
-		}
-
+	var remainingReadsNullInt32 sql.NullInt32
+	if err := row.Scan(&data, &created, &accessedNullTime, &expireNullTime, &remainingReadsNullInt32); err != nil {
 		return nil, err
 	}
 
 	var accessed time.Time
 	var expire time.Time
+	var maxReads int32
 
 	if accessedNullTime.Valid {
 		accessed = accessedNullTime.Time
@@ -165,33 +190,16 @@ func (s Storage) Get(ctx context.Context, UUID string) (*entries.Entry, error) {
 	if expireNullTime.Valid {
 		expire = expireNullTime.Time
 	}
+	if remainingReadsNullInt32.Valid {
+		maxReads = remainingReadsNullInt32.Int32
+	}
 
 	meta := entries.EntryMeta{
 		UUID:     UUID,
 		Created:  created,
 		Accessed: accessed,
 		Expire:   expire,
-	}
-
-	if meta.IsExpired() {
-		_, err = tx.ExecContext(ctx, "UPDATE entries SET data=$1, accessed=$2 WHERE uuid=$3", nil, time.Now(), UUID)
-
-		if err != nil {
-			tx.Rollback()
-			return nil, err
-		}
-		err := tx.Commit()
-		if err != nil {
-			return nil, err
-		}
-
-		return nil, entries.ErrEntryExpired
-	}
-
-	err = tx.Commit()
-
-	if err != nil {
-		return nil, err
+		MaxReads: maxReads,
 	}
 
 	return &entries.Entry{
@@ -210,13 +218,7 @@ func (s Storage) Read(ctx context.Context, UUID string) (*entries.Entry, error) 
 		return nil, err
 	}
 
-	row := tx.QueryRowContext(ctx, "SELECT data, created, accessed, expire FROM entries WHERE uuid=$1", UUID)
-
-	var data []byte
-	var created time.Time
-	var accessedNullTime sql.NullTime
-	var expireNullTime sql.NullTime
-	err = row.Scan(&data, &created, &accessedNullTime, &expireNullTime)
+	entry, err := s.read(tx, UUID)
 
 	if err != nil {
 		tx.Rollback()
@@ -226,16 +228,15 @@ func (s Storage) Read(ctx context.Context, UUID string) (*entries.Entry, error) 
 		return nil, err
 	}
 
-	queries := []string{
-		"UPDATE entries SET remaining_reads = remaining_reads - 1 WHERE uuid=$1;",
-		"DELETE FROM entries WHERE uuid=$1 AND remaining_reads < 1;",
+	if entry.IsExpired() {
+		s.setAccessed(tx, UUID)
+		tx.Commit()
+		return nil, entries.ErrEntryExpired
 	}
-	for _, query := range queries {
-		_, err = tx.ExecContext(ctx, query, UUID)
-		if err != nil {
-			tx.Rollback()
-			return nil, err
-		}
+
+	if err := s.updateReadCount(tx, UUID); err != nil {
+		tx.Rollback()
+		return nil, err
 	}
 
 	err = tx.Commit()
@@ -243,31 +244,7 @@ func (s Storage) Read(ctx context.Context, UUID string) (*entries.Entry, error) 
 		return nil, err
 	}
 
-	var accessed time.Time
-	var expire time.Time
-
-	if accessedNullTime.Valid {
-		accessed = accessedNullTime.Time
-	}
-	if expireNullTime.Valid {
-		expire = expireNullTime.Time
-	}
-
-	meta := entries.EntryMeta{
-		UUID:     UUID,
-		Created:  created,
-		Accessed: accessed,
-		Expire:   expire,
-	}
-
-	if meta.IsExpired() {
-		return nil, entries.ErrEntryExpired
-	}
-
-	return &entries.Entry{
-		EntryMeta: meta,
-		Data:      data,
-	}, nil
+	return entry, nil
 }
 
 // Delete deletes the entry from the database
@@ -346,29 +323,10 @@ func (s Storage) DeleteExpired(ctx context.Context) error {
 	_, err = tx.ExecContext(ctx, "DELETE FROM entries WHERE expire < NOW() OR remaining_reads < 1;")
 
 	if err != nil {
+		fmt.Println("DELETE ERRRO", err)
 		tx.Rollback()
 		return err
 	}
 
 	return tx.Commit()
-}
-
-// NewPostgresCleanableStorage Creates a cleanable psql storage instance
-func NewPostgresCleanableStorage(s *Storage) *PostgresCleanableStorage {
-	return &PostgresCleanableStorage{s}
-}
-
-// PostgresCleanableStorage extends the regular PostgresqlStorage with a Clean
-// method to remove all entries
-type PostgresCleanableStorage struct {
-	*Storage
-}
-
-// Clean deletes all entries from the database
-func (s PostgresCleanableStorage) Clean() {
-	_, err := s.db.Exec("TRUNCATE entries;")
-
-	if err != nil {
-		log.Fatal(err)
-	}
 }
