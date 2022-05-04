@@ -25,8 +25,8 @@ func (s Storage) Close() error {
 	return s.db.Close()
 }
 
-// Create stores a new entry in database
-func (s Storage) Create(ctx context.Context, UUID string, entry []byte, expire time.Duration, remainingReads int) error {
+// Write stores a new entry in database
+func (s Storage) Write(ctx context.Context, UUID string, entry []byte, expire time.Duration, remainingReads int) error {
 	now := time.Now()
 	k, err := key.NewGeneratedKey()
 	if err != nil {
@@ -38,10 +38,10 @@ func (s Storage) Create(ctx context.Context, UUID string, entry []byte, expire t
 	return err
 }
 
-// GetMeta to get entry metadata (without the actual secret)
+// ReadMeta to get entry metadata (without the actual secret)
 // returns the metadata if the secret not expired yet
 // does not update read count
-func (s Storage) GetMeta(ctx context.Context, UUID string) (*entries.EntryMeta, error) {
+func (s Storage) ReadMeta(ctx context.Context, UUID string) (*entries.EntryMeta, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -200,11 +200,11 @@ func (s Storage) Get(ctx context.Context, UUID string) (*entries.Entry, error) {
 	}, nil
 }
 
-// GetAndDelete to get entry including the actual secret then delete it
+// Read to get entry including the actual secret then delete it
 // returns the data if the secret not expired yet
 // updates read count
 // deletes the data after the read
-func (s Storage) GetAndDelete(ctx context.Context, UUID string) (*entries.Entry, error) {
+func (s Storage) Read(ctx context.Context, UUID string) (*entries.Entry, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err

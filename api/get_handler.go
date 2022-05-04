@@ -56,7 +56,7 @@ func handleGetSecret(entryStorage storage.Verifyable, UUID, keyString string) (*
 
 	secretStore := secret.NewSecretStorage(entryStorage, aesencrypter.New(key))
 	ctx := context.Background()
-	return secretStore.GetAndDelete(ctx, UUID)
+	return secretStore.Read(ctx, UUID)
 }
 
 func sendGetSecretResponse(entry *entries.Entry, keyString string, w http.ResponseWriter, r *http.Request) {

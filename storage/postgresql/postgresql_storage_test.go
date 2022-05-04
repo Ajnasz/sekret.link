@@ -10,7 +10,7 @@ import (
 	"github.com/Ajnasz/sekret.link/uuid"
 )
 
-// func TestPostgresqlStorageCreateGet(t *testing.T) {
+// func TestPostgresqlStorageWriteGet(t *testing.T) {
 // 	psqlConn := testhelper.GetPSQLTestConn()
 // 	storage := NewStorage(psqlConn)
 // 	t.Cleanup(func() {
@@ -24,7 +24,7 @@ import (
 // 		t.Run(testCase, func(t *testing.T) {
 
 // 			UUID := uuid.NewUUIDString()
-// 			err := storage.Create(UUID, []byte("foo"), time.Second*10, 1)
+// 			err := storage.Write(UUID, []byte("foo"), time.Second*10, 1)
 
 // 			if err != nil {
 // 				t.Fatal(err)
@@ -42,7 +42,7 @@ import (
 // 	}
 // }
 
-func TestPostgresqlStorageCreateGetAndDelete(t *testing.T) {
+func TestPostgresqlStorageWrite(t *testing.T) {
 	psqlConn := testhelper.GetPSQLTestConn()
 	storage := NewStorage(psqlConn)
 	t.Cleanup(func() {
@@ -84,12 +84,12 @@ func TestPostgresqlStorageCreateGetAndDelete(t *testing.T) {
 
 			UUID := uuid.NewUUIDString()
 			ctx := context.Background()
-			err := storage.Create(ctx, UUID, []byte(testCase.Secret), time.Second*10, testCase.Reads)
+			err := storage.Write(ctx, UUID, []byte(testCase.Secret), time.Second*10, testCase.Reads)
 
 			if err != nil {
 				t.Fatal(err)
 			}
-			res, err := storage.GetAndDelete(ctx, UUID)
+			res, err := storage.Read(ctx, UUID)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -145,7 +145,7 @@ func TestPostgresqlStorageVerifyDelete(t *testing.T) {
 	for _, testCase := range testCases {
 
 		ctx := context.Background()
-		err := storage.Create(ctx, testCase.UUID, []byte("foo"), time.Second*10, 1)
+		err := storage.Write(ctx, testCase.UUID, []byte("foo"), time.Second*10, 1)
 		if err != testCase.ExpectedErr {
 			t.Error(err)
 		}

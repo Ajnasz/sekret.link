@@ -21,20 +21,20 @@ func NewSecretStorage(v storage.Verifyable, e encrypter.Encrypter) *SecretStorag
 	return &SecretStorage{v, e}
 }
 
-// Create stores the encrypted secret in the VerifyStorage
-func (s SecretStorage) Create(ctx context.Context, UUID string, entry []byte, expire time.Duration, remainingReads int) error {
+// Write stores the encrypted secret in the VerifyStorage
+func (s SecretStorage) Write(ctx context.Context, UUID string, entry []byte, expire time.Duration, remainingReads int) error {
 	encrypted, err := s.encrypter.Encrypt(entry)
 
 	if err != nil {
 		return err
 	}
 
-	return s.internalStorage.Create(ctx, UUID, encrypted, expire, remainingReads)
+	return s.internalStorage.Write(ctx, UUID, encrypted, expire, remainingReads)
 }
 
-// GetMeta returns the entry's metadata
-func (s SecretStorage) GetMeta(ctx context.Context, UUID string) (*entries.EntryMeta, error) {
-	entryMeta, err := s.internalStorage.GetMeta(ctx, UUID)
+// ReadMeta returns the entry's metadata
+func (s SecretStorage) ReadMeta(ctx context.Context, UUID string) (*entries.EntryMeta, error) {
+	entryMeta, err := s.internalStorage.ReadMeta(ctx, UUID)
 
 	if err != nil {
 		return nil, err
@@ -47,9 +47,9 @@ func (s SecretStorage) GetMeta(ctx context.Context, UUID string) (*entries.Entry
 	return entryMeta, nil
 }
 
-// GetAndDelete deletes the secret from VerifyStorage
-func (s SecretStorage) GetAndDelete(ctx context.Context, UUID string) (*entries.Entry, error) {
-	entry, err := s.internalStorage.GetAndDelete(ctx, UUID)
+// Read deletes the secret from VerifyStorage
+func (s SecretStorage) Read(ctx context.Context, UUID string) (*entries.Entry, error) {
+	entry, err := s.internalStorage.Read(ctx, UUID)
 
 	if err != nil {
 		return nil, err

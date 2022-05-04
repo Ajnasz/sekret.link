@@ -7,12 +7,15 @@ import (
 	"github.com/Ajnasz/sekret.link/entries"
 )
 
+type Transform = func(*entries.Entry) (*entries.Entry, error)
+
 // Reader interface to get stored entry
 type Reader interface {
-	GetAndDelete(context.Context, string) (*entries.Entry, error)
-	GetMeta(context.Context, string) (*entries.EntryMeta, error)
-	// Get(UUID string) (*entries.Entry, error)
-	// Closes connection to data storage, like database
+	// Read reads the secret and deletes from the underlying storage in one step
+	Read(context.Context, string) (*entries.Entry, error)
+	// ReadMeta reads secret meta data from the storage
+	ReadMeta(context.Context, string) (*entries.EntryMeta, error)
+	// Close Closes connection to data storage, like database
 	// Executed on application shutdown
 	Close() error
 }
@@ -20,7 +23,7 @@ type Reader interface {
 // Writer interface to store and delete entry
 type Writer interface {
 	// Writes the secret into the remote data storege
-	Create(ctx context.Context, UUID string, entry []byte, expiration time.Duration, maxReads int) error
+	Write(ctx context.Context, UUID string, entry []byte, expiration time.Duration, maxReads int) error
 	Delete(context.Context, string) error
 	DeleteExpired(context.Context) error
 	// Closes connection to data storage, like database

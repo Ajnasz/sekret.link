@@ -78,7 +78,7 @@ func (c CreateHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	UUID := uuid.NewUUIDString()
 
 	ctx := context.Background()
-	err = secretStore.Create(ctx, UUID, data.body, data.expiration, data.maxReads)
+	err = secretStore.Write(ctx, UUID, data.body, data.expiration, data.maxReads)
 
 	if err != nil {
 		log.Println("Create secret failed", err)
@@ -86,7 +86,7 @@ func (c CreateHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	entry, err := secretStore.GetMeta(ctx, UUID)
+	entry, err := secretStore.ReadMeta(ctx, UUID)
 	if err != nil {
 		log.Println("Getting meta failed", err, UUID)
 		http.Error(w, "Internal error", http.StatusInternalServerError)
