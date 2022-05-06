@@ -22,11 +22,11 @@ func NewSecretStorage(v storage.Verifyable, e encrypter.Encrypter) *SecretStorag
 }
 
 // Write stores the encrypted secret in the VerifyStorage
-func (s SecretStorage) Write(ctx context.Context, UUID string, entry []byte, expire time.Duration, remainingReads int) error {
+func (s SecretStorage) Write(ctx context.Context, UUID string, entry []byte, expire time.Duration, remainingReads int) (*entries.EntryMeta, error) {
 	encrypted, err := s.encrypter.Encrypt(entry)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return s.internalStorage.Write(ctx, UUID, encrypted, expire, remainingReads)

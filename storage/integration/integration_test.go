@@ -32,12 +32,11 @@ func TestStorages(t *testing.T) {
 
 	for name, storage := range storages {
 		t.Run(name, func(t *testing.T) {
-			t.Run("ReadMeta", func(t *testing.T) {
+			t.Run("ReadMeta - expired", func(t *testing.T) {
 				UUID := uuid.NewUUIDString()
-				err := storage.Write(ctx, UUID, []byte("foo"), time.Second*-10, 1)
-
-				if err != nil {
-					t.Fatal(err)
+				entry, err := storage.Write(ctx, UUID, []byte("foo"), time.Second*-10, 1)
+				if err != entries.ErrEntryExpired {
+					t.Errorf("Expected expire error but got %v", err)
 				}
 
 				data, err := storage.ReadMeta(ctx, UUID)
@@ -46,16 +45,20 @@ func TestStorages(t *testing.T) {
 					t.Errorf("Expected expired data to be nil")
 				}
 
+				if entry != nil {
+					t.Errorf("expected entry to be nil, got %+v", entry)
+				}
+
 				if err != entries.ErrEntryExpired {
 					t.Errorf("Expected expire error but got %v", err)
 				}
 			})
 
-			t.Run("Read", func(t *testing.T) {
+			t.Run("Read - expired", func(t *testing.T) {
 				UUID := uuid.NewUUIDString()
-				err := storage.Write(ctx, UUID, []byte("foo"), time.Second*-10, 1)
+				_, err := storage.Write(ctx, UUID, []byte("foo"), time.Second*-10, 1)
 
-				if err != nil {
+				if err != nil && err != entries.ErrEntryExpired {
 					t.Fatal(err)
 				}
 
@@ -70,11 +73,11 @@ func TestStorages(t *testing.T) {
 				}
 			})
 
-			t.Run("Delete", func(t *testing.T) {
+			t.Run("Delete - expired", func(t *testing.T) {
 				UUID := uuid.NewUUIDString()
-				err := storage.Write(ctx, UUID, []byte("foo"), time.Second*-10, 1)
+				_, err := storage.Write(ctx, UUID, []byte("foo"), time.Second*-10, 1)
 
-				if err != nil {
+				if err != nil && err != entries.ErrEntryExpired {
 					t.Fatal(err)
 				}
 
@@ -127,9 +130,9 @@ func TestStorages(t *testing.T) {
 				}
 
 				for _, item := range items {
-					err := storage.Write(ctx, item.UUID, item.Value, item.Expire, 1)
+					_, err := storage.Write(ctx, item.UUID, item.Value, item.Expire, 1)
 
-					if err != nil {
+					if err != nil && err != entries.ErrEntryExpired {
 						t.Fatal(err)
 					}
 

@@ -42,6 +42,10 @@ func (c CreateHandler) calculateExpiration(expire string, defaultExpire time.Dur
 		return 0, ErrInvalidExpirationDate
 	}
 
+	if userExpire <= 0 {
+		return 0, ErrInvalidExpirationDate
+	}
+
 	return userExpire, nil
 }
 

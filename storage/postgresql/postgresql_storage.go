@@ -3,7 +3,6 @@ package postgresql
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"strings"
 	"time"
 
@@ -25,19 +24,34 @@ func (s Storage) Close() error {
 }
 
 // Write stores a new entry in database
-func (s Storage) Write(ctx context.Context, UUID string, entry []byte, expire time.Duration, remainingReads int) error {
+func (s Storage) Write(ctx context.Context, UUID string, entry []byte, expire time.Duration, remainingReads int) (*entries.EntryMeta, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err = s.write(tx, UUID, entry, expire, remainingReads); err != nil {
 		tx.Rollback()
-		return err
+		return nil, err
+	}
+
+	meta, err := s.readMeta(tx, UUID)
+	if err != nil {
+		tx.Rollback()
+		if err == sql.ErrNoRows {
+			return meta, entries.ErrEntryNotFound
+		}
+		return nil, err
+	}
+
+	if meta.IsExpired() {
+		s.setAccessed(tx, UUID)
+		tx.Commit()
+		return nil, entries.ErrEntryExpired
 	}
 
 	tx.Commit()
-	return nil
+	return meta, nil
 }
 
 // ReadMeta to get entry metadata (without the actual secret)
@@ -166,7 +180,9 @@ func (s Storage) updateReadCount(tx *sql.Tx, UUID string) error {
 // updates read count
 func (s Storage) read(tx *sql.Tx, UUID string) (*entries.Entry, error) {
 
-	row := tx.QueryRow(`SELECT data, created, accessed, expire, remaining_reads FROM entries
+	row := tx.QueryRow(`
+		SELECT data, created, accessed, expire, remaining_reads, delete_key
+		FROM entries
 		WHERE uuid=$1
 		AND remaining_reads > 0
 		LIMIT 1`, UUID)
@@ -176,13 +192,15 @@ func (s Storage) read(tx *sql.Tx, UUID string) (*entries.Entry, error) {
 	var accessedNullTime sql.NullTime
 	var expireNullTime sql.NullTime
 	var remainingReadsNullInt32 sql.NullInt32
-	if err := row.Scan(&data, &created, &accessedNullTime, &expireNullTime, &remainingReadsNullInt32); err != nil {
+	var deleteKeyNullString sql.NullString
+	if err := row.Scan(&data, &created, &accessedNullTime, &expireNullTime, &remainingReadsNullInt32, &deleteKeyNullString); err != nil {
 		return nil, err
 	}
 
 	var accessed time.Time
 	var expire time.Time
 	var maxReads int32
+	var deleteKey string
 
 	if accessedNullTime.Valid {
 		accessed = accessedNullTime.Time
@@ -193,13 +211,17 @@ func (s Storage) read(tx *sql.Tx, UUID string) (*entries.Entry, error) {
 	if remainingReadsNullInt32.Valid {
 		maxReads = remainingReadsNullInt32.Int32
 	}
+	if deleteKeyNullString.Valid {
+		deleteKey = strings.TrimSpace(deleteKeyNullString.String)
+	}
 
 	meta := entries.EntryMeta{
-		UUID:     UUID,
-		Created:  created,
-		Accessed: accessed,
-		Expire:   expire,
-		MaxReads: maxReads,
+		UUID:      UUID,
+		Created:   created,
+		Accessed:  accessed,
+		Expire:    expire,
+		MaxReads:  maxReads,
+		DeleteKey: deleteKey,
 	}
 
 	return &entries.Entry{
@@ -274,7 +296,6 @@ func (s Storage) VerifyDelete(ctx context.Context, UUID string, deleteKey string
 	row := tx.QueryRowContext(ctx, "SELECT 1 FROM entries WHERE uuid=$1 AND delete_key=$2;", UUID, deleteKey)
 
 	if row.Err() != nil {
-		fmt.Println("Error querying verify delete", row.Err())
 		tx.Rollback()
 		return false, row.Err()
 	}
@@ -323,7 +344,6 @@ func (s Storage) DeleteExpired(ctx context.Context) error {
 	_, err = tx.ExecContext(ctx, "DELETE FROM entries WHERE expire < NOW() OR remaining_reads < 1;")
 
 	if err != nil {
-		fmt.Println("DELETE ERRRO", err)
 		tx.Rollback()
 		return err
 	}

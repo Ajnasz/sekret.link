@@ -47,14 +47,19 @@ func Test_PostgresqlStorageWrite(t *testing.T) {
 			t.Logf("%+v", testCase)
 			UUID := uuid.NewUUIDString()
 			ctx := context.Background()
-			err := storage.Write(ctx, UUID, []byte(testCase.Secret), time.Second*10, testCase.Reads)
+			meta, err := storage.Write(ctx, UUID, []byte(testCase.Secret), time.Second*10, testCase.Reads)
 
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			res, err := storage.Read(ctx, UUID)
 			if err != nil {
 				t.Fatal(err)
+			}
+
+			if res.EntryMeta != *meta {
+				t.Errorf("expected meta to be the same %+v, %+v", res.EntryMeta, *meta)
 			}
 
 			actual := string(res.Data)
@@ -106,7 +111,7 @@ func TestPostgresqlStorageVerifyDelete(t *testing.T) {
 	for _, testCase := range testCases {
 
 		ctx := context.Background()
-		err := storage.Write(ctx, testCase.UUID, []byte("foo"), time.Second*10, 1)
+		_, err := storage.Write(ctx, testCase.UUID, []byte("foo"), time.Second*10, 1)
 		if err != testCase.ExpectedErr {
 			t.Error(err)
 		}

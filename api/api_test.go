@@ -43,49 +43,105 @@ func TestCreateEntry(t *testing.T) {
 	t.Cleanup(func() {
 		connection.Close()
 	})
-	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(value)))
-	w := httptest.NewRecorder()
-	handlerConfig := NewHandlerConfig(connection)
-	h := NewSecretHandler(handlerConfig)
-	h.ServeHTTP(w, req)
 
-	resp := w.Result()
-	body, _ := io.ReadAll(resp.Body)
+	t.Run("happy path", func(t *testing.T) {
+		req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(value)))
+		w := httptest.NewRecorder()
+		handlerConfig := NewHandlerConfig(connection)
+		h := NewSecretHandler(handlerConfig)
+		h.ServeHTTP(w, req)
 
-	responseURL := string(body)
-	savedUUID, keyString, err := uuid.GetUUIDAndSecretFromPath(responseURL)
+		resp := w.Result()
+		body, _ := io.ReadAll(resp.Body)
 
-	if resp.Header.Get("x-entry-uuid") != savedUUID {
-		t.Errorf("Expected x-entry-uuid header to be %q, but got %q", savedUUID, resp.Header.Get("x-entry-uuid"))
-	}
+		responseURL := string(body)
+		savedUUID, keyString, err := uuid.GetUUIDAndSecretFromPath(responseURL)
 
-	if resp.Header.Get("x-entry-delete-key") == "" {
-		t.Error("Expected x-entry-delete-key to not be empty")
-	}
+		if resp.Header.Get("x-entry-uuid") != savedUUID {
+			t.Errorf("Expected x-entry-uuid header to be %q, but got %q", savedUUID, resp.Header.Get("x-entry-uuid"))
+		}
 
-	if err != nil {
-		t.Fatal(err)
-	}
+		if resp.Header.Get("x-entry-delete-key") == "" {
+			t.Error("Expected x-entry-delete-key to not be empty")
+		}
 
-	key, err := hex.DecodeString(keyString)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	if err != nil {
-		t.Fatal(err)
-	}
+		key, err := hex.DecodeString(keyString)
 
-	secretStore := secret.NewSecretStorage(connection, aes.New(key))
-	ctx := context.Background()
-	entry, err := secretStore.Read(ctx, savedUUID)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	if err != nil {
-		t.Fatal(err)
-	}
+		secretStore := secret.NewSecretStorage(connection, aes.New(key))
+		ctx := context.Background()
+		entry, err := secretStore.Read(ctx, savedUUID)
 
-	actual := string(entry.Data)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	if value != actual {
-		t.Errorf("data not saved expected: %q, actual: %q", value, actual)
-	}
+		actual := string(entry.Data)
+
+		if value != actual {
+			t.Errorf("data not saved expected: %q, actual: %q", value, actual)
+		}
+	})
+	t.Run("sad path", func(t *testing.T) {
+		testCases := []struct {
+			qs         string
+			statusCode int
+			message    string
+			body       string
+		}{
+			{
+				qs:         "expire=-1s",
+				statusCode: http.StatusBadRequest,
+				message:    "Invalid expiration",
+				body:       "test",
+			},
+			{
+				qs:         "expire=121s",
+				statusCode: http.StatusBadRequest,
+				message:    "Invalid expiration",
+				body:       "test",
+			},
+			{
+				qs:         "maxReads=0",
+				statusCode: http.StatusBadRequest,
+				message:    "Invalid max read",
+				body:       "test",
+			},
+			{
+				qs:         "maxReads=abc",
+				statusCode: http.StatusBadRequest,
+				message:    "Invalid max read",
+				body:       "test",
+			},
+			{
+				qs:         "",
+				statusCode: http.StatusBadRequest,
+				message:    "Invalid data",
+				body:       "",
+			},
+		}
+		for _, testCase := range testCases {
+			req := httptest.NewRequest("POST", "http://example.com?"+testCase.qs, bytes.NewReader([]byte(testCase.body)))
+			w := httptest.NewRecorder()
+			handlerConfig := NewHandlerConfig(connection)
+			handlerConfig.MaxExpireSeconds = 120
+			h := NewSecretHandler(handlerConfig)
+			h.ServeHTTP(w, req)
+
+			resp := w.Result()
+
+			if resp.StatusCode != testCase.statusCode {
+				t.Errorf("expected statuscode to be %d, got %d", testCase.statusCode, resp.StatusCode)
+			}
+		}
+	})
 }
 
 func TestCreateEntryJSON(t *testing.T) {
@@ -190,7 +246,7 @@ func TestCreateEntryForm(t *testing.T) {
 	savedUUID, keyString, err := uuid.GetUUIDAndSecretFromPath(responseURL)
 
 	if err != nil {
-		fmt.Println("Get UUID And Secret From Path err", err, responseURL)
+		t.Log("Get UUID And Secret From Path err", err, responseURL)
 		t.Fatal(err)
 	}
 
@@ -334,10 +390,9 @@ func TestGetEntryJSON(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	if err := connection.Write(ctx, testCase.UUID, encryptedData, time.Second*10, 1); err != nil {
+	if _, err := connection.Write(ctx, testCase.UUID, encryptedData, time.Second*10, 1); err != nil {
 		t.Error(err)
 	}
-	fmt.Println("Wrote", testCase.UUID)
 
 	req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(rsakey)), nil)
 	req.Header.Add("Accept", "application/json")
@@ -345,7 +400,6 @@ func TestGetEntryJSON(t *testing.T) {
 	NewSecretHandler(NewHandlerConfig(connection)).ServeHTTP(w, req)
 
 	resp := w.Result()
-	fmt.Println(resp.Header)
 	if resp.StatusCode != 200 {
 		t.Errorf("non 200 http statuscode: %d", resp.StatusCode)
 	}

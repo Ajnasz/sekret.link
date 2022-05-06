@@ -25,7 +25,7 @@ func TestSecretStorage(t *testing.T) {
 	})
 	UUID := uuid.NewUUIDString()
 	ctx := context.Background()
-	err := storage.Write(ctx, UUID, []byte(testData), time.Second*10, 1)
+	_, err := storage.Write(ctx, UUID, []byte(testData), time.Second*10, 1)
 
 	if err != nil {
 		t.Fatal(err)

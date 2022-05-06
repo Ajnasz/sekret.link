@@ -23,7 +23,7 @@ type Reader interface {
 // Writer interface to store and delete entry
 type Writer interface {
 	// Writes the secret into the remote data storege
-	Write(ctx context.Context, UUID string, entry []byte, expiration time.Duration, maxReads int) error
+	Write(ctx context.Context, UUID string, entry []byte, expiration time.Duration, maxReads int) (*entries.EntryMeta, error)
 	Delete(context.Context, string) error
 	DeleteExpired(context.Context) error
 	// Closes connection to data storage, like database
