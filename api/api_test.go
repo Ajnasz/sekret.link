@@ -553,7 +553,7 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 
 	secretStore := secret.NewSecretStorage(connection, aes.New(decodedKey))
 	ctx := context.Background()
-	entry, err := secretStore.ReadMeta(ctx, savedUUID)
+	entry, err := secretStore.Read(ctx, savedUUID)
 
 	if err != nil {
 		t.Fatal(err)

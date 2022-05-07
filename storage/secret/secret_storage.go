@@ -32,21 +32,6 @@ func (s SecretStorage) Write(ctx context.Context, UUID string, entry []byte, exp
 	return s.internalStorage.Write(ctx, UUID, encrypted, expire, remainingReads)
 }
 
-// ReadMeta returns the entry's metadata
-func (s SecretStorage) ReadMeta(ctx context.Context, UUID string) (*entries.EntryMeta, error) {
-	entryMeta, err := s.internalStorage.ReadMeta(ctx, UUID)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if entryMeta.IsExpired() {
-		return nil, entries.ErrEntryExpired
-	}
-
-	return entryMeta, nil
-}
-
 // Read deletes the secret from VerifyStorage
 func (s SecretStorage) Read(ctx context.Context, UUID string) (*entries.Entry, error) {
 	entry, err := s.internalStorage.Read(ctx, UUID)

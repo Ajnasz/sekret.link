@@ -32,28 +32,6 @@ func TestStorages(t *testing.T) {
 
 	for name, storage := range storages {
 		t.Run(name, func(t *testing.T) {
-			t.Run("ReadMeta - expired", func(t *testing.T) {
-				UUID := uuid.NewUUIDString()
-				entry, err := storage.Write(ctx, UUID, []byte("foo"), time.Second*-10, 1)
-				if err != entries.ErrEntryExpired {
-					t.Errorf("Expected expire error but got %v", err)
-				}
-
-				data, err := storage.ReadMeta(ctx, UUID)
-
-				if data != nil {
-					t.Errorf("Expected expired data to be nil")
-				}
-
-				if entry != nil {
-					t.Errorf("expected entry to be nil, got %+v", entry)
-				}
-
-				if err != entries.ErrEntryExpired {
-					t.Errorf("Expected expire error but got %v", err)
-				}
-			})
-
 			t.Run("Read - expired", func(t *testing.T) {
 				UUID := uuid.NewUUIDString()
 				_, err := storage.Write(ctx, UUID, []byte("foo"), time.Second*-10, 1)
@@ -87,7 +65,7 @@ func TestStorages(t *testing.T) {
 					t.Error(err)
 				}
 
-				retMeta, err := storage.ReadMeta(ctx, UUID)
+				retMeta, err := storage.Read(ctx, UUID)
 
 				if err != entries.ErrEntryNotFound {
 					t.Errorf("Storage ReadMeta should return an entry not found error, but returned %v", err)
@@ -142,7 +120,7 @@ func TestStorages(t *testing.T) {
 						t.Error(err)
 					}
 
-					ret, err := storage.ReadMeta(ctx, item.UUID)
+					ret, err := storage.Read(ctx, item.UUID)
 
 					if item.ShouldExpire {
 						if err != entries.ErrEntryNotFound {

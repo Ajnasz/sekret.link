@@ -13,8 +13,6 @@ type Transform = func(*entries.Entry) (*entries.Entry, error)
 type Reader interface {
 	// Read reads the secret and deletes from the underlying storage in one step
 	Read(context.Context, string) (*entries.Entry, error)
-	// ReadMeta reads secret meta data from the storage
-	ReadMeta(context.Context, string) (*entries.EntryMeta, error)
 	// Close Closes connection to data storage, like database
 	// Executed on application shutdown
 	Close() error

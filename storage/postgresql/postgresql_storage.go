@@ -54,45 +54,6 @@ func (s Storage) Write(ctx context.Context, UUID string, entry []byte, expire ti
 	return meta, nil
 }
 
-// ReadMeta to get entry metadata (without the actual secret)
-// returns the metadata if the secret not expired yet
-// does not update read count
-func (s Storage) ReadMeta(ctx context.Context, UUID string) (*entries.EntryMeta, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	meta, err := s.readMeta(tx, UUID)
-	if err != nil {
-		tx.Rollback()
-		if err == sql.ErrNoRows {
-			return nil, entries.ErrEntryNotFound
-		}
-
-		return nil, err
-	}
-
-	if meta.IsExpired() {
-		if err := s.setAccessed(tx, UUID); err != nil {
-			tx.Rollback()
-			return nil, err
-		}
-
-		if err = tx.Commit(); err != nil {
-			return nil, err
-		}
-
-		return nil, entries.ErrEntryExpired
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-
-	return meta, nil
-}
-
 func (s Storage) write(tx *sql.Tx, UUID string, entry []byte, expire time.Duration, remainingReads int) error {
 	now := time.Now()
 	k, err := key.NewGeneratedKey()
