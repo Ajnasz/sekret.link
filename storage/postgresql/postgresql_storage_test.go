@@ -53,9 +53,13 @@ func Test_PostgresqlStorageWrite(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			res, err := storage.Read(ctx, UUID)
+			res, confirm, err := storage.ReadConfirm(ctx, UUID)
 			if err != nil {
 				t.Fatal(err)
+			}
+			confirm <- true
+			select {
+			case <-confirm:
 			}
 
 			if res.EntryMeta != *meta {

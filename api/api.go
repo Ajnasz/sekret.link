@@ -12,7 +12,7 @@ import (
 type HandlerConfig struct {
 	ExpireSeconds    int
 	MaxExpireSeconds int
-	EntryStorage     storage.Verifyable
+	EntryStorage     storage.VerifyConfirmReader
 	MaxDataSize      int64
 	WebExternalURL   *url.URL
 }

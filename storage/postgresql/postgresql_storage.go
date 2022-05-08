@@ -3,6 +3,7 @@ package postgresql
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"strings"
 	"time"
 
@@ -191,43 +192,62 @@ func (s Storage) read(tx *sql.Tx, UUID string) (*entries.Entry, error) {
 	}, nil
 }
 
-// Read to get entry including the actual secret then delete it
+// ReadConfirm to get entry including the actual secret then delete it
 // returns the data if the secret not expired yet
+// returns a bool channel which expects a true sent to so the read is confirmed
+// if the message is false, the secret will be restored
+// if the message is true, the data will be deleted
 // updates read count
-// deletes the data after the read
-func (s Storage) Read(ctx context.Context, UUID string) (*entries.Entry, error) {
+func (s Storage) ReadConfirm(ctx context.Context, UUID string) (*entries.Entry, chan bool, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
+	confirmChan := make(chan bool)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	entry, err := s.read(tx, UUID)
 
 	if err != nil {
 		tx.Rollback()
+		close(confirmChan)
 		if err == sql.ErrNoRows {
-			return nil, entries.ErrEntryNotFound
+			return nil, nil, entries.ErrEntryNotFound
 		}
-		return nil, err
+		return nil, nil, err
 	}
 
 	if entry.IsExpired() {
 		s.setAccessed(tx, UUID)
 		tx.Commit()
-		return nil, entries.ErrEntryExpired
+		close(confirmChan)
+		return nil, nil, entries.ErrEntryExpired
 	}
 
 	if err := s.updateReadCount(tx, UUID); err != nil {
 		tx.Rollback()
-		return nil, err
+		close(confirmChan)
+		return nil, nil, err
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return nil, err
-	}
+	go func() {
+		select {
+		case confirmed := <-confirmChan:
+			if confirmed {
+				if err := tx.Commit(); err != nil {
+					fmt.Println(err)
+				}
+			} else {
+				if err := tx.Rollback(); err != nil {
+					fmt.Println(err)
+				}
+			}
+		case <-ctx.Done():
+			tx.Rollback()
+		}
+		close(confirmChan)
+	}()
 
-	return entry, nil
+	return entry, confirmChan, nil
 }
 
 // Delete deletes the entry from the database

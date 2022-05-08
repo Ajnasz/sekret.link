@@ -21,7 +21,6 @@ func TestStorages(t *testing.T) {
 	})
 
 	storages := map[string]storage.Storage{
-		"Postgres": psqlStorage,
 		"Secret": secret.NewSecretStorage(
 			psqlStorage,
 			dummy.NewEncrypter(),

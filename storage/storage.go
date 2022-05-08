@@ -18,6 +18,15 @@ type Reader interface {
 	Close() error
 }
 
+type ConfirmReader interface {
+	// Read reads the secret and deletes from the underlying storage in one
+	// step if the confirm chan receives a true value
+	ReadConfirm(context.Context, string) (*entries.Entry, chan bool, error)
+	// Close Closes connection to data storage, like database
+	// Executed on application shutdown
+	Close() error
+}
+
 // Writer interface to store and delete entry
 type Writer interface {
 	// Writes the secret into the remote data storege
@@ -38,7 +47,12 @@ type Storage interface {
 // Verifyable an interface which extends the EntryStorage with a
 // VerifyDelete method
 type Verifyable interface {
-	Storage
+	Writer
 	// VerifyDelete checks if the given deleteKey belongs to the given UUID
 	VerifyDelete(ctx context.Context, UUID string, deleteKey string) (bool, error)
+}
+
+type VerifyConfirmReader interface {
+	Verifyable
+	ConfirmReader
 }

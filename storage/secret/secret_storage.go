@@ -12,12 +12,12 @@ import (
 // SecretStorage connects the encrypter.Encrypter with a VerifyStorage
 // so the encrypted data will be stored in the storage
 type SecretStorage struct {
-	internalStorage storage.Verifyable
+	internalStorage storage.VerifyConfirmReader
 	encrypter       encrypter.Encrypter
 }
 
 // NewSecretStorage creates a secretStore instance
-func NewSecretStorage(v storage.Verifyable, e encrypter.Encrypter) *SecretStorage {
+func NewSecretStorage(v storage.VerifyConfirmReader, e encrypter.Encrypter) *SecretStorage {
 	return &SecretStorage{v, e}
 }
 
@@ -34,24 +34,33 @@ func (s SecretStorage) Write(ctx context.Context, UUID string, entry []byte, exp
 
 // Read deletes the secret from VerifyStorage
 func (s SecretStorage) Read(ctx context.Context, UUID string) (*entries.Entry, error) {
-	entry, err := s.internalStorage.Read(ctx, UUID)
+	entry, confirm, err := s.internalStorage.ReadConfirm(ctx, UUID)
 
 	if err != nil {
 		return nil, err
 	}
 
 	if entry.IsExpired() {
+		confirm <- false
 		return nil, entries.ErrEntryExpired
 	}
 
 	if len(entry.Data) == 0 {
+		confirm <- true
+		<-confirm
 		return entry, nil
 	}
 
 	decrypted, err := s.encrypter.Decrypt(entry.Data)
 
 	if err != nil {
+		confirm <- false
 		return nil, err
+	}
+
+	confirm <- true
+	select {
+	case <-confirm:
 	}
 
 	ret := *entry

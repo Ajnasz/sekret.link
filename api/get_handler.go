@@ -48,14 +48,15 @@ func onGetError(w http.ResponseWriter, err error) {
 	http.Error(w, "Internal error", http.StatusInternalServerError)
 }
 
-func handleGetSecret(entryStorage storage.Verifyable, UUID, keyString string) (*entries.Entry, error) {
+func handleGetSecret(entryStorage storage.VerifyConfirmReader, UUID, keyString string) (*entries.Entry, error) {
 	key, err := hex.DecodeString(keyString)
 	if err != nil {
 		return nil, fmt.Errorf("hex decode error: %w", err)
 	}
 
 	secretStore := secret.NewSecretStorage(entryStorage, aesencrypter.New(key))
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	return secretStore.Read(ctx, UUID)
 }
 
@@ -72,7 +73,7 @@ func sendGetSecretResponse(entry *entries.Entry, keyString string, w http.Respon
 	}
 }
 
-func handleGetEntry(entryStorage storage.Verifyable, w http.ResponseWriter, r *http.Request) {
+func handleGetEntry(entryStorage storage.VerifyConfirmReader, w http.ResponseWriter, r *http.Request) {
 	UUID, keyString, err := uuid.GetUUIDAndSecretFromPath(r.URL.Path)
 
 	if err != nil {

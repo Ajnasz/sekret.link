@@ -77,7 +77,8 @@ func (c CreateHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	UUID := uuid.NewUUIDString()
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	entry, err := secretStore.Write(ctx, UUID, data.body, data.expiration, data.maxReads)
 
 	if err != nil {
