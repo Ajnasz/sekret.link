@@ -564,33 +564,85 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 	}
 }
 
-func TestDeleteEntry(t *testing.T) {
+func Test_DeleteEntry(t *testing.T) {
 	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
 	t.Cleanup(func() {
 		connection.Close()
 	})
-	req := httptest.NewRequest(http.MethodPost, "http://example.com", bytes.NewReader([]byte("foobarbaz")))
-	w := httptest.NewRecorder()
-	handler := NewSecretHandler(NewHandlerConfig(connection))
-	handler.ServeHTTP(w, req)
 
-	resp := w.Result()
+	t.Run("correct key", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "http://example.com", bytes.NewReader([]byte("foobarbaz")))
+		w := httptest.NewRecorder()
+		handler := NewSecretHandler(NewHandlerConfig(connection))
+		handler.ServeHTTP(w, req)
 
-	deleteKey := resp.Header.Get("x-entry-delete-key")
-	key := resp.Header.Get("x-entry-key")
-	UUID := resp.Header.Get("x-entry-uuid")
+		resp := w.Result()
 
-	url := fmt.Sprintf("http://example.com/%s/%s/%s", UUID, key, deleteKey)
+		deleteKey := resp.Header.Get("x-entry-delete-key")
+		key := resp.Header.Get("x-entry-key")
+		UUID := resp.Header.Get("x-entry-uuid")
 
-	req = httptest.NewRequest(http.MethodDelete, url, nil)
-	w = httptest.NewRecorder()
-	handler.ServeHTTP(w, req)
+		url := fmt.Sprintf("http://example.com/%s/%s/%s", UUID, key, deleteKey)
 
-	resp = w.Result()
+		req = httptest.NewRequest(http.MethodDelete, url, nil)
+		w = httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
 
-	if resp.StatusCode != http.StatusAccepted {
-		t.Errorf("Delete response expected to be %d, but got %d", http.StatusAccepted, resp.StatusCode)
-	}
+		resp = w.Result()
+
+		if resp.StatusCode != http.StatusAccepted {
+			t.Errorf("Delete response expected to be %d, but got %d", http.StatusAccepted, resp.StatusCode)
+		}
+	})
+
+	t.Run("invalid key", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "http://example.com", bytes.NewReader([]byte("foobarbaz")))
+		w := httptest.NewRecorder()
+		handler := NewSecretHandler(NewHandlerConfig(connection))
+		handler.ServeHTTP(w, req)
+
+		resp := w.Result()
+
+		deleteKey := resp.Header.Get("x-entry-delete-key")
+		key := resp.Header.Get("x-entry-key")
+		UUID := resp.Header.Get("x-entry-uuid")
+
+		url := fmt.Sprintf("http://example.com/%s/%s/%s", UUID, key, deleteKey+"asdf")
+
+		req = httptest.NewRequest(http.MethodDelete, url, nil)
+		w = httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+
+		resp = w.Result()
+
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Errorf("Delete response expected to be %d, but got %d", http.StatusUnauthorized, resp.StatusCode)
+		}
+	})
+	t.Run("without delete key", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "http://example.com", bytes.NewReader([]byte("foobarbaz")))
+		w := httptest.NewRecorder()
+		handler := NewSecretHandler(NewHandlerConfig(connection))
+		handler.ServeHTTP(w, req)
+
+		resp := w.Result()
+
+		// deleteKey := resp.Header.Get("x-entry-delete-key")
+		key := resp.Header.Get("x-entry-key")
+		UUID := resp.Header.Get("x-entry-uuid")
+
+		url := fmt.Sprintf("http://example.com/%s/%s", UUID, key)
+
+		req = httptest.NewRequest(http.MethodDelete, url, nil)
+		w = httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+
+		resp = w.Result()
+
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("Delete response expected to be %d, but got %d", http.StatusBadRequest, resp.StatusCode)
+		}
+	})
 }
 
 func FuzzSetAndGetEntry(f *testing.F) {
