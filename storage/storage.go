@@ -19,7 +19,7 @@ type Reader interface {
 }
 
 type ConfirmReader interface {
-	// Read reads the secret and deletes from the underlying storage in one
+	// ReadConfirm reads the secret and deletes from the underlying storage in one
 	// step if the confirm chan receives a true value
 	ReadConfirm(context.Context, string) (*entries.Entry, chan bool, error)
 	// Close Closes connection to data storage, like database
