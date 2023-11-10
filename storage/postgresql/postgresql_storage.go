@@ -200,11 +200,11 @@ func (s Storage) read(tx *sql.Tx, UUID string) (*entries.Entry, error) {
 // updates read count
 func (s Storage) ReadConfirm(ctx context.Context, UUID string) (*entries.Entry, chan bool, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
-	confirmChan := make(chan bool)
 	if err != nil {
 		return nil, nil, err
 	}
 
+	confirmChan := make(chan bool)
 	entry, err := s.read(tx, UUID)
 
 	if err != nil {
