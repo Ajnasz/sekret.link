@@ -28,10 +28,14 @@ jobs:
             dep ensure
         fi
 
+    - name: Build
+      run: |
+        make
+
     - run: |
         set -x
         assets=()
         tag_name="${GITHUB_REF##*/}"
-        gh release create "$tag_name" ./build/*
+        gh release create "$tag_name" build/*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
