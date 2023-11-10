@@ -32,7 +32,7 @@ jobs:
 
     - name: Test
       run: |
-        ./build.sh build
+        make
 
     - run: |
         set -x

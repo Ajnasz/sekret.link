@@ -51,4 +51,4 @@ jobs:
     - name: Test
       env:
         POSTGRES_URL: "postgres://postgres:password@localhost:5432/sekret_link_test?sslmode=disable"
-      run: ./build.sh test
+      run: make test
