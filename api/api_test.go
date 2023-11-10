@@ -646,7 +646,7 @@ func Test_DeleteEntry(t *testing.T) {
 }
 
 func FuzzSetAndGetEntry(f *testing.F) {
-	testCases := []string{"foo", " ", "12345", "A3@3!$"}
+	testCases := []string{"foo", " ", "12345", "A3@3!$", string("\xf2")}
 	for _, tc := range testCases {
 		f.Add(tc) // Use f.Add to provide a seed corpus
 	}
@@ -657,7 +657,8 @@ func FuzzSetAndGetEntry(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, testCase string) {
 		if testCase == "" {
-			t.Skip()
+			t.Log("empty")
+			return
 		}
 		req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(testCase)))
 		w := httptest.NewRecorder()
