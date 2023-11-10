@@ -32,9 +32,11 @@ jobs:
 
     - name: Test
       run: |
-        make
+        ./build.sh build
 
-    - run: |
+    - name: Release
+      uses: actions/checkout@v2
+      run: |
         set -x
         assets=()
         for asset in build/*; do
