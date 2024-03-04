@@ -1,10 +1,12 @@
 package api
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
 	"net/url"
 
+	"github.com/Ajnasz/sekret.link/internal/api"
 	"github.com/Ajnasz/sekret.link/storage"
 )
 
@@ -15,6 +17,7 @@ type HandlerConfig struct {
 	EntryStorage     storage.VerifyConfirmReader
 	MaxDataSize      int64
 	WebExternalURL   *url.URL
+	DB               *sql.DB
 }
 
 // NewSecretHandler creates a SecretHandler instance
@@ -39,7 +42,15 @@ func (s SecretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			log.Println("Not found", r.URL.Path)
 			return
 		}
-		NewCreateHandler(s.config).Handle(w, r)
+
+		createHandler := api.CreateHandler{
+			MaxDataSize:      s.config.MaxDataSize,
+			MaxExpireSeconds: s.config.MaxExpireSeconds,
+			WebExternalURL:   s.config.WebExternalURL,
+			DB:               s.config.DB,
+		}
+		createHandler.Handle(w, r)
+		// NewCreateHandler(s.config).Handle(w, r)
 	} else if r.Method == http.MethodGet {
 		handleGetEntry(s.config.EntryStorage, w, r)
 	} else if r.Method == http.MethodDelete {

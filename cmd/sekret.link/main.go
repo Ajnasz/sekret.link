@@ -160,6 +160,7 @@ func getConfig() (*api.HandlerConfig, error) {
 	}
 
 	config.EntryStorage = entryStorage
+	config.DB = entryStorage.GetDB()
 
 	return &config, nil
 }

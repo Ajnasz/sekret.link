@@ -40,8 +40,8 @@ type EntryManager struct {
 	crypto EntryCrypto
 }
 
-// NewEntry creates a new EntryService
-func NewEntry(db *sql.DB, model EntryModel, crypto EntryCrypto) *EntryManager {
+// NewEntryManager creates a new EntryService
+func NewEntryManager(db *sql.DB, model EntryModel, crypto EntryCrypto) *EntryManager {
 	return &EntryManager{
 		db:     db,
 		model:  model,

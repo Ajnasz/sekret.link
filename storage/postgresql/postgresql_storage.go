@@ -19,6 +19,10 @@ type Storage struct {
 	db *sql.DB
 }
 
+func (s Storage) GetDB() *sql.DB {
+	return s.db
+}
+
 // Close closes connection to the database
 func (s Storage) Close() error {
 	return s.db.Close()

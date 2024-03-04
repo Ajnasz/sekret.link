@@ -3,12 +3,13 @@ package key
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"fmt"
+	"errors"
 )
 
 // ErrorKeyAlreadyGenerated Error occures when trying to generate a key on a
 // Key object which already has a generated key
-var ErrorKeyAlreadyGenerated = fmt.Errorf("Key already generated")
+var ErrorKeyAlreadyGenerated = errors.New("key already generated")
+var ErrorKeyGenerateFAiled = errors.New("Key generation failed")
 
 // SizeAES256 the byte size required for aes 256 encoding
 const SizeAES256 uint = 32
@@ -22,7 +23,7 @@ func NewKey() *Key {
 func NewGeneratedKey() (*Key, error) {
 	k := NewKey()
 	if err := k.Generate(); err != nil {
-		return nil, err
+		return nil, errors.Join(ErrorKeyGenerateFAiled, err)
 	}
 
 	return k, nil

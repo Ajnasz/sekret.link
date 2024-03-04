@@ -83,7 +83,7 @@ func Test_EntryService_Create(t *testing.T) {
 	entryCrypto := new(MockEntryCrypto)
 	entryCrypto.On("Encrypt", data).Return(encryptedData, nil)
 
-	service := NewEntry(db, entryModel, entryCrypto)
+	service := NewEntryManager(db, entryModel, entryCrypto)
 	meta, err := service.CreateEntry(ctx, data, 1, time.Minute)
 
 	assert.NoError(t, err)
@@ -135,7 +135,7 @@ func TestCreateError(t *testing.T) {
 	entryCrypto := new(MockEntryCrypto)
 	entryCrypto.On("Encrypt", data).Return(encryptedData, nil)
 
-	service := NewEntry(db, entryModel, entryCrypto)
+	service := NewEntryManager(db, entryModel, entryCrypto)
 	meta, err := service.CreateEntry(ctx, data, 1, time.Minute)
 
 	assert.Error(t, err)
@@ -180,7 +180,7 @@ func TestReadEntry(t *testing.T) {
 
 	entryCrypto.On("Decrypt", []byte("encrypted")).Return([]byte("data"), nil)
 
-	service := NewEntry(db, entryModel, entryCrypto)
+	service := NewEntryManager(db, entryModel, entryCrypto)
 	data, err := service.ReadEntry(ctx, "uuid")
 
 	assert.NoError(t, err)
