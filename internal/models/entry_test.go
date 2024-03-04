@@ -22,7 +22,7 @@ func testConnection(ctx context.Context) (*sql.DB, error) {
 	return durable.OpenDatabaseClient(ctx, config)
 }
 
-func Test_Store(t *testing.T) {
+func Test_EntryModel_CreateEntry(t *testing.T) {
 	ctx := context.Background()
 	db, err := testConnection(ctx)
 	if err != nil {
@@ -71,20 +71,51 @@ func Test_Store(t *testing.T) {
 		t.Errorf("expected accessed not to be set")
 	}
 
-	if err := AccessEntry(ctx, tx, uid); err != nil {
+	if err := tx.Rollback(); err != nil {
+		t.Fatal(errors.Join(err, errors.New("failed to rollback transaction")))
+	}
+}
+
+func Test_EntryModel_UpdateAccessed(t *testing.T) {
+	ctx := context.Background()
+	db, err := testConnection(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer db.Close()
+
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	uid := uuid.New().String()
+	data := []byte("test data")
+	remainingReads := 2
+	expire := time.Hour * 24
+
+	model := &EntryModel{}
+
+	meta, err := model.CreateEntry(ctx, tx, uid, data, remainingReads, expire)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := model.UpdateAccessed(ctx, tx, uid); err != nil {
 		t.Fatal(errors.Join(err, errors.New("failed to access entry")))
 	}
 
-	entry, err := ReadEntry(ctx, tx, uid)
+	entry, err := model.ReadEntry(ctx, tx, uid)
 	if err != nil {
 		t.Fatal(errors.Join(err, errors.New("failed to read entry")))
 	}
 
-	if meta.RemainingReads != 1 {
-		t.Errorf("expected %d got %d", 0, meta.RemainingReads)
+	if entry.RemainingReads != 1 {
+		t.Errorf("expected %d got %d", 0, entry.RemainingReads)
 	}
 
-	if !meta.Accessed.Valid {
+	if !entry.Accessed.Valid {
 		t.Errorf("expected accessed to be set")
 	}
 
@@ -92,11 +123,11 @@ func Test_Store(t *testing.T) {
 		t.Errorf("expected %s got %s", string(data), string(entry.Data))
 	}
 
-	if err := DeleteEntry(ctx, tx, uid, "invalid delete key"); err != ErrEntryNotFound {
+	if err := model.DeleteEntry(ctx, tx, uid, "invalid delete key"); err != ErrEntryNotFound {
 		t.Fatal("expected error when deleting with invalid delete key")
 	}
 
-	if err := DeleteEntry(ctx, tx, uid, meta.DeleteKey); err != nil {
+	if err := model.DeleteEntry(ctx, tx, uid, meta.DeleteKey); err != nil {
 		t.Fatal(errors.Join(err, errors.New("failed to delete entry")))
 	}
 

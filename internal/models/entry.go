@@ -63,14 +63,14 @@ func (e *EntryModel) CreateEntry(ctx context.Context, tx *sql.Tx, uuid string, d
 	}, err
 }
 
-func UpdateAccessed(ctx context.Context, tx *sql.Tx, uuid string) error {
+func (e *EntryModel) UpdateAccessed(ctx context.Context, tx *sql.Tx, uuid string) error {
 	_, err := tx.ExecContext(ctx, "UPDATE entries SET accessed = NOW(), remaining_reads = remaining_reads - 1 WHERE uuid = $1 AND remaining_reads > 0", uuid)
 	return err
 }
 
 // ReadEntry reads a storage entry from the database
 // and updates the read count
-func ReadEntry(ctx context.Context, tx *sql.Tx, uuid string) (*Entry, error) {
+func (e *EntryModel) ReadEntry(ctx context.Context, tx *sql.Tx, uuid string) (*Entry, error) {
 	row := tx.QueryRow("SELECT uuid, data, remaining_reads, delete_key, created, accessed, expire FROM entries WHERE uuid=$1 AND remaining_reads > 0 LIMIT 1", uuid)
 	var s Entry
 	err := row.Scan(&s.UUID, &s.Data, &s.RemainingReads, &s.DeleteKey, &s.Created, &s.Accessed, &s.Expire)
@@ -84,7 +84,7 @@ func ReadEntry(ctx context.Context, tx *sql.Tx, uuid string) (*Entry, error) {
 	return &s, nil
 }
 
-func ReadEntryMeta(ctx context.Context, tx *sql.Tx, uuid string) (*EntryMeta, error) {
+func (e *EntryMeta) ReadEntryMeta(ctx context.Context, tx *sql.Tx, uuid string) (*EntryMeta, error) {
 	row := tx.QueryRow("SELECT created, accessed, expire, remaining_reads, delete_key FROM entries WHERE uuid=$1 AND remaining_reads > 0 LIMIT 1", uuid)
 	var s EntryMeta
 	err := row.Scan(&s.Created, &s.Accessed, &s.Expire, &s.RemainingReads, &s.DeleteKey)
@@ -103,7 +103,7 @@ func ReadEntryMeta(ctx context.Context, tx *sql.Tx, uuid string) (*EntryMeta, er
 // DeleteEntry deletes a storage entry from the database
 // if the delete key matches
 // returns an error if the delete key does not match
-func DeleteEntry(ctx context.Context, tx *sql.Tx, uuid string, deleteKey string) error {
+func (e *EntryModel) DeleteEntry(ctx context.Context, tx *sql.Tx, uuid string, deleteKey string) error {
 	ret, err := tx.ExecContext(ctx, "DELETE FROM entries WHERE uuid=$1 AND delete_key=$2", uuid, deleteKey)
 
 	if err != nil {

@@ -17,6 +17,12 @@ type EntryModel interface {
 	UpdateAccessed(ctx context.Context, tx *sql.Tx, UUID string) error
 }
 
+// EntryCrypto is the interface to encrypt and decrypt the entry data
+type EntryCrypto interface {
+	Encrypt(data []byte) ([]byte, error)
+	Decrypt(data []byte) ([]byte, error)
+}
+
 // EntryMeta provides the entry meta
 type EntryMeta struct {
 	UUID           string
@@ -27,28 +33,37 @@ type EntryMeta struct {
 	Expire         time.Time
 }
 
-// EntryService provides the entry service
-type EntryService struct {
-	db    *sql.DB
-	model EntryModel
+// EntryManager provides the entry service
+type EntryManager struct {
+	db     *sql.DB
+	model  EntryModel
+	crypto EntryCrypto
 }
 
 // NewEntry creates a new EntryService
-func NewEntry(db *sql.DB, model EntryModel) *EntryService {
-	return &EntryService{
-		db:    db,
-		model: model,
+func NewEntry(db *sql.DB, model EntryModel, crypto EntryCrypto) *EntryManager {
+	return &EntryManager{
+		db:     db,
+		model:  model,
+		crypto: crypto,
 	}
 }
 
-func (e *EntryService) CreateEntry(ctx context.Context, data []byte, remainingReads int, expire time.Duration) (*EntryMeta, error) {
+func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingReads int, expire time.Duration) (*EntryMeta, error) {
 	uid := uuid.NewUUIDString()
 
 	tx, err := e.db.Begin()
 	if err != nil {
 		return nil, err
 	}
-	meta, err := e.model.CreateEntry(ctx, tx, uid, data, remainingReads, expire)
+
+	encryptedData, err := e.crypto.Encrypt(data)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	// meta, err := e.model.CreateEntry(ctx, tx, uid, data, remainingReads, expire)
+	meta, err := e.model.CreateEntry(ctx, tx, uid, encryptedData, remainingReads, expire)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -67,7 +82,7 @@ func (e *EntryService) CreateEntry(ctx context.Context, data []byte, remainingRe
 
 }
 
-func (e *EntryService) ReadEntry(ctx context.Context, UUID string) ([]byte, error) {
+func (e *EntryManager) ReadEntry(ctx context.Context, UUID string) ([]byte, error) {
 	tx, err := e.db.Begin()
 	if err != nil {
 		return nil, err
@@ -84,7 +99,13 @@ func (e *EntryService) ReadEntry(ctx context.Context, UUID string) ([]byte, erro
 		return nil, err
 	}
 
+	decryptedData, err := e.crypto.Decrypt(entry.Data)
+
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
 	tx.Commit()
 
-	return entry.Data, nil
+	return decryptedData, nil
 }

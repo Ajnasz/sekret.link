@@ -13,13 +13,19 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+var timenow = time.Now()
+
 type MockEntryModel struct {
 	mock.Mock
 }
 
-var timenow = time.Now()
-
-func (m *MockEntryModel) CreateEntry(ctx context.Context, tx *sql.Tx, UUID string, data []byte, remainingReads int, expire time.Duration) (*models.EntryMeta, error) {
+func (m *MockEntryModel) CreateEntry(
+	ctx context.Context,
+	tx *sql.Tx,
+	UUID string,
+	data []byte,
+	remainingReads int,
+	expire time.Duration) (*models.EntryMeta, error) {
 	args := m.Called(ctx, tx, UUID, data, remainingReads, expire)
 	return args.Get(0).(*models.EntryMeta), args.Error(1)
 }
@@ -34,7 +40,21 @@ func (m *MockEntryModel) UpdateAccessed(ctx context.Context, tx *sql.Tx, UUID st
 	return args.Error(0)
 }
 
-func TestCreate(t *testing.T) {
+type MockEntryCrypto struct {
+	mock.Mock
+}
+
+func (m *MockEntryCrypto) Encrypt(data []byte) ([]byte, error) {
+	args := m.Called(data)
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (m *MockEntryCrypto) Decrypt(data []byte) ([]byte, error) {
+	args := m.Called(data)
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func Test_EntryService_Create(t *testing.T) {
 	db, sqlMock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
@@ -48,9 +68,10 @@ func TestCreate(t *testing.T) {
 	ctx := context.Background()
 
 	data := []byte("data")
+	encryptedData := []byte("encrypted")
 	entryModel := new(MockEntryModel)
 	entryModel.
-		On("CreateEntry", ctx, mock.Anything, mock.Anything, data, 1, mock.Anything, mock.Anything).
+		On("CreateEntry", ctx, mock.Anything, mock.Anything, encryptedData, 1, mock.Anything).
 		Return(&models.EntryMeta{
 			UUID:           "uuid",
 			RemainingReads: 1,
@@ -59,7 +80,10 @@ func TestCreate(t *testing.T) {
 			Expire:         timenow.Add(time.Minute),
 		}, nil)
 
-	service := NewEntry(db, entryModel)
+	entryCrypto := new(MockEntryCrypto)
+	entryCrypto.On("Encrypt", data).Return(encryptedData, nil)
+
+	service := NewEntry(db, entryModel, entryCrypto)
 	meta, err := service.CreateEntry(ctx, data, 1, time.Minute)
 
 	assert.NoError(t, err)
@@ -101,12 +125,17 @@ func TestCreateError(t *testing.T) {
 	ctx := context.Background()
 
 	data := []byte("data")
+	encryptedData := []byte("encrypted")
+
 	entryModel := new(MockEntryModel)
 	entryModel.
-		On("CreateEntry", ctx, mock.Anything, mock.Anything, data, 1, mock.Anything, mock.Anything).
+		On("CreateEntry", ctx, mock.Anything, mock.Anything, encryptedData, 1, mock.Anything).
 		Return(&models.EntryMeta{}, fmt.Errorf("error"))
 
-	service := NewEntry(db, entryModel)
+	entryCrypto := new(MockEntryCrypto)
+	entryCrypto.On("Encrypt", data).Return(encryptedData, nil)
+
+	service := NewEntry(db, entryModel, entryCrypto)
 	meta, err := service.CreateEntry(ctx, data, 1, time.Minute)
 
 	assert.Error(t, err)
@@ -136,7 +165,7 @@ func TestReadEntry(t *testing.T) {
 		On("ReadEntry", ctx, mock.Anything, "uuid").
 		Return(&models.Entry{
 			UUID:           "uuid",
-			Data:           []byte("data"),
+			Data:           []byte("encrypted"),
 			RemainingReads: 1,
 			DeleteKey:      "delete_key",
 			Created:        timenow,
@@ -147,7 +176,11 @@ func TestReadEntry(t *testing.T) {
 		On("UpdateAccessed", ctx, mock.Anything, "uuid").
 		Return(nil)
 
-	service := NewEntry(db, entryModel)
+	entryCrypto := new(MockEntryCrypto)
+
+	entryCrypto.On("Decrypt", []byte("encrypted")).Return([]byte("data"), nil)
+
+	service := NewEntry(db, entryModel, entryCrypto)
 	data, err := service.ReadEntry(ctx, "uuid")
 
 	assert.NoError(t, err)
