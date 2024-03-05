@@ -1,3 +1,4 @@
+// Package api contains the http.Handler implementations for the api endpoints
 package api
 
 import (
@@ -6,7 +7,6 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/Ajnasz/sekret.link/internal/models"
 	"github.com/Ajnasz/sekret.link/internal/parsers"
@@ -26,12 +26,7 @@ var ErrInvalidMaxRead = errors.New("Invalid max read")
 // ErrInvalidData request parse error happens if the post data can not be accepted
 var ErrInvalidData = errors.New("Invalid data")
 
-type requestData struct {
-	body       []byte
-	expiration time.Duration
-	maxReads   int
-}
-
+// CreateHandler is an http.Handler implementaton which creates secrets
 type CreateHandler struct {
 	MaxDataSize      int64
 	MaxExpireSeconds int
@@ -72,6 +67,7 @@ func (c CreateHandler) handle(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// Handle handles http request to create secret
 func (c CreateHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	err := c.handle(w, r)
 
