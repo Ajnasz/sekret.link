@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -26,7 +27,7 @@ import (
 	"github.com/Ajnasz/sekret.link/uuid"
 )
 
-func NewHandlerConfig(storage storage.VerifyConfirmReader) HandlerConfig {
+func NewHandlerConfig(storage storage.VerifyConfirmReader, db *sql.DB) HandlerConfig {
 	extURL, _ := url.Parse("http://example.com")
 	return HandlerConfig{
 		ExpireSeconds:    10,
@@ -34,6 +35,7 @@ func NewHandlerConfig(storage storage.VerifyConfirmReader) HandlerConfig {
 		MaxDataSize:      1024 * 1024,
 		MaxExpireSeconds: 60 * 60 * 24 * 30,
 		WebExternalURL:   extURL,
+		DB:               db,
 	}
 }
 
@@ -47,7 +49,7 @@ func TestCreateEntry(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(value)))
 		w := httptest.NewRecorder()
-		handlerConfig := NewHandlerConfig(connection)
+		handlerConfig := NewHandlerConfig(connection, connection.GetDB())
 		h := NewSecretHandler(handlerConfig)
 		h.ServeHTTP(w, req)
 
@@ -130,7 +132,7 @@ func TestCreateEntry(t *testing.T) {
 		for _, testCase := range testCases {
 			req := httptest.NewRequest("POST", "http://example.com?"+testCase.qs, bytes.NewReader([]byte(testCase.body)))
 			w := httptest.NewRecorder()
-			handlerConfig := NewHandlerConfig(connection)
+			handlerConfig := NewHandlerConfig(connection, connection.GetDB())
 			handlerConfig.MaxExpireSeconds = 120
 			h := NewSecretHandler(handlerConfig)
 			h.ServeHTTP(w, req)
@@ -153,7 +155,7 @@ func TestCreateEntryJSON(t *testing.T) {
 	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(value)))
 	req.Header.Add("Accept", "application/json")
 	w := httptest.NewRecorder()
-	NewSecretHandler(NewHandlerConfig(connection)).ServeHTTP(w, req)
+	NewSecretHandler(NewHandlerConfig(connection, connection.GetDB())).ServeHTTP(w, req)
 
 	resp := w.Result()
 	var encode entries.SecretResponse
@@ -230,7 +232,7 @@ func TestCreateEntryForm(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	handlerConfig := NewHandlerConfig(connection)
+	handlerConfig := NewHandlerConfig(connection, connection.GetDB())
 	handlerConfig.ExpireSeconds = 60
 	req := httptest.NewRequest("POST", fmt.Sprintf("http://example.com/?expire=%ds", handlerConfig.ExpireSeconds), data)
 	req.Header.Set("Content-Type", multi.FormDataContentType())
@@ -298,7 +300,7 @@ func TestRequestPathsCreateEntry(t *testing.T) {
 		t.Run(testCase.Name, func(t *testing.T) {
 			req := httptest.NewRequest("POST", fmt.Sprintf("http://example.com%s", testCase.Path), bytes.NewReader([]byte("ASDF")))
 			w := httptest.NewRecorder()
-			NewSecretHandler(NewHandlerConfig(connection)).ServeHTTP(w, req)
+			NewSecretHandler(NewHandlerConfig(connection, connection.GetDB())).ServeHTTP(w, req)
 
 			resp := w.Result()
 
@@ -347,7 +349,7 @@ func TestGetEntry(t *testing.T) {
 
 			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(rsakey)), nil)
 			w := httptest.NewRecorder()
-			NewSecretHandler(NewHandlerConfig(connection)).ServeHTTP(w, req)
+			NewSecretHandler(NewHandlerConfig(connection, connection.GetDB())).ServeHTTP(w, req)
 
 			resp := w.Result()
 			body, _ := io.ReadAll(resp.Body)
@@ -397,7 +399,7 @@ func TestGetEntryJSON(t *testing.T) {
 	req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(rsakey)), nil)
 	req.Header.Add("Accept", "application/json")
 	w := httptest.NewRecorder()
-	NewSecretHandler(NewHandlerConfig(connection)).ServeHTTP(w, req)
+	NewSecretHandler(NewHandlerConfig(connection, connection.GetDB())).ServeHTTP(w, req)
 
 	resp := w.Result()
 	if resp.StatusCode != 200 {
@@ -426,7 +428,7 @@ func TestSetAndGetEntry(t *testing.T) {
 	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(testCase)))
 	w := httptest.NewRecorder()
 
-	NewSecretHandler(NewHandlerConfig(connection)).ServeHTTP(w, req)
+	NewSecretHandler(NewHandlerConfig(connection, connection.GetDB())).ServeHTTP(w, req)
 
 	resp := w.Result()
 	body, _ := io.ReadAll(resp.Body)
@@ -440,7 +442,7 @@ func TestSetAndGetEntry(t *testing.T) {
 
 	req = httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", savedUUID, keyString), nil)
 	w = httptest.NewRecorder()
-	NewSecretHandler(NewHandlerConfig(connection)).ServeHTTP(w, req)
+	NewSecretHandler(NewHandlerConfig(connection, connection.GetDB())).ServeHTTP(w, req)
 
 	resp = w.Result()
 	body, _ = io.ReadAll(resp.Body)
@@ -461,7 +463,7 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "http://example.com?expire=1m", bytes.NewReader([]byte(testCase)))
 	w := httptest.NewRecorder()
-	handlerConfig := NewHandlerConfig(connection)
+	handlerConfig := NewHandlerConfig(connection, connection.GetDB())
 	handlerConfig.MaxExpireSeconds = 120
 	NewSecretHandler(handlerConfig).ServeHTTP(w, req)
 
@@ -511,7 +513,7 @@ func TestCreateEntrySizeLimit(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "http://example.com?expire=1m", bytes.NewReader([]byte(testCase)))
 	w := httptest.NewRecorder()
-	handlerConfig := NewHandlerConfig(connection)
+	handlerConfig := NewHandlerConfig(connection, connection.GetDB())
 	handlerConfig.MaxDataSize = 1
 	handlerConfig.MaxExpireSeconds = 120
 	NewSecretHandler(handlerConfig).ServeHTTP(w, req)
@@ -533,7 +535,7 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "http://example.com?maxReads=2", bytes.NewReader([]byte(value)))
 	w := httptest.NewRecorder()
-	NewSecretHandler(NewHandlerConfig(connection)).ServeHTTP(w, req)
+	NewSecretHandler(NewHandlerConfig(connection, connection.GetDB())).ServeHTTP(w, req)
 
 	resp := w.Result()
 	body, _ := io.ReadAll(resp.Body)
@@ -573,7 +575,7 @@ func Test_DeleteEntry(t *testing.T) {
 	t.Run("correct key", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "http://example.com", bytes.NewReader([]byte("foobarbaz")))
 		w := httptest.NewRecorder()
-		handler := NewSecretHandler(NewHandlerConfig(connection))
+		handler := NewSecretHandler(NewHandlerConfig(connection, connection.GetDB()))
 		handler.ServeHTTP(w, req)
 
 		resp := w.Result()
@@ -598,7 +600,7 @@ func Test_DeleteEntry(t *testing.T) {
 	t.Run("invalid key", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "http://example.com", bytes.NewReader([]byte("foobarbaz")))
 		w := httptest.NewRecorder()
-		handler := NewSecretHandler(NewHandlerConfig(connection))
+		handler := NewSecretHandler(NewHandlerConfig(connection, connection.GetDB()))
 		handler.ServeHTTP(w, req)
 
 		resp := w.Result()
@@ -622,7 +624,7 @@ func Test_DeleteEntry(t *testing.T) {
 	t.Run("without delete key", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "http://example.com", bytes.NewReader([]byte("foobarbaz")))
 		w := httptest.NewRecorder()
-		handler := NewSecretHandler(NewHandlerConfig(connection))
+		handler := NewSecretHandler(NewHandlerConfig(connection, connection.GetDB()))
 		handler.ServeHTTP(w, req)
 
 		resp := w.Result()
@@ -663,7 +665,7 @@ func FuzzSetAndGetEntry(f *testing.F) {
 		req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(testCase)))
 		w := httptest.NewRecorder()
 
-		NewSecretHandler(NewHandlerConfig(connection)).ServeHTTP(w, req)
+		NewSecretHandler(NewHandlerConfig(connection, connection.GetDB())).ServeHTTP(w, req)
 
 		resp := w.Result()
 		body, _ := io.ReadAll(resp.Body)
@@ -677,7 +679,7 @@ func FuzzSetAndGetEntry(f *testing.F) {
 
 		req = httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", savedUUID, keyString), nil)
 		w = httptest.NewRecorder()
-		NewSecretHandler(NewHandlerConfig(connection)).ServeHTTP(w, req)
+		NewSecretHandler(NewHandlerConfig(connection, connection.GetDB())).ServeHTTP(w, req)
 
 		resp = w.Result()
 		body, _ = io.ReadAll(resp.Body)
