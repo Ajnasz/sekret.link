@@ -13,9 +13,13 @@ import (
 	"github.com/Ajnasz/sekret.link/uuid"
 )
 
+// ErrInvalidUUIDError is returned when the UUID is invalid
 var ErrInvalidUUIDError = errors.New("invalid UUID")
+
+// ErrInvalidKeyError is returned when the key is invalid
 var ErrInvalidKeyError = errors.New("invalid key")
 
+// GetHandler is the handler for getting an entry
 type GetHandler struct {
 	DB *sql.DB
 }
@@ -32,7 +36,7 @@ func (g GetHandler) handle(w http.ResponseWriter, r *http.Request) error {
 		return errors.Join(ErrInvalidKeyError, err)
 	}
 
-	encrypter := services.NewEncrypter(key)
+	encrypter := services.NewAESEncrypter(key)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	entryManager := services.NewEntryManager(g.DB, &models.EntryModel{}, encrypter)
@@ -47,6 +51,7 @@ func (g GetHandler) handle(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// Handle handles http request to get secret
 func (g GetHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	err := g.handle(w, r)
 	if err != nil {

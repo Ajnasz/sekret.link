@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -11,20 +10,9 @@ import (
 	"github.com/google/uuid"
 )
 
-func testConnection(ctx context.Context) (*sql.DB, error) {
-	config := durable.ConnectionInfo{
-		Host:     "localhost",
-		Port:     5432,
-		Username: "postgres",
-		Password: "password",
-		Database: "sekret_link_test",
-	}
-	return durable.OpenDatabaseClient(ctx, config)
-}
-
 func Test_EntryModel_CreateEntry(t *testing.T) {
 	ctx := context.Background()
-	db, err := testConnection(ctx)
+	db, err := durable.TestConnection(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +66,7 @@ func Test_EntryModel_CreateEntry(t *testing.T) {
 
 func Test_EntryModel_UpdateAccessed(t *testing.T) {
 	ctx := context.Background()
-	db, err := testConnection(ctx)
+	db, err := durable.TestConnection(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}

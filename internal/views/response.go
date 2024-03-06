@@ -17,8 +17,8 @@ import (
 
 var ErrCreateKey = errors.New("create key failed")
 
-func RenderCreateEntryErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
-	log.Println(err)
+func (e EntryView) RenderCreateEntryErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
+	log.Println("CREATE ENTRY ERROR", err)
 	if errors.Is(err, parsers.ErrInvalidExpirationDate) {
 		http.Error(w, "Invalid expiration", http.StatusBadRequest)
 		return

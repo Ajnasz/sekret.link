@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// ErrInvalidURL is returned when the URL is invalid
 var ErrInvalidURL = fmt.Errorf("invalid URL")
 
 func parseDeleteEntryPath(urlPath string) (string, string, string, error) {
@@ -36,10 +37,12 @@ func parseDeleteEntryPath(urlPath string) (string, string, string, error) {
 	return UUID.String(), keyPart, delKey, nil
 }
 
+// DeleteHandler is the handler for deleting an entry
 type DeleteHandler struct {
 	DB *sql.DB
 }
 
+// NewDeleteHandler creates a new DeleteHandler instance
 func (d DeleteHandler) NewDeleteHandler() DeleteHandler {
 	return DeleteHandler{}
 }
@@ -51,7 +54,7 @@ func (d DeleteHandler) handle(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	encrypter := services.NewEncrypter([]byte{})
+	encrypter := services.NewAESEncrypter([]byte{})
 	entryManager := services.NewEntryManager(d.DB, &models.EntryModel{}, encrypter)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -62,6 +65,8 @@ func (d DeleteHandler) handle(w http.ResponseWriter, r *http.Request) error {
 	views.RenderDeleteEntry(w, r)
 	return nil
 }
+
+// Handle handles the delete request
 func (d DeleteHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	err := d.handle(w, r)
 	if err != nil {

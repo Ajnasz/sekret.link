@@ -8,7 +8,7 @@ func Test_Encrypter_Encrypt(t *testing.T) {
 	testData := "Lorem ipsum dolor sit amet"
 	encKey := []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 
-	encrypter := NewEncrypter(encKey)
+	encrypter := NewAESEncrypter(encKey)
 
 	data, err := encrypter.Encrypt([]byte(testData))
 
@@ -33,7 +33,7 @@ func Test_Encrypter_Decrypt(t *testing.T) {
 	testData := "Lorem ipsum dolor sit amet"
 	encKey := []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 
-	encrypter := NewEncrypter(encKey)
+	encrypter := NewAESEncrypter(encKey)
 
 	data, err := encrypter.Encrypt([]byte(testData))
 

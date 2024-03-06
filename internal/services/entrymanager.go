@@ -22,12 +22,6 @@ type EntryModel interface {
 	DeleteEntry(ctx context.Context, tx *sql.Tx, UUID string, deleteKey string) error
 }
 
-// EntryCrypto is the interface to encrypt and decrypt the entry data
-type EntryCrypto interface {
-	Encrypt(data []byte) ([]byte, error)
-	Decrypt(data []byte) ([]byte, error)
-}
-
 // EntryMeta provides the entry meta
 type EntryMeta struct {
 	UUID           string
@@ -56,11 +50,11 @@ func (e *Entry) IsExpired() bool {
 type EntryManager struct {
 	db     *sql.DB
 	model  EntryModel
-	crypto EntryCrypto
+	crypto Encrypter
 }
 
 // NewEntryManager creates a new EntryService
-func NewEntryManager(db *sql.DB, model EntryModel, crypto EntryCrypto) *EntryManager {
+func NewEntryManager(db *sql.DB, model EntryModel, crypto Encrypter) *EntryManager {
 	return &EntryManager{
 		db:     db,
 		model:  model,

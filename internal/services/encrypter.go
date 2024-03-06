@@ -7,18 +7,23 @@ import (
 	"io"
 )
 
-// Encrypter is a simple encrypter that uses aes to encrypt and decrypt data
-type Encrypter struct {
+type Encrypter interface {
+	Encrypt(data []byte) ([]byte, error)
+	Decrypt(data []byte) ([]byte, error)
+}
+
+// AESEncrypter is a simple encrypter that uses aes to encrypt and decrypt data
+type AESEncrypter struct {
 	Key []byte
 }
 
-// NewEncrypter creates a new Encrypter
-func NewEncrypter(key []byte) *Encrypter {
-	return &Encrypter{key}
+// NewAESEncrypter creates a new Encrypter
+func NewAESEncrypter(key []byte) *AESEncrypter {
+	return &AESEncrypter{key}
 }
 
 // Encrypt will encrypt the data with the AESEncrypter.Key
-func (e *Encrypter) Encrypt(data []byte) ([]byte, error) {
+func (e *AESEncrypter) Encrypt(data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(e.Key)
 	if err != nil {
 		return nil, err
@@ -43,7 +48,7 @@ func (e *Encrypter) Encrypt(data []byte) ([]byte, error) {
 }
 
 // Decrypt will dencrypt the data with the AESEncrypter.Key
-func (e *Encrypter) Decrypt(data []byte) ([]byte, error) {
+func (e *AESEncrypter) Decrypt(data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(e.Key)
 	if err != nil {
 		return nil, err

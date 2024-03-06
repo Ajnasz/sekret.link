@@ -7,6 +7,11 @@ import (
 	"net/url"
 
 	"github.com/Ajnasz/sekret.link/internal/api"
+	"github.com/Ajnasz/sekret.link/internal/models"
+	"github.com/Ajnasz/sekret.link/internal/parsers"
+	"github.com/Ajnasz/sekret.link/internal/services"
+	"github.com/Ajnasz/sekret.link/internal/views"
+	"github.com/Ajnasz/sekret.link/key"
 	"github.com/Ajnasz/sekret.link/storage"
 )
 
@@ -43,12 +48,25 @@ func (s SecretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		createHandler := api.CreateHandler{
-			MaxDataSize:      s.config.MaxDataSize,
-			MaxExpireSeconds: s.config.MaxExpireSeconds,
-			WebExternalURL:   s.config.WebExternalURL,
-			DB:               s.config.DB,
+		k, err := key.NewGeneratedKey()
+
+		if err != nil {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
 		}
+
+		parser := parsers.NewCreateEntryParser(s.config.MaxExpireSeconds)
+		encrypter := services.NewAESEncrypter(k.Get())
+		entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter)
+		view := views.NewEntryView(s.config.WebExternalURL)
+
+		createHandler := api.NewCreateHandler(
+			s.config.MaxDataSize,
+			parser,
+			entryManager,
+			view,
+			k,
+		)
 		createHandler.Handle(w, r)
 		// NewCreateHandler(s.config).Handle(w, r)
 	} else if r.Method == http.MethodGet {
