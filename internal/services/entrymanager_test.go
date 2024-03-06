@@ -8,56 +8,13 @@ import (
 	"time"
 
 	"github.com/Ajnasz/sekret.link/internal/models"
+	"github.com/Ajnasz/sekret.link/internal/test"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 var timenow = time.Now()
-
-type MockEntryModel struct {
-	mock.Mock
-}
-
-func (m *MockEntryModel) CreateEntry(
-	ctx context.Context,
-	tx *sql.Tx,
-	UUID string,
-	data []byte,
-	remainingReads int,
-	expire time.Duration) (*models.EntryMeta, error) {
-	args := m.Called(ctx, tx, UUID, data, remainingReads, expire)
-	return args.Get(0).(*models.EntryMeta), args.Error(1)
-}
-
-func (m *MockEntryModel) ReadEntry(ctx context.Context, tx *sql.Tx, UUID string) (*models.Entry, error) {
-	args := m.Called(ctx, tx, UUID)
-	return args.Get(0).(*models.Entry), args.Error(1)
-}
-
-func (m *MockEntryModel) UpdateAccessed(ctx context.Context, tx *sql.Tx, UUID string) error {
-	args := m.Called(ctx, tx, UUID)
-	return args.Error(0)
-}
-
-func (m *MockEntryModel) DeleteEntry(ctx context.Context, tx *sql.Tx, UUID string, deleteKey string) error {
-	args := m.Called(ctx, tx, UUID, deleteKey)
-	return args.Error(0)
-}
-
-type MockEntryCrypto struct {
-	mock.Mock
-}
-
-func (m *MockEntryCrypto) Encrypt(data []byte) ([]byte, error) {
-	args := m.Called(data)
-	return args.Get(0).([]byte), args.Error(1)
-}
-
-func (m *MockEntryCrypto) Decrypt(data []byte) ([]byte, error) {
-	args := m.Called(data)
-	return args.Get(0).([]byte), args.Error(1)
-}
 
 func Test_EntryService_Create(t *testing.T) {
 	db, sqlMock, err := sqlmock.New()
@@ -74,7 +31,7 @@ func Test_EntryService_Create(t *testing.T) {
 
 	data := []byte("data")
 	encryptedData := []byte("encrypted")
-	entryModel := new(MockEntryModel)
+	entryModel := new(test.MockEntryModel)
 	entryModel.
 		On("CreateEntry", ctx, mock.Anything, mock.Anything, encryptedData, 1, mock.Anything).
 		Return(&models.EntryMeta{
@@ -85,7 +42,7 @@ func Test_EntryService_Create(t *testing.T) {
 			Expire:         timenow.Add(time.Minute),
 		}, nil)
 
-	entryCrypto := new(MockEntryCrypto)
+	entryCrypto := new(test.MockEntryCrypto)
 	entryCrypto.On("Encrypt", data).Return(encryptedData, nil)
 
 	service := NewEntryManager(db, entryModel, entryCrypto)
@@ -132,12 +89,12 @@ func TestCreateError(t *testing.T) {
 	data := []byte("data")
 	encryptedData := []byte("encrypted")
 
-	entryModel := new(MockEntryModel)
+	entryModel := new(test.MockEntryModel)
 	entryModel.
 		On("CreateEntry", ctx, mock.Anything, mock.Anything, encryptedData, 1, mock.Anything).
 		Return(&models.EntryMeta{}, fmt.Errorf("error"))
 
-	entryCrypto := new(MockEntryCrypto)
+	entryCrypto := new(test.MockEntryCrypto)
 	entryCrypto.On("Encrypt", data).Return(encryptedData, nil)
 
 	service := NewEntryManager(db, entryModel, entryCrypto)
@@ -175,7 +132,7 @@ func TestReadEntry(t *testing.T) {
 		Expire:         timenow.Add(time.Minute),
 	}
 
-	entryModel := new(MockEntryModel)
+	entryModel := new(test.MockEntryModel)
 	entryModel.
 		On("ReadEntry", ctx, mock.Anything, "uuid").
 		Return(&entry, nil)
@@ -183,7 +140,7 @@ func TestReadEntry(t *testing.T) {
 		On("UpdateAccessed", ctx, mock.Anything, "uuid").
 		Return(nil)
 
-	entryCrypto := new(MockEntryCrypto)
+	entryCrypto := new(test.MockEntryCrypto)
 
 	entryCrypto.On("Decrypt", []byte("encrypted")).Return([]byte("data"), nil)
 
@@ -217,12 +174,12 @@ func TestReadEntryError(t *testing.T) {
 
 	ctx := context.Background()
 
-	entryModel := new(MockEntryModel)
+	entryModel := new(test.MockEntryModel)
 	entryModel.
 		On("ReadEntry", ctx, mock.Anything, "uuid").
 		Return(&models.Entry{}, fmt.Errorf("error"))
 
-	entryCrypto := new(MockEntryCrypto)
+	entryCrypto := new(test.MockEntryCrypto)
 
 	service := NewEntryManager(db, entryModel, entryCrypto)
 	data, err := service.ReadEntry(ctx, "uuid")
@@ -248,12 +205,12 @@ func TestDeleteEntry(t *testing.T) {
 
 	ctx := context.Background()
 
-	entryModel := new(MockEntryModel)
+	entryModel := new(test.MockEntryModel)
 	entryModel.
 		On("DeleteEntry", ctx, mock.Anything, "uuid", "delete_key").
 		Return(nil)
 
-	entryCrypto := new(MockEntryCrypto)
+	entryCrypto := new(test.MockEntryCrypto)
 
 	service := NewEntryManager(db, entryModel, entryCrypto)
 	err = service.DeleteEntry(ctx, "uuid", "delete_key")
@@ -278,12 +235,12 @@ func TestDeleteEntryError(t *testing.T) {
 
 	ctx := context.Background()
 
-	entryModel := new(MockEntryModel)
+	entryModel := new(test.MockEntryModel)
 	entryModel.
 		On("DeleteEntry", ctx, mock.Anything, "uuid", "delete_key").
 		Return(fmt.Errorf("error"))
 
-	entryCrypto := new(MockEntryCrypto)
+	entryCrypto := new(test.MockEntryCrypto)
 
 	service := NewEntryManager(db, entryModel, entryCrypto)
 	err = service.DeleteEntry(ctx, "uuid", "delete_key")
@@ -308,12 +265,12 @@ func TestDeleteEntryInvalidDeleteKey(t *testing.T) {
 
 	ctx := context.Background()
 
-	entryModel := new(MockEntryModel)
+	entryModel := new(test.MockEntryModel)
 	entryModel.
 		On("DeleteEntry", ctx, mock.Anything, "uuid", "delete_key").
 		Return(models.ErrEntryNotFound)
 
-	entryCrypto := new(MockEntryCrypto)
+	entryCrypto := new(test.MockEntryCrypto)
 
 	service := NewEntryManager(db, entryModel, entryCrypto)
 	err = service.DeleteEntry(ctx, "uuid", "delete_key")

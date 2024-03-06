@@ -3,11 +3,15 @@ package services
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/Ajnasz/sekret.link/internal/models"
 	"github.com/Ajnasz/sekret.link/uuid"
 )
+
+var ErrEntryExpired = errors.New("entry expired")
+var ErrEntryNotFound = errors.New("entry not found")
 
 // EntryModel is the interface for the entry model
 // It is used to create, read and access entries
@@ -42,6 +46,10 @@ type Entry struct {
 	Created        time.Time
 	Accessed       time.Time
 	Expire         time.Time
+}
+
+func (e *Entry) IsExpired() bool {
+	return e.Expire.Before(time.Now())
 }
 
 // EntryManager provides the entry service
@@ -102,7 +110,20 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string) (*Entry, erro
 	entry, err := e.model.ReadEntry(ctx, tx, UUID)
 	if err != nil {
 		tx.Rollback()
+		if errors.Is(err, models.ErrEntryNotFound) {
+			return nil, ErrEntryNotFound
+		}
 		return nil, err
+	}
+
+	if entry.RemainingReads <= 0 {
+		tx.Rollback()
+		return nil, ErrEntryExpired
+	}
+
+	if entry.Expire.Before(time.Now()) {
+		tx.Rollback()
+		return nil, ErrEntryExpired
 	}
 
 	if err := e.model.UpdateAccessed(ctx, tx, UUID); err != nil {

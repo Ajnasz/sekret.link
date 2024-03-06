@@ -11,6 +11,7 @@ import (
 	"github.com/Ajnasz/sekret.link/entries"
 	"github.com/Ajnasz/sekret.link/internal/models"
 	"github.com/Ajnasz/sekret.link/internal/parsers"
+	"github.com/Ajnasz/sekret.link/internal/services"
 	"github.com/google/uuid"
 )
 
@@ -35,12 +36,12 @@ func RenderCreateEntryErrorResponse(w http.ResponseWriter, r *http.Request, err 
 
 func RenderReadEntryError(w http.ResponseWriter, r *http.Request, err error) {
 	log.Println(err)
-	if errors.Is(err, entries.ErrEntryExpired) {
+	if errors.Is(err, services.ErrEntryExpired) {
 		http.Error(w, "Gone", http.StatusGone)
 		return
 	}
 
-	if errors.Is(err, entries.ErrEntryNotFound) {
+	if errors.Is(err, services.ErrEntryNotFound) {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}

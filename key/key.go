@@ -9,7 +9,7 @@ import (
 // ErrorKeyAlreadyGenerated Error occures when trying to generate a key on a
 // Key object which already has a generated key
 var ErrorKeyAlreadyGenerated = errors.New("key already generated")
-var ErrorKeyGenerateFAiled = errors.New("Key generation failed")
+var ErrorKeyGenerateFailed = errors.New("Key generation failed")
 
 // SizeAES256 the byte size required for aes 256 encoding
 const SizeAES256 uint = 32
@@ -23,7 +23,7 @@ func NewKey() *Key {
 func NewGeneratedKey() (*Key, error) {
 	k := NewKey()
 	if err := k.Generate(); err != nil {
-		return nil, errors.Join(ErrorKeyGenerateFAiled, err)
+		return nil, errors.Join(ErrorKeyGenerateFailed, err)
 	}
 
 	return k, nil

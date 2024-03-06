@@ -26,6 +26,8 @@ var ErrInvalidMaxRead = errors.New("Invalid max read")
 // ErrInvalidData request parse error happens if the post data can not be accepted
 var ErrInvalidData = errors.New("Invalid data")
 
+var ErrRequestParseError = errors.New("request parse error")
+
 // CreateHandler is an http.Handler implementaton which creates secrets
 type CreateHandler struct {
 	MaxDataSize      int64
@@ -42,7 +44,7 @@ func (c CreateHandler) handle(w http.ResponseWriter, r *http.Request) error {
 	data, err := parser.Parse(r)
 
 	if err != nil {
-		return errors.Join(errors.New("request parse error"), err)
+		return errors.Join(ErrRequestParseError, err)
 	}
 
 	k, err := key.NewGeneratedKey()
@@ -59,7 +61,7 @@ func (c CreateHandler) handle(w http.ResponseWriter, r *http.Request) error {
 	entry, err := entryManager.CreateEntry(ctx, data.Body, data.MaxReads, data.Expiration)
 
 	if err != nil {
-		return errors.New("create secret failed")
+		return err
 	}
 
 	view := views.NewEntryView(c.WebExternalURL)

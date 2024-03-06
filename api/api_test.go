@@ -17,7 +17,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Ajnasz/sekret.link/api/entries"
 	"github.com/Ajnasz/sekret.link/encrypter/aes"
 	"github.com/Ajnasz/sekret.link/key"
 	"github.com/Ajnasz/sekret.link/storage"
@@ -158,7 +157,18 @@ func TestCreateEntryJSON(t *testing.T) {
 	NewSecretHandler(NewHandlerConfig(connection, connection.GetDB())).ServeHTTP(w, req)
 
 	resp := w.Result()
-	var encode entries.SecretResponse
+
+	type SecretResponse struct {
+		UUID      string
+		Key       string
+		Data      string
+		Created   time.Time
+		Accessed  time.Time
+		Expire    time.Time
+		DeleteKey string
+	}
+
+	var encode SecretResponse
 	err := json.NewDecoder(resp.Body).Decode(&encode)
 
 	if err != nil {
@@ -405,7 +415,18 @@ func TestGetEntryJSON(t *testing.T) {
 	if resp.StatusCode != 200 {
 		t.Errorf("non 200 http statuscode: %d", resp.StatusCode)
 	}
-	var encode entries.SecretResponse
+
+	type SecretResponse struct {
+		UUID      string
+		Key       string
+		Data      string
+		Created   time.Time
+		Accessed  time.Time
+		Expire    time.Time
+		DeleteKey string
+	}
+
+	var encode SecretResponse
 	err = json.NewDecoder(resp.Body).Decode(&encode)
 
 	if err != nil {

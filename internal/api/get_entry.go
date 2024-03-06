@@ -13,8 +13,8 @@ import (
 	"github.com/Ajnasz/sekret.link/uuid"
 )
 
-var InvalidUUIDError = errors.New("invalid UUID")
-var InvalidKeyError = errors.New("invalid key")
+var ErrInvalidUUIDError = errors.New("invalid UUID")
+var ErrInvalidKeyError = errors.New("invalid key")
 
 type GetHandler struct {
 	DB *sql.DB
@@ -24,12 +24,12 @@ func (g GetHandler) handle(w http.ResponseWriter, r *http.Request) error {
 	UUID, keyString, err := uuid.GetUUIDAndSecretFromPath(r.URL.Path)
 
 	if err != nil {
-		return InvalidUUIDError
+		return ErrInvalidUUIDError
 	}
 	key, err := hex.DecodeString(keyString)
 
 	if err != nil {
-		return errors.Join(InvalidKeyError, err)
+		return errors.Join(ErrInvalidKeyError, err)
 	}
 
 	encrypter := services.NewEncrypter(key)

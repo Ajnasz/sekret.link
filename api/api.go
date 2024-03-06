@@ -63,6 +63,6 @@ func (s SecretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		deleteHandler.Handle(w, r)
 	} else {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, "Not found", http.StatusNotFound)
 	}
 }
