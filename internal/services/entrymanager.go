@@ -33,6 +33,16 @@ type EntryMeta struct {
 	Expire         time.Time
 }
 
+type Entry struct {
+	UUID           string
+	Data           []byte
+	RemainingReads int
+	DeleteKey      string
+	Created        time.Time
+	Accessed       time.Time
+	Expire         time.Time
+}
+
 // EntryManager provides the entry service
 type EntryManager struct {
 	db     *sql.DB
@@ -82,7 +92,7 @@ func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingRe
 
 }
 
-func (e *EntryManager) ReadEntry(ctx context.Context, UUID string) ([]byte, error) {
+func (e *EntryManager) ReadEntry(ctx context.Context, UUID string) (*Entry, error) {
 	tx, err := e.db.Begin()
 	if err != nil {
 		return nil, err
@@ -105,7 +115,14 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string) ([]byte, erro
 		tx.Rollback()
 		return nil, err
 	}
-	tx.Commit()
 
-	return decryptedData, nil
+	return &Entry{
+		UUID:           entry.UUID,
+		Data:           decryptedData,
+		RemainingReads: entry.RemainingReads - 1,
+		DeleteKey:      entry.DeleteKey,
+		Created:        entry.Created,
+		Accessed:       entry.Accessed.Time,
+		Expire:         entry.Expire,
+	}, nil
 }

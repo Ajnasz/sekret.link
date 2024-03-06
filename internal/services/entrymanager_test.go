@@ -160,18 +160,20 @@ func TestReadEntry(t *testing.T) {
 
 	ctx := context.Background()
 
+	entry := models.Entry{
+		UUID:           "uuid",
+		Data:           []byte("encrypted"),
+		RemainingReads: 1,
+		DeleteKey:      "delete_key",
+		Created:        timenow,
+		Accessed:       sql.NullTime{Time: timenow, Valid: true},
+		Expire:         timenow.Add(time.Minute),
+	}
+
 	entryModel := new(MockEntryModel)
 	entryModel.
 		On("ReadEntry", ctx, mock.Anything, "uuid").
-		Return(&models.Entry{
-			UUID:           "uuid",
-			Data:           []byte("encrypted"),
-			RemainingReads: 1,
-			DeleteKey:      "delete_key",
-			Created:        timenow,
-			Accessed:       sql.NullTime{Time: timenow, Valid: true},
-			Expire:         timenow.Add(time.Minute),
-		}, nil)
+		Return(&entry, nil)
 	entryModel.
 		On("UpdateAccessed", ctx, mock.Anything, "uuid").
 		Return(nil)
@@ -185,6 +187,15 @@ func TestReadEntry(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, data)
+	assert.Equal(t, Entry{
+		UUID:           entry.UUID,
+		Data:           []byte("data"),
+		RemainingReads: 0,
+		DeleteKey:      entry.DeleteKey,
+		Created:        entry.Created,
+		Accessed:       entry.Accessed.Time,
+		Expire:         entry.Expire,
+	}, *data)
 
 	entryModel.AssertExpectations(t)
 }
