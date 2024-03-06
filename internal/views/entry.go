@@ -99,6 +99,6 @@ func RenderReadEntry(w http.ResponseWriter, r *http.Request, entry *services.Ent
 	}
 }
 
-func RenderDeleteEntry(w http.ResponseWriter, r *http.Request) {
+func (e EntryView) RenderDeleteEntry(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 }

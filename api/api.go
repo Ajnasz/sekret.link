@@ -76,9 +76,10 @@ func (s SecretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		getHandler.Handle(w, r)
 		// NewGetHandler(s.config).Handle(w, r)
 	} else if r.Method == http.MethodDelete {
-		deleteHandler := api.DeleteHandler{
-			DB: s.config.DB,
-		}
+		encrypter := services.NewAESEncrypter([]byte{})
+		entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter)
+		view := views.NewEntryView(s.config.WebExternalURL)
+		deleteHandler := api.NewDeleteHandler(entryManager, view)
 		deleteHandler.Handle(w, r)
 	} else {
 		http.Error(w, "Not found", http.StatusNotFound)

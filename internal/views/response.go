@@ -60,8 +60,9 @@ func RenderReadEntryError(w http.ResponseWriter, r *http.Request, err error) {
 	http.Error(w, "Internal error", http.StatusInternalServerError)
 }
 
-func RenderDeleteEntryError(w http.ResponseWriter, r *http.Request, err error) {
+func (e EntryView) RenderDeleteEntryError(w http.ResponseWriter, r *http.Request, err error) {
 	log.Println(err)
+
 	if errors.Is(err, entries.ErrEntryNotFound) || errors.Is(err, models.ErrEntryNotFound) {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
@@ -71,7 +72,7 @@ func RenderDeleteEntryError(w http.ResponseWriter, r *http.Request, err error) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 	}
 
-	if uuid.IsInvalidLengthError(err) {
+	if uuid.IsInvalidLengthError(err) || errors.Is(err, parsers.ErrInvalidUUID) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
