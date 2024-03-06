@@ -52,9 +52,16 @@ func (s SecretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		createHandler.Handle(w, r)
 		// NewCreateHandler(s.config).Handle(w, r)
 	} else if r.Method == http.MethodGet {
-		handleGetEntry(s.config.EntryStorage, w, r)
+		getHandler := api.GetHandler{
+			DB: s.config.DB,
+		}
+		getHandler.Handle(w, r)
+		// NewGetHandler(s.config).Handle(w, r)
 	} else if r.Method == http.MethodDelete {
-		handleDeleteEntry(s.config.EntryStorage, w, r)
+		deleteHandler := api.DeleteHandler{
+			DB: s.config.DB,
+		}
+		deleteHandler.Handle(w, r)
 	} else {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 	}

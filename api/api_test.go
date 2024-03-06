@@ -618,7 +618,7 @@ func Test_DeleteEntry(t *testing.T) {
 		resp = w.Result()
 
 		if resp.StatusCode != http.StatusUnauthorized {
-			t.Errorf("Delete response expected to be %d, but got %d", http.StatusUnauthorized, resp.StatusCode)
+			t.Errorf("Delete response expected to be %d or %d, but got %d", http.StatusUnauthorized, http.StatusNotFound, resp.StatusCode)
 		}
 	})
 	t.Run("without delete key", func(t *testing.T) {

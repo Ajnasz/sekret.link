@@ -12,7 +12,7 @@ import (
 	"github.com/Ajnasz/sekret.link/uuid"
 )
 
-type EntryResponse struct {
+type EntryCreatedResponse struct {
 	UUID      string
 	Key       string
 	Created   time.Time
@@ -21,14 +21,35 @@ type EntryResponse struct {
 	DeleteKey string
 }
 
-func buildResponse(meta *services.EntryMeta, keyString string) EntryResponse {
-	return EntryResponse{
+func buildCreatedResponse(meta *services.EntryMeta, keyString string) EntryCreatedResponse {
+	return EntryCreatedResponse{
 		UUID:      meta.UUID,
 		Created:   meta.Created,
 		Expire:    meta.Expire,
 		Accessed:  meta.Accessed,
 		DeleteKey: meta.DeleteKey,
 		Key:       keyString,
+	}
+}
+
+type SecretResponse struct {
+	UUID      string
+	Key       string
+	Data      string
+	Created   time.Time
+	Accessed  time.Time
+	Expire    time.Time
+	DeleteKey string
+}
+
+func buildSecretResponse(meta services.Entry) SecretResponse {
+	return SecretResponse{
+		UUID:      meta.UUID,
+		Created:   meta.Created,
+		Expire:    meta.Expire,
+		Accessed:  meta.Accessed,
+		DeleteKey: meta.DeleteKey,
+		Data:      string(meta.Data),
 	}
 }
 
@@ -51,7 +72,7 @@ func (e EntryView) RenderEntryCreated(w http.ResponseWriter, r *http.Request, en
 	if r.Header.Get("Accept") == "application/json" {
 		w.Header().Set("Content-Type", "application/json")
 
-		response := buildResponse(entry, keyString)
+		response := buildCreatedResponse(entry, keyString)
 
 		json.NewEncoder(w).Encode(response)
 	} else {
@@ -64,4 +85,20 @@ func (e EntryView) RenderEntryCreated(w http.ResponseWriter, r *http.Request, en
 
 		fmt.Fprintf(w, "%s", newURL.String())
 	}
+}
+
+func RenderReadEntry(w http.ResponseWriter, r *http.Request, entry *services.Entry, keyString string) {
+	if r.Header.Get("Accept") == "application/json" {
+		response := buildSecretResponse(*entry)
+
+		response.Key = keyString
+		json.NewEncoder(w).Encode(response)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Write(entry.Data)
+	}
+}
+
+func RenderDeleteEntry(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusAccepted)
 }

@@ -123,7 +123,7 @@ func Test_EntryModel_UpdateAccessed(t *testing.T) {
 		t.Errorf("expected %s got %s", string(data), string(entry.Data))
 	}
 
-	if err := model.DeleteEntry(ctx, tx, uid, "invalid delete key"); err != ErrEntryNotFound {
+	if err := model.DeleteEntry(ctx, tx, uid, "invalid delete key"); err != ErrInvalidKey {
 		t.Fatal("expected error when deleting with invalid delete key")
 	}
 

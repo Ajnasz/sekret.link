@@ -40,6 +40,11 @@ func (m *MockEntryModel) UpdateAccessed(ctx context.Context, tx *sql.Tx, UUID st
 	return args.Error(0)
 }
 
+func (m *MockEntryModel) DeleteEntry(ctx context.Context, tx *sql.Tx, UUID string, deleteKey string) error {
+	args := m.Called(ctx, tx, UUID, deleteKey)
+	return args.Error(0)
+}
+
 type MockEntryCrypto struct {
 	mock.Mock
 }
@@ -198,4 +203,127 @@ func TestReadEntry(t *testing.T) {
 	}, *data)
 
 	entryModel.AssertExpectations(t)
+}
+
+func TestReadEntryError(t *testing.T) {
+	db, sqlMock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	sqlMock.ExpectBegin()
+	sqlMock.ExpectRollback()
+
+	ctx := context.Background()
+
+	entryModel := new(MockEntryModel)
+	entryModel.
+		On("ReadEntry", ctx, mock.Anything, "uuid").
+		Return(&models.Entry{}, fmt.Errorf("error"))
+
+	entryCrypto := new(MockEntryCrypto)
+
+	service := NewEntryManager(db, entryModel, entryCrypto)
+	data, err := service.ReadEntry(ctx, "uuid")
+
+	assert.Error(t, err)
+	assert.Nil(t, data)
+
+	entryModel.AssertExpectations(t)
+	if sqlMock.ExpectationsWereMet() != nil {
+		t.Errorf("there were unfulfilled expectations: %s", sqlMock.ExpectationsWereMet())
+	}
+}
+
+func TestDeleteEntry(t *testing.T) {
+	db, sqlMock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	sqlMock.ExpectBegin()
+	sqlMock.ExpectCommit()
+
+	ctx := context.Background()
+
+	entryModel := new(MockEntryModel)
+	entryModel.
+		On("DeleteEntry", ctx, mock.Anything, "uuid", "delete_key").
+		Return(nil)
+
+	entryCrypto := new(MockEntryCrypto)
+
+	service := NewEntryManager(db, entryModel, entryCrypto)
+	err = service.DeleteEntry(ctx, "uuid", "delete_key")
+
+	assert.NoError(t, err)
+
+	entryModel.AssertExpectations(t)
+	if sqlMock.ExpectationsWereMet() != nil {
+		t.Errorf("there were unfulfilled expectations: %s", sqlMock.ExpectationsWereMet())
+	}
+}
+
+func TestDeleteEntryError(t *testing.T) {
+	db, sqlMock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	sqlMock.ExpectBegin()
+	sqlMock.ExpectRollback()
+
+	ctx := context.Background()
+
+	entryModel := new(MockEntryModel)
+	entryModel.
+		On("DeleteEntry", ctx, mock.Anything, "uuid", "delete_key").
+		Return(fmt.Errorf("error"))
+
+	entryCrypto := new(MockEntryCrypto)
+
+	service := NewEntryManager(db, entryModel, entryCrypto)
+	err = service.DeleteEntry(ctx, "uuid", "delete_key")
+
+	assert.Error(t, err)
+
+	entryModel.AssertExpectations(t)
+	if sqlMock.ExpectationsWereMet() != nil {
+		t.Errorf("there were unfulfilled expectations: %s", sqlMock.ExpectationsWereMet())
+	}
+}
+
+func TestDeleteEntryInvalidDeleteKey(t *testing.T) {
+	db, sqlMock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+	sqlMock.ExpectBegin()
+	// sqlMock.ExpectExec("DELETE FROM entries WHERE uuid=(.+) AND delete_key=(.+)").WillReturnResult(sqlmock.NewResult(2, 1))
+	sqlMock.ExpectRollback()
+
+	ctx := context.Background()
+
+	entryModel := new(MockEntryModel)
+	entryModel.
+		On("DeleteEntry", ctx, mock.Anything, "uuid", "delete_key").
+		Return(models.ErrEntryNotFound)
+
+	entryCrypto := new(MockEntryCrypto)
+
+	service := NewEntryManager(db, entryModel, entryCrypto)
+	err = service.DeleteEntry(ctx, "uuid", "delete_key")
+
+	assert.Error(t, err)
+	assert.Equal(t, models.ErrEntryNotFound, err)
+
+	entryModel.AssertExpectations(t)
+
+	if sqlMock.ExpectationsWereMet() != nil {
+		t.Errorf("there were unfulfilled expectations: %s", sqlMock.ExpectationsWereMet())
+	}
 }

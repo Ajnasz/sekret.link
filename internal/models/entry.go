@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	// import postgresql driver
@@ -13,6 +14,7 @@ import (
 )
 
 var ErrEntryNotFound = errors.New("entry not found")
+var ErrInvalidKey = errors.New("invalid key")
 
 // uuid uuid PRIMARY KEY,
 // data BYTEA,
@@ -104,6 +106,20 @@ func (e *EntryMeta) ReadEntryMeta(ctx context.Context, tx *sql.Tx, uuid string) 
 // if the delete key matches
 // returns an error if the delete key does not match
 func (e *EntryModel) DeleteEntry(ctx context.Context, tx *sql.Tx, uuid string, deleteKey string) error {
+	row := tx.QueryRowContext(ctx, "SELECT delete_key FROM entries WHERE uuid=$1", uuid)
+
+	var storedDeleteKey string
+	err := row.Scan(&storedDeleteKey)
+
+	if err != nil {
+		return err
+	}
+
+	// TODO check how come the storeDeleteKey has a new line
+	if strings.TrimSpace(storedDeleteKey) != deleteKey {
+		return ErrInvalidKey
+	}
+
 	ret, err := tx.ExecContext(ctx, "DELETE FROM entries WHERE uuid=$1 AND delete_key=$2", uuid, deleteKey)
 
 	if err != nil {

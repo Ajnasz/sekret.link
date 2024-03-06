@@ -72,6 +72,6 @@ func (c CreateHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	err := c.handle(w, r)
 
 	if err != nil {
-		views.RenderErrorResponse(w, r, err)
+		views.RenderCreateEntryErrorResponse(w, r, err)
 	}
 }

@@ -19,32 +19,28 @@ import (
 )
 
 func onGetError(w http.ResponseWriter, err error) {
+	log.Println(err)
 	if errors.Is(err, entries.ErrEntryExpired) {
-		log.Println(err)
 		http.Error(w, "Gone", http.StatusGone)
 		return
 	}
 
 	if errors.Is(err, entries.ErrEntryNotFound) {
-		log.Println(err)
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
 
 	if errors.Is(err, hex.ErrLength) {
-		log.Println(err)
-		http.Error(w, "Not Found", http.StatusNotFound)
+		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
 
 	var keysizeError *aes.KeySizeError
 	if errors.As(err, &keysizeError) {
-		log.Println(err)
-		http.Error(w, "Not Found", http.StatusNotFound)
+		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
 
-	log.Println(err)
 	http.Error(w, "Internal error", http.StatusInternalServerError)
 }
 
@@ -75,12 +71,6 @@ func sendGetSecretResponse(entry *entries.Entry, keyString string, w http.Respon
 
 func handleGetEntry(entryStorage storage.VerifyConfirmReader, w http.ResponseWriter, r *http.Request) {
 	UUID, keyString, err := uuid.GetUUIDAndSecretFromPath(r.URL.Path)
-
-	if err != nil {
-		log.Println(err)
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
 
 	if err != nil {
 		onGetError(w, err)

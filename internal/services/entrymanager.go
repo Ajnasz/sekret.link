@@ -15,6 +15,7 @@ type EntryModel interface {
 	CreateEntry(ctx context.Context, tx *sql.Tx, UUID string, data []byte, remainingReads int, expire time.Duration) (*models.EntryMeta, error)
 	ReadEntry(ctx context.Context, tx *sql.Tx, UUID string) (*models.Entry, error)
 	UpdateAccessed(ctx context.Context, tx *sql.Tx, UUID string) error
+	DeleteEntry(ctx context.Context, tx *sql.Tx, UUID string, deleteKey string) error
 }
 
 // EntryCrypto is the interface to encrypt and decrypt the entry data
@@ -116,6 +117,8 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string) (*Entry, erro
 		return nil, err
 	}
 
+	tx.Commit()
+
 	return &Entry{
 		UUID:           entry.UUID,
 		Data:           decryptedData,
@@ -125,4 +128,20 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string) (*Entry, erro
 		Accessed:       entry.Accessed.Time,
 		Expire:         entry.Expire,
 	}, nil
+}
+
+func (e *EntryManager) DeleteEntry(ctx context.Context, UUID string, deleteKey string) error {
+	tx, err := e.db.Begin()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := e.model.DeleteEntry(ctx, tx, UUID, deleteKey); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	tx.Commit()
+	return nil
 }
