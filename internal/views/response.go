@@ -34,7 +34,7 @@ func (e EntryView) RenderCreateEntryErrorResponse(w http.ResponseWriter, r *http
 	}
 }
 
-func RenderReadEntryError(w http.ResponseWriter, r *http.Request, err error) {
+func (e EntryView) RenderReadEntryError(w http.ResponseWriter, r *http.Request, err error) {
 	log.Println(err)
 	if errors.Is(err, services.ErrEntryExpired) {
 		http.Error(w, "Gone", http.StatusGone)

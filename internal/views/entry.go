@@ -87,7 +87,7 @@ func (e EntryView) RenderEntryCreated(w http.ResponseWriter, r *http.Request, en
 	}
 }
 
-func RenderReadEntry(w http.ResponseWriter, r *http.Request, entry *services.Entry, keyString string) {
+func (e EntryView) RenderReadEntry(w http.ResponseWriter, r *http.Request, entry *services.Entry, keyString string) {
 	if r.Header.Get("Accept") == "application/json" {
 		response := buildSecretResponse(*entry)
 
