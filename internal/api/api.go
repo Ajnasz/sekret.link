@@ -37,7 +37,7 @@ type CreateHandler struct {
 func (c CreateHandler) handle(w http.ResponseWriter, r *http.Request) error {
 	r.Body = http.MaxBytesReader(w, r.Body, c.MaxDataSize)
 
-	parser := parsers.NewCreateEntryValidator(c.MaxExpireSeconds)
+	parser := parsers.NewCreateEntryParser(c.MaxExpireSeconds)
 
 	data, err := parser.Parse(r)
 

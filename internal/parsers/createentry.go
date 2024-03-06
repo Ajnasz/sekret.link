@@ -30,7 +30,7 @@ type CreateEntryRequestData struct {
 	MaxReads   int
 }
 
-func NewCreateEntryValidator(maxExpireSeconds int) CreateEntryParser {
+func NewCreateEntryParser(maxExpireSeconds int) CreateEntryParser {
 	return CreateEntryParser{maxExpireSeconds: maxExpireSeconds}
 }
 
