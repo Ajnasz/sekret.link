@@ -30,10 +30,9 @@ func TestGetHandle(t *testing.T) {
 	// viewMock.On("RenderReadEntry", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
 	viewMock.On("RenderReadEntryError", mock.Anything, mock.Anything, mock.Anything).Return()
 
-	request := httptest.NewRequest("GET", "http://example.com/foo", nil)
+	request := httptest.NewRequest("GET", "http://example.com/foo/a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb/12121212aeadf", nil)
 	response := httptest.NewRecorder()
 
 	handler.Handle(response, request)
-
 	viewMock.AssertExpectations(t)
 }

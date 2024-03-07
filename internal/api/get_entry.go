@@ -10,7 +10,6 @@ import (
 	"github.com/Ajnasz/sekret.link/internal/models"
 	"github.com/Ajnasz/sekret.link/internal/parsers"
 	"github.com/Ajnasz/sekret.link/internal/services"
-	"github.com/Ajnasz/sekret.link/uuid"
 )
 
 type GetEntryManager interface {
@@ -46,7 +45,7 @@ func NewGetHandler(
 
 func (g GetHandler) handle(w http.ResponseWriter, r *http.Request) error {
 	// TODO move to parsers
-	UUID, keyString, err := uuid.GetUUIDAndSecretFromPath(r.URL.Path)
+	UUID, keyString, err := parsers.ParseGetEntryPath(r.URL.Path)
 
 	if err != nil {
 		return parsers.ErrInvalidUUID
