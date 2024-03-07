@@ -13,6 +13,7 @@ type DeleteEntryManager interface {
 	DeleteEntry(ctx context.Context, UUID string, deleteKey string) error
 }
 
+// DeleteEntryView is the interface for the view that should be implemented to render the delete entry results
 type DeleteEntryView interface {
 	RenderDeleteEntry(w http.ResponseWriter, r *http.Request)
 	RenderDeleteEntryError(w http.ResponseWriter, r *http.Request, err error)

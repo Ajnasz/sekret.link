@@ -1,24 +1,12 @@
 package parsers
 
 import (
-	"errors"
 	"io"
 	"mime"
 	"net/http"
 	"strconv"
 	"time"
 )
-
-// ErrInvalidData request parse error happens if the post data can not be accepted
-var ErrInvalidData = errors.New("Invalid data")
-
-// ErrInvalidMaxRead request parse error happens when the user maximum read
-// number is greater than the system maximum read number
-var ErrInvalidMaxRead = errors.New("Invalid max read")
-
-// ErrInvalidExpirationDate request parse error happens when the user set
-// expiration date is larger than the system maximum expiration date
-var ErrInvalidExpirationDate = errors.New("Invalid expiration date")
 
 type CreateEntryParser struct {
 	maxExpireSeconds int

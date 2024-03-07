@@ -11,7 +11,6 @@ import (
 	"github.com/Ajnasz/sekret.link/internal/parsers"
 	"github.com/Ajnasz/sekret.link/internal/services"
 	"github.com/Ajnasz/sekret.link/internal/views"
-	"github.com/Ajnasz/sekret.link/key"
 	"github.com/Ajnasz/sekret.link/storage"
 )
 
@@ -41,6 +40,10 @@ func (s SecretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// encrypter := services.NewAESEncrypter(k.Get())
+	encrypter := func(b []byte) services.Encrypter {
+		return services.NewAESEncrypter(b)
+	}
 	if r.Method == http.MethodPost {
 		if r.URL.Path != "/" && r.URL.Path != "" {
 			http.Error(w, "Not found", http.StatusNotFound)
@@ -48,15 +51,7 @@ func (s SecretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		k, err := key.NewGeneratedKey()
-
-		if err != nil {
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
 		parser := parsers.NewCreateEntryParser(s.config.MaxExpireSeconds)
-		encrypter := services.NewAESEncrypter(k.Get())
 		entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter)
 		view := views.NewEntryView(s.config.WebExternalURL)
 
@@ -65,20 +60,21 @@ func (s SecretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			parser,
 			entryManager,
 			view,
-			k,
 		)
 		createHandler.Handle(w, r)
 		// NewCreateHandler(s.config).Handle(w, r)
 	} else if r.Method == http.MethodGet {
 		view := views.NewEntryView(s.config.WebExternalURL)
+		parser := parsers.NewGetEntryParser()
+		entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter)
 		getHandler := api.NewGetHandler(
-			s.config.DB,
+			parser,
+			entryManager,
 			view,
 		)
 		getHandler.Handle(w, r)
 		// NewGetHandler(s.config).Handle(w, r)
 	} else if r.Method == http.MethodDelete {
-		encrypter := services.NewAESEncrypter([]byte{})
 		entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter)
 		view := views.NewEntryView(s.config.WebExternalURL)
 		deleteHandler := api.NewDeleteHandler(entryManager, view)

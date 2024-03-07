@@ -44,12 +44,16 @@ func Test_EntryService_Create(t *testing.T) {
 
 	entryCrypto := new(test.MockEntryCrypto)
 	entryCrypto.On("Encrypt", data).Return(encryptedData, nil)
+	crypto := func(key []byte) Encrypter {
+		return entryCrypto
+	}
 
-	service := NewEntryManager(db, entryModel, entryCrypto)
-	meta, err := service.CreateEntry(ctx, data, 1, time.Minute)
+	service := NewEntryManager(db, entryModel, crypto)
+	meta, key, err := service.CreateEntry(ctx, data, 1, time.Minute)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, meta)
+	assert.NotNil(t, key)
 
 	entryModel.AssertExpectations(t)
 	if meta.UUID == "" {
@@ -96,12 +100,16 @@ func TestCreateError(t *testing.T) {
 
 	entryCrypto := new(test.MockEntryCrypto)
 	entryCrypto.On("Encrypt", data).Return(encryptedData, nil)
+	crypto := func(key []byte) Encrypter {
+		return entryCrypto
+	}
 
-	service := NewEntryManager(db, entryModel, entryCrypto)
-	meta, err := service.CreateEntry(ctx, data, 1, time.Minute)
+	service := NewEntryManager(db, entryModel, crypto)
+	meta, key, err := service.CreateEntry(ctx, data, 1, time.Minute)
 
 	assert.Error(t, err)
 	assert.Nil(t, meta)
+	assert.Nil(t, key)
 
 	entryModel.AssertExpectations(t)
 }
@@ -114,10 +122,6 @@ func TestReadEntry(t *testing.T) {
 	defer db.Close()
 
 	sqlMock.ExpectBegin()
-	sqlMock.ExpectQuery("SELECT uuid, data, remaining_reads, delete_key, created, accessed, expire FROM entries").
-		WillReturnRows(sqlmock.NewRows([]string{"uuid", "data", "remaining_reads", "delete_key", "created", "accessed", "expire"}).AddRow("uuid", "data", 1, "delete_key", timenow, timenow, timenow.Add(time.Minute)))
-	sqlMock.ExpectExec("UPDATE entries SET accessed = NOW\\(\\), remaining_reads = remaining_reads - 1 WHERE uuid =").
-		WillReturnResult(sqlmock.NewResult(1, 1))
 	sqlMock.ExpectCommit()
 
 	ctx := context.Background()
@@ -140,12 +144,16 @@ func TestReadEntry(t *testing.T) {
 		On("UpdateAccessed", ctx, mock.Anything, "uuid").
 		Return(nil)
 
+	key := []byte("key")
 	entryCrypto := new(test.MockEntryCrypto)
-
 	entryCrypto.On("Decrypt", []byte("encrypted")).Return([]byte("data"), nil)
 
-	service := NewEntryManager(db, entryModel, entryCrypto)
-	data, err := service.ReadEntry(ctx, "uuid")
+	crypto := func(key []byte) Encrypter {
+		return entryCrypto
+	}
+
+	service := NewEntryManager(db, entryModel, crypto)
+	data, err := service.ReadEntry(ctx, "uuid", key)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, data)
@@ -180,9 +188,12 @@ func TestReadEntryError(t *testing.T) {
 		Return(&models.Entry{}, fmt.Errorf("error"))
 
 	entryCrypto := new(test.MockEntryCrypto)
+	crypto := func(key []byte) Encrypter {
+		return entryCrypto
+	}
 
-	service := NewEntryManager(db, entryModel, entryCrypto)
-	data, err := service.ReadEntry(ctx, "uuid")
+	service := NewEntryManager(db, entryModel, crypto)
+	data, err := service.ReadEntry(ctx, "uuid", []byte("key"))
 
 	assert.Error(t, err)
 	assert.Nil(t, data)
@@ -211,8 +222,11 @@ func TestDeleteEntry(t *testing.T) {
 		Return(nil)
 
 	entryCrypto := new(test.MockEntryCrypto)
+	crypto := func(key []byte) Encrypter {
+		return entryCrypto
+	}
 
-	service := NewEntryManager(db, entryModel, entryCrypto)
+	service := NewEntryManager(db, entryModel, crypto)
 	err = service.DeleteEntry(ctx, "uuid", "delete_key")
 
 	assert.NoError(t, err)
@@ -241,8 +255,11 @@ func TestDeleteEntryError(t *testing.T) {
 		Return(fmt.Errorf("error"))
 
 	entryCrypto := new(test.MockEntryCrypto)
+	crypto := func(key []byte) Encrypter {
+		return entryCrypto
+	}
 
-	service := NewEntryManager(db, entryModel, entryCrypto)
+	service := NewEntryManager(db, entryModel, crypto)
 	err = service.DeleteEntry(ctx, "uuid", "delete_key")
 
 	assert.Error(t, err)
@@ -271,8 +288,11 @@ func TestDeleteEntryInvalidDeleteKey(t *testing.T) {
 		Return(models.ErrEntryNotFound)
 
 	entryCrypto := new(test.MockEntryCrypto)
+	crypto := func(key []byte) Encrypter {
+		return entryCrypto
+	}
 
-	service := NewEntryManager(db, entryModel, entryCrypto)
+	service := NewEntryManager(db, entryModel, crypto)
 	err = service.DeleteEntry(ctx, "uuid", "delete_key")
 
 	assert.Error(t, err)

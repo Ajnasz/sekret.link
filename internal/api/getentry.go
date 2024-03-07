@@ -2,20 +2,19 @@ package api
 
 import (
 	"context"
-	"database/sql"
-	"encoding/hex"
 	"errors"
 	"net/http"
 
-	"github.com/Ajnasz/sekret.link/internal/models"
 	"github.com/Ajnasz/sekret.link/internal/parsers"
 	"github.com/Ajnasz/sekret.link/internal/services"
 )
 
+// GetEntryManager is the interface for getting an entry
 type GetEntryManager interface {
-	ReadEntry(ctx context.Context, UUID string) (*services.Entry, error)
+	ReadEntry(ctx context.Context, UUID string, key []byte) (*services.Entry, error)
 }
 
+// GetEntryView is the interface for the view that should be implemented to render the get entry results
 type GetEntryView interface {
 	RenderReadEntry(w http.ResponseWriter, r *http.Request, entry *services.Entry, key string)
 	RenderReadEntryError(w http.ResponseWriter, r *http.Request, err error)
@@ -26,47 +25,40 @@ var ErrInvalidKeyError = errors.New("invalid key")
 
 // GetHandler is the handler for getting an entry
 type GetHandler struct {
-	DB           *sql.DB
 	entryManager GetEntryManager
 	view         GetEntryView
+	parser       parsers.Parser[parsers.GetEntryRequestData]
 }
 
+// NewGetHandler creates a new GetHandler instance
 func NewGetHandler(
-	db *sql.DB,
+	parser parsers.Parser[parsers.GetEntryRequestData],
+	entryManager GetEntryManager,
 	view GetEntryView,
-	// entryManager GetEntryManager,
 ) GetHandler {
 	return GetHandler{
-		DB:   db,
-		view: view,
-		// entryManager: entryManager,
+		view:         view,
+		parser:       parser,
+		entryManager: entryManager,
 	}
 }
 
 func (g GetHandler) handle(w http.ResponseWriter, r *http.Request) error {
-	// TODO move to parsers
-	UUID, keyString, err := parsers.ParseGetEntryPath(r.URL.Path)
+	request, err := g.parser.Parse(r)
 
 	if err != nil {
-		return parsers.ErrInvalidUUID
-	}
-	key, err := hex.DecodeString(keyString)
-
-	if err != nil {
-		return errors.Join(ErrInvalidKeyError, err)
+		return errors.Join(ErrRequestParseError, err)
 	}
 
-	encrypter := services.NewAESEncrypter(key)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	entryManager := services.NewEntryManager(g.DB, &models.EntryModel{}, encrypter)
 
-	entry, err := entryManager.ReadEntry(ctx, UUID)
+	entry, err := g.entryManager.ReadEntry(ctx, request.UUID, request.Key)
 	if err != nil {
 		return err
 	}
 
-	g.view.RenderReadEntry(w, r, entry, keyString)
+	g.view.RenderReadEntry(w, r, entry, request.KeyString)
 
 	return nil
 }

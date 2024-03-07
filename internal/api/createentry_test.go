@@ -11,7 +11,6 @@ import (
 
 	"github.com/Ajnasz/sekret.link/internal/parsers"
 	"github.com/Ajnasz/sekret.link/internal/services"
-	"github.com/Ajnasz/sekret.link/key"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -35,10 +34,10 @@ func (m *MockEntryManager) CreateEntry(
 	body []byte,
 	maxReads int,
 	expiration time.Duration,
-) (*services.EntryMeta, error) {
+) (*services.EntryMeta, []byte, error) {
 	args := m.Called(ctx, body, maxReads, expiration)
 
-	return args.Get(0).(*services.EntryMeta), args.Error(1)
+	return args.Get(0).(*services.EntryMeta), args.Get(1).([]byte), args.Error(2)
 }
 
 type MockEntryView struct {
@@ -54,12 +53,6 @@ func (m *MockEntryView) RenderCreateEntryErrorResponse(w http.ResponseWriter, r 
 }
 
 func Test_CreateEntryHandle(t *testing.T) {
-	k, err := key.NewGeneratedKey()
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	data := bytes.NewBufferString("This is a test")
 
 	parser := new(MockParser)
@@ -70,10 +63,10 @@ func Test_CreateEntryHandle(t *testing.T) {
 	response := httptest.NewRecorder()
 
 	parser.On("Parse", request).Return(&parsers.CreateEntryRequestData{}, nil)
-	entryManager.On("CreateEntry", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&services.EntryMeta{}, nil)
+	entryManager.On("CreateEntry", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&services.EntryMeta{}, []byte("key"), nil)
 	view.On("RenderEntryCreated", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
 
-	handler := NewCreateHandler(10, parser, entryManager, view, k)
+	handler := NewCreateHandler(10, parser, entryManager, view)
 
 	handler.Handle(response, request)
 
@@ -85,12 +78,6 @@ func Test_CreateEntryHandle(t *testing.T) {
 
 // on parser.Parse error, view.RenderCreateEntryErrorResponse should be called
 func Test_CreateEntryHandleParserError(t *testing.T) {
-	k, err := key.NewGeneratedKey()
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	data := bytes.NewBufferString("This is a test")
 
 	parser := new(MockParser)
@@ -103,7 +90,7 @@ func Test_CreateEntryHandleParserError(t *testing.T) {
 	parser.On("Parse", request).Return(&parsers.CreateEntryRequestData{}, errors.New("error"))
 	view.On("RenderCreateEntryErrorResponse", mock.Anything, mock.Anything, mock.Anything).Return()
 
-	handler := NewCreateHandler(10, parser, entryManager, view, k)
+	handler := NewCreateHandler(10, parser, entryManager, view)
 
 	handler.Handle(response, request)
 
@@ -114,12 +101,6 @@ func Test_CreateEntryHandleParserError(t *testing.T) {
 
 // On entryManager.CreateEntry error, view.RenderCreateEntryErrorResponse should be called
 func Test_CreateEntryHandleError(t *testing.T) {
-	k, err := key.NewGeneratedKey()
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	data := bytes.NewBufferString("This is a test")
 
 	parser := new(MockParser)
@@ -130,10 +111,10 @@ func Test_CreateEntryHandleError(t *testing.T) {
 	response := httptest.NewRecorder()
 
 	parser.On("Parse", request).Return(&parsers.CreateEntryRequestData{}, nil)
-	entryManager.On("CreateEntry", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&services.EntryMeta{}, errors.New("error"))
+	entryManager.On("CreateEntry", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&services.EntryMeta{}, []byte("key"), errors.New("error"))
 	view.On("RenderCreateEntryErrorResponse", mock.Anything, mock.Anything, mock.Anything).Return()
 
-	handler := NewCreateHandler(10, parser, entryManager, view, k)
+	handler := NewCreateHandler(10, parser, entryManager, view)
 
 	handler.Handle(response, request)
 

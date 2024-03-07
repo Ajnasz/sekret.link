@@ -52,10 +52,21 @@ func TestCreateEntry(t *testing.T) {
 		h := NewSecretHandler(handlerConfig)
 		h.ServeHTTP(w, req)
 
+		if w.Code != http.StatusOK {
+			t.Logf("response: %s", w.Body.String())
+			t.Fatalf("expected statuscode to be %d, but got %d", http.StatusOK, w.Code)
+		}
+
 		resp := w.Result()
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		fmt.Println("BODYDYDYDDY", body, err)
+
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		responseURL := string(body)
+		t.Log("responseURL", responseURL)
 		savedUUID, keyString, err := uuid.GetUUIDAndSecretFromPath(responseURL)
 
 		if resp.Header.Get("x-entry-uuid") != savedUUID {

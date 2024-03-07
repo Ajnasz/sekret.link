@@ -22,6 +22,11 @@ func NewAESEncrypter(key []byte) *AESEncrypter {
 	return &AESEncrypter{key}
 }
 
+func (e *AESEncrypter) WithKey(key []byte) *AESEncrypter {
+	e.Key = key
+	return e
+}
+
 // Encrypt will encrypt the data with the AESEncrypter.Key
 func (e *AESEncrypter) Encrypt(data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(e.Key)

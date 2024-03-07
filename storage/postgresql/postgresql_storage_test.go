@@ -44,7 +44,6 @@ func Test_PostgresqlStorageWrite(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
-			t.Logf("%+v", testCase)
 			UUID := uuid.NewUUIDString()
 			ctx := context.Background()
 			meta, err := storage.Write(ctx, UUID, []byte(testCase.Secret), time.Second*10, testCase.Reads)

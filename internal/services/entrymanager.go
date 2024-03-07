@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Ajnasz/sekret.link/internal/models"
+	"github.com/Ajnasz/sekret.link/key"
 	"github.com/Ajnasz/sekret.link/uuid"
 )
 
@@ -42,6 +44,8 @@ type Entry struct {
 	Expire         time.Time
 }
 
+type EncrypterFactory = func(key []byte) Encrypter
+
 func (e *Entry) IsExpired() bool {
 	return e.Expire.Before(time.Now())
 }
@@ -50,11 +54,11 @@ func (e *Entry) IsExpired() bool {
 type EntryManager struct {
 	db     *sql.DB
 	model  EntryModel
-	crypto Encrypter
+	crypto EncrypterFactory
 }
 
 // NewEntryManager creates a new EntryService
-func NewEntryManager(db *sql.DB, model EntryModel, crypto Encrypter) *EntryManager {
+func NewEntryManager(db *sql.DB, model EntryModel, crypto EncrypterFactory) *EntryManager {
 	return &EntryManager{
 		db:     db,
 		model:  model,
@@ -62,24 +66,32 @@ func NewEntryManager(db *sql.DB, model EntryModel, crypto Encrypter) *EntryManag
 	}
 }
 
-func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingReads int, expire time.Duration) (*EntryMeta, error) {
+func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingReads int, expire time.Duration) (*EntryMeta, []byte, error) {
 	uid := uuid.NewUUIDString()
 
 	tx, err := e.db.Begin()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	k, err := key.NewGeneratedKey()
 
-	encryptedData, err := e.crypto.Encrypt(data)
 	if err != nil {
 		tx.Rollback()
-		return nil, err
+		return nil, nil, err
+	}
+
+	crypto := e.crypto(k.Get())
+
+	encryptedData, err := crypto.Encrypt(data)
+	if err != nil {
+		tx.Rollback()
+		return nil, nil, err
 	}
 	// meta, err := e.model.CreateEntry(ctx, tx, uid, data, remainingReads, expire)
 	meta, err := e.model.CreateEntry(ctx, tx, uid, encryptedData, remainingReads, expire)
 	if err != nil {
 		tx.Rollback()
-		return nil, err
+		return nil, nil, err
 	}
 
 	tx.Commit()
@@ -91,11 +103,11 @@ func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingRe
 		Created:        meta.Created,
 		Accessed:       meta.Accessed.Time,
 		Expire:         meta.Expire,
-	}, nil
+	}, k.Get(), nil
 
 }
 
-func (e *EntryManager) ReadEntry(ctx context.Context, UUID string) (*Entry, error) {
+func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, key []byte) (*Entry, error) {
 	tx, err := e.db.Begin()
 	if err != nil {
 		return nil, err
@@ -110,14 +122,25 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string) (*Entry, erro
 		return nil, err
 	}
 
+	fmt.Println(entry)
+
 	if entry.RemainingReads <= 0 {
+		fmt.Println("No remaining reads")
 		tx.Rollback()
 		return nil, ErrEntryExpired
 	}
 
 	if entry.Expire.Before(time.Now()) {
+		fmt.Println("EXPIRED")
 		tx.Rollback()
 		return nil, ErrEntryExpired
+	}
+
+	crypto := e.crypto(key)
+	decryptedData, err := crypto.Decrypt(entry.Data)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
 	}
 
 	if err := e.model.UpdateAccessed(ctx, tx, UUID); err != nil {
@@ -125,14 +148,10 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string) (*Entry, erro
 		return nil, err
 	}
 
-	decryptedData, err := e.crypto.Decrypt(entry.Data)
-
-	if err != nil {
-		tx.Rollback()
+	fmt.Println("DECRYPTED DATA", decryptedData)
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-
-	tx.Commit()
 
 	return &Entry{
 		UUID:           entry.UUID,
