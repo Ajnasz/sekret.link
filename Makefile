@@ -27,3 +27,7 @@ curl:
 	curl -v --data-binary @go.mod localhost:8080/api/ | xargs -I {} curl localhost:8080{}
 curl-bad:
 	curl -v localhost:8080/api/57c04c70-dd58-11ee-98fc-ebbaf68907f4/8bc419a2de0ccf0b165cd978f8894b77403a2f06019916af0bf48bcade88f518
+
+.PHONY: hurl
+hurl:
+	@hurl --variable api_host='http://localhost:8080' hurl/*.hurl

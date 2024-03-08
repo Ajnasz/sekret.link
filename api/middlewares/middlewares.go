@@ -28,6 +28,6 @@ func setCORSHeaders(w http.ResponseWriter, req *http.Request) {
 	if req.Header.Get("ORIGIN") != "" {
 		(w).Header().Set("Access-Control-Allow-Origin", req.Header.Get("ORIGIN"))
 		(w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE")
-		(w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding")
+		(w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, x-entry-uuid, x-entry-key, x-entry-delete-key, x-entry-expire")
 	}
 }
