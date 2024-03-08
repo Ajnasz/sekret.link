@@ -59,7 +59,6 @@ func TestCreateEntry(t *testing.T) {
 
 		resp := w.Result()
 		body, err := io.ReadAll(resp.Body)
-		fmt.Println("BODYDYDYDDY", body, err)
 
 		if err != nil {
 			t.Fatal(err)
@@ -370,9 +369,18 @@ func TestGetEntry(t *testing.T) {
 
 			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(rsakey)), nil)
 			w := httptest.NewRecorder()
-			NewSecretHandler(NewHandlerConfig(connection, connection.GetDB())).ServeHTTP(w, req)
+
+			mux := http.NewServeMux()
+			secretHandler := NewSecretHandler(NewHandlerConfig(connection, connection.GetDB()))
+			secretHandler.RegisterHandlers(mux, "")
+
+			mux.ServeHTTP(w, req)
 
 			resp := w.Result()
+
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("expected statuscode %d got %d", http.StatusOK, resp.StatusCode)
+			}
 			body, _ := io.ReadAll(resp.Body)
 
 			actual := string(body)
@@ -420,7 +428,11 @@ func TestGetEntryJSON(t *testing.T) {
 	req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(rsakey)), nil)
 	req.Header.Add("Accept", "application/json")
 	w := httptest.NewRecorder()
-	NewSecretHandler(NewHandlerConfig(connection, connection.GetDB())).ServeHTTP(w, req)
+
+	mux := http.NewServeMux()
+	secretHandler := NewSecretHandler(NewHandlerConfig(connection, connection.GetDB()))
+	secretHandler.RegisterHandlers(mux, "")
+	mux.ServeHTTP(w, req)
 
 	resp := w.Result()
 	if resp.StatusCode != 200 {
@@ -457,12 +469,19 @@ func TestSetAndGetEntry(t *testing.T) {
 		connection.Close()
 	})
 
-	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(testCase)))
+	req := httptest.NewRequest("POST", "http://example.com/", bytes.NewReader([]byte(testCase)))
 	w := httptest.NewRecorder()
 
-	NewSecretHandler(NewHandlerConfig(connection, connection.GetDB())).ServeHTTP(w, req)
+	mux := http.NewServeMux()
+	secretHandler := NewSecretHandler(NewHandlerConfig(connection, connection.GetDB()))
+	secretHandler.RegisterHandlers(mux, "")
+	mux.ServeHTTP(w, req)
 
 	resp := w.Result()
+
+	if resp.StatusCode != 200 {
+		t.Fatalf("expected statuscode %d got %d", 200, resp.StatusCode)
+	}
 	body, _ := io.ReadAll(resp.Body)
 
 	responseURL := string(body)
@@ -474,7 +493,8 @@ func TestSetAndGetEntry(t *testing.T) {
 
 	req = httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", savedUUID, keyString), nil)
 	w = httptest.NewRecorder()
-	NewSecretHandler(NewHandlerConfig(connection, connection.GetDB())).ServeHTTP(w, req)
+
+	mux.ServeHTTP(w, req)
 
 	resp = w.Result()
 	body, _ = io.ReadAll(resp.Body)
@@ -694,10 +714,14 @@ func FuzzSetAndGetEntry(f *testing.F) {
 			t.Log("empty")
 			return
 		}
-		req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(testCase)))
-		w := httptest.NewRecorder()
 
-		NewSecretHandler(NewHandlerConfig(connection, connection.GetDB())).ServeHTTP(w, req)
+		mux := http.NewServeMux()
+		secretHandler := NewSecretHandler(NewHandlerConfig(connection, connection.GetDB()))
+		secretHandler.RegisterHandlers(mux, "")
+
+		req := httptest.NewRequest("POST", "http://example.com/", bytes.NewReader([]byte(testCase)))
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
 
 		resp := w.Result()
 		body, _ := io.ReadAll(resp.Body)
@@ -711,7 +735,7 @@ func FuzzSetAndGetEntry(f *testing.F) {
 
 		req = httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", savedUUID, keyString), nil)
 		w = httptest.NewRecorder()
-		NewSecretHandler(NewHandlerConfig(connection, connection.GetDB())).ServeHTTP(w, req)
+		mux.ServeHTTP(w, req)
 
 		resp = w.Result()
 		body, _ = io.ReadAll(resp.Body)

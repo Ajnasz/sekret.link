@@ -4,7 +4,6 @@ import (
 	"crypto/aes"
 	"encoding/hex"
 	"errors"
-	"log"
 	"net/http"
 	"strings"
 
@@ -18,7 +17,6 @@ import (
 var ErrCreateKey = errors.New("create key failed")
 
 func (e EntryView) RenderCreateEntryErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
-	log.Println("CREATE ENTRY ERROR", err)
 	if errors.Is(err, parsers.ErrInvalidExpirationDate) {
 		http.Error(w, "Invalid expiration", http.StatusBadRequest)
 		return
@@ -35,7 +33,6 @@ func (e EntryView) RenderCreateEntryErrorResponse(w http.ResponseWriter, r *http
 }
 
 func (e EntryView) RenderReadEntryError(w http.ResponseWriter, r *http.Request, err error) {
-	log.Println(err)
 	if errors.Is(err, services.ErrEntryExpired) {
 		http.Error(w, "Gone", http.StatusGone)
 		return
@@ -43,6 +40,16 @@ func (e EntryView) RenderReadEntryError(w http.ResponseWriter, r *http.Request, 
 
 	if errors.Is(err, services.ErrEntryNotFound) {
 		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	if errors.Is(err, parsers.ErrInvalidUUID) {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	if errors.Is(err, parsers.ErrInvalidKey) {
+		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
 
@@ -61,7 +68,6 @@ func (e EntryView) RenderReadEntryError(w http.ResponseWriter, r *http.Request, 
 }
 
 func (e EntryView) RenderDeleteEntryError(w http.ResponseWriter, r *http.Request, err error) {
-	log.Println(err)
 
 	if errors.Is(err, entries.ErrEntryNotFound) || errors.Is(err, models.ErrEntryNotFound) {
 		http.Error(w, "Not Found", http.StatusNotFound)

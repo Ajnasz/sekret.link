@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/Ajnasz/sekret.link/api"
-	"github.com/Ajnasz/sekret.link/api/middlewares"
 	"github.com/Ajnasz/sekret.link/config"
 	"github.com/Ajnasz/sekret.link/storage"
 	"github.com/Ajnasz/sekret.link/storage/postgresql"
@@ -64,47 +63,11 @@ func scheduleDeleteExpired(ctx context.Context, entryStorage storage.Writer) {
 
 func listen(handlerConfig api.HandlerConfig) *http.Server {
 	mux := http.NewServeMux()
-	secretHandler := api.NewSecretHandler(handlerConfig)
 
 	apiRoot := getAPIRoot(handlerConfig.WebExternalURL)
-	mux.Handle(
-		fmt.Sprintf("GET %s", apiRoot),
-		http.StripPrefix(
-			apiRoot,
-			middlewares.SetupLogging(
-				middlewares.SetupHeaders(http.HandlerFunc(secretHandler.Get)),
-			),
-		),
-	)
-	mux.Handle(
-		fmt.Sprintf("POST %s", apiRoot),
-		http.StripPrefix(
-			apiRoot,
-			middlewares.SetupLogging(
-				middlewares.SetupHeaders(http.HandlerFunc(secretHandler.Post)),
-			),
-		),
-	)
 
-	mux.Handle(
-		fmt.Sprintf("DELETE %s", apiRoot),
-		http.StripPrefix(
-			apiRoot,
-			middlewares.SetupLogging(
-				middlewares.SetupHeaders(http.HandlerFunc(secretHandler.Delete)),
-			),
-		),
-	)
-
-	mux.Handle(
-		fmt.Sprintf("OPTIONS %s", apiRoot),
-		http.StripPrefix(
-			apiRoot,
-			middlewares.SetupLogging(
-				middlewares.SetupHeaders(http.HandlerFunc(secretHandler.Options)),
-			),
-		),
-	)
+	secretHandler := api.NewSecretHandler(handlerConfig)
+	secretHandler.RegisterHandlers(mux, apiRoot)
 
 	httpServer := &http.Server{
 		Addr:         ":8080",

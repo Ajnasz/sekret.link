@@ -3,8 +3,8 @@ package parsers
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"net/http"
-	"path"
 
 	"github.com/google/uuid"
 )
@@ -21,14 +21,15 @@ type GetEntryRequestData struct {
 	Key       []byte
 }
 
-func (g GetEntryParser) Parse(u *http.Request) (GetEntryRequestData, error) {
-	urlPath := u.URL.Path
-	pathDir, keyString := path.Split(urlPath)
+func (g GetEntryParser) Parse(req *http.Request) (GetEntryRequestData, error) {
 	var reqData GetEntryRequestData
-	if len(pathDir) < 1 {
-		return reqData, ErrInvalidURL
+	keyString := req.PathValue("key")
+	if keyString == "" {
+		fmt.Println("EMPTY KEY", req.URL.Path)
+		return reqData, ErrInvalidKey
 	}
-	_, uuidFromPath := path.Split(pathDir[0 : len(pathDir)-1])
+
+	uuidFromPath := req.PathValue("uuid")
 	UUID, err := uuid.Parse(uuidFromPath)
 
 	if err != nil {
@@ -37,7 +38,7 @@ func (g GetEntryParser) Parse(u *http.Request) (GetEntryRequestData, error) {
 	key, err := hex.DecodeString(keyString)
 
 	if err != nil {
-		return reqData, err
+		return reqData, errors.Join(ErrInvalidKey, err)
 	}
 	return GetEntryRequestData{UUID: UUID.String(), Key: key, KeyString: keyString}, nil
 }

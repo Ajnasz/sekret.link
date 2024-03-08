@@ -20,3 +20,6 @@ var ErrInvalidURL = errors.New("invalid URL")
 
 // ErrInvalidUUID is returned when the UUID is invalid
 var ErrInvalidUUID = errors.New("invalid UUID")
+
+// ErrInvalidKey is returned when the key is invalid
+var ErrInvalidKey = errors.New("invalid key")

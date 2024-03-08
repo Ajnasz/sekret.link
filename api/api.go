@@ -2,10 +2,14 @@ package api
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
+	"path"
+	"strings"
 
+	"github.com/Ajnasz/sekret.link/api/middlewares"
 	"github.com/Ajnasz/sekret.link/internal/api"
 	"github.com/Ajnasz/sekret.link/internal/models"
 	"github.com/Ajnasz/sekret.link/internal/parsers"
@@ -94,6 +98,12 @@ func (s SecretHandler) Options(w http.ResponseWriter, r *http.Request) {
 	// Your OPTIONS method logic goes here
 	w.WriteHeader(http.StatusOK)
 }
+
+// NotFound handler
+func (s SecretHandler) NotFound(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Not found", http.StatusNotFound)
+}
+
 func (s SecretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
@@ -107,4 +117,58 @@ func (s SecretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "Not found", http.StatusNotFound)
 	}
+}
+
+func clearApiRoot(apiRoot string) string {
+	apiRoot = path.Clean(path.Join("/", apiRoot))
+
+	if strings.HasSuffix(apiRoot, "/") {
+		return apiRoot
+	}
+
+	return apiRoot + "/"
+}
+
+func (s SecretHandler) RegisterHandlers(mux *http.ServeMux, apiRoot string) {
+	mux.Handle(
+		fmt.Sprintf("GET %s", path.Join("/", apiRoot, "{uuid}", "{key}")),
+		http.StripPrefix(
+			apiRoot,
+			middlewares.SetupLogging(
+				middlewares.SetupHeaders(http.HandlerFunc(s.Get)),
+			),
+		),
+	)
+	mux.Handle(
+		fmt.Sprintf("POST %s", clearApiRoot(apiRoot)),
+		http.StripPrefix(
+			path.Join("/", apiRoot),
+			middlewares.SetupLogging(
+				middlewares.SetupHeaders(http.HandlerFunc(s.Post)),
+			),
+		),
+	)
+
+	mux.Handle(
+		fmt.Sprintf("DELETE %s", path.Join("/", apiRoot, "{uuid}", "{key}", "{deleteKey}")),
+		http.StripPrefix(
+			apiRoot,
+			middlewares.SetupLogging(
+				middlewares.SetupHeaders(http.HandlerFunc(s.Delete)),
+			),
+		),
+	)
+
+	mux.Handle(
+		fmt.Sprintf("OPTIONS %s", clearApiRoot(apiRoot)),
+		http.StripPrefix(
+			apiRoot,
+			middlewares.SetupLogging(
+				middlewares.SetupHeaders(http.HandlerFunc(s.Options)),
+			),
+		),
+	)
+
+	mux.Handle("/", middlewares.SetupLogging(middlewares.SetupHeaders(http.HandlerFunc(s.NotFound))))
+
 }

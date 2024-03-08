@@ -47,7 +47,7 @@ func (g GetHandler) handle(w http.ResponseWriter, r *http.Request) error {
 	request, err := g.parser.Parse(r)
 
 	if err != nil {
-		return errors.Join(ErrRequestParseError, err)
+		return err
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
