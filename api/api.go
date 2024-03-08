@@ -35,51 +35,76 @@ type SecretHandler struct {
 	config HandlerConfig
 }
 
-func (s SecretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodOptions {
+// POST method handler
+func (s SecretHandler) Post(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" && r.URL.Path != "" {
+		http.Error(w, "Not found", http.StatusNotFound)
+		log.Println("Not found", r.URL.Path)
 		return
 	}
 
-	// encrypter := services.NewAESEncrypter(k.Get())
 	encrypter := func(b []byte) services.Encrypter {
 		return services.NewAESEncrypter(b)
 	}
-	if r.Method == http.MethodPost {
-		if r.URL.Path != "/" && r.URL.Path != "" {
-			http.Error(w, "Not found", http.StatusNotFound)
-			log.Println("Not found", r.URL.Path)
-			return
-		}
 
-		parser := parsers.NewCreateEntryParser(s.config.MaxExpireSeconds)
-		entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter)
-		view := views.NewEntryView(s.config.WebExternalURL)
+	parser := parsers.NewCreateEntryParser(s.config.MaxExpireSeconds)
+	entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter)
+	view := views.NewEntryView(s.config.WebExternalURL)
 
-		createHandler := api.NewCreateHandler(
-			s.config.MaxDataSize,
-			parser,
-			entryManager,
-			view,
-		)
-		createHandler.Handle(w, r)
-		// NewCreateHandler(s.config).Handle(w, r)
-	} else if r.Method == http.MethodGet {
-		view := views.NewEntryView(s.config.WebExternalURL)
-		parser := parsers.NewGetEntryParser()
-		entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter)
-		getHandler := api.NewGetHandler(
-			parser,
-			entryManager,
-			view,
-		)
-		getHandler.Handle(w, r)
-		// NewGetHandler(s.config).Handle(w, r)
-	} else if r.Method == http.MethodDelete {
-		entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter)
-		view := views.NewEntryView(s.config.WebExternalURL)
-		deleteHandler := api.NewDeleteHandler(entryManager, view)
-		deleteHandler.Handle(w, r)
-	} else {
+	createHandler := api.NewCreateHandler(
+		s.config.MaxDataSize,
+		parser,
+		entryManager,
+		view,
+	)
+	createHandler.Handle(w, r)
+}
+
+// GET method handler
+func (s SecretHandler) Get(w http.ResponseWriter, r *http.Request) {
+	encrypter := func(b []byte) services.Encrypter {
+		return services.NewAESEncrypter(b)
+	}
+
+	view := views.NewEntryView(s.config.WebExternalURL)
+	parser := parsers.NewGetEntryParser()
+	entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter)
+	getHandler := api.NewGetHandler(
+		parser,
+		entryManager,
+		view,
+	)
+	getHandler.Handle(w, r)
+}
+
+// DELETE method handler
+func (s SecretHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	encrypter := func(b []byte) services.Encrypter {
+		return services.NewAESEncrypter(b)
+	}
+
+	entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter)
+	view := views.NewEntryView(s.config.WebExternalURL)
+	deleteHandler := api.NewDeleteHandler(entryManager, view)
+	deleteHandler.Handle(w, r)
+}
+
+// OPTIONS method handler
+func (s SecretHandler) Options(w http.ResponseWriter, r *http.Request) {
+	// Your OPTIONS method logic goes here
+	w.WriteHeader(http.StatusOK)
+}
+func (s SecretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodPost:
+		s.Post(w, r)
+	case http.MethodGet:
+		s.Get(w, r)
+	case http.MethodDelete:
+		s.Delete(w, r)
+	case http.MethodOptions:
+		s.Options(w, r)
+	default:
 		http.Error(w, "Not found", http.StatusNotFound)
 	}
 }

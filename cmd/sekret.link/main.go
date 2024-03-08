@@ -63,27 +63,58 @@ func scheduleDeleteExpired(ctx context.Context, entryStorage storage.Writer) {
 }
 
 func listen(handlerConfig api.HandlerConfig) *http.Server {
-	apiRoot := getAPIRoot(handlerConfig.WebExternalURL)
-	fmt.Println("Handle Path: ", apiRoot)
+	mux := http.NewServeMux()
+	secretHandler := api.NewSecretHandler(handlerConfig)
 
-	r := http.NewServeMux()
-	r.Handle(
-		apiRoot,
+	apiRoot := getAPIRoot(handlerConfig.WebExternalURL)
+	mux.Handle(
+		fmt.Sprintf("GET %s", apiRoot),
 		http.StripPrefix(
 			apiRoot,
 			middlewares.SetupLogging(
-				middlewares.SetupHeaders(api.NewSecretHandler(handlerConfig)),
+				middlewares.SetupHeaders(http.HandlerFunc(secretHandler.Get)),
 			),
 		),
 	)
+	mux.Handle(
+		fmt.Sprintf("POST %s", apiRoot),
+		http.StripPrefix(
+			apiRoot,
+			middlewares.SetupLogging(
+				middlewares.SetupHeaders(http.HandlerFunc(secretHandler.Post)),
+			),
+		),
+	)
+
+	mux.Handle(
+		fmt.Sprintf("DELETE %s", apiRoot),
+		http.StripPrefix(
+			apiRoot,
+			middlewares.SetupLogging(
+				middlewares.SetupHeaders(http.HandlerFunc(secretHandler.Delete)),
+			),
+		),
+	)
+
+	mux.Handle(
+		fmt.Sprintf("OPTIONS %s", apiRoot),
+		http.StripPrefix(
+			apiRoot,
+			middlewares.SetupLogging(
+				middlewares.SetupHeaders(http.HandlerFunc(secretHandler.Options)),
+			),
+		),
+	)
+
 	httpServer := &http.Server{
 		Addr:         ":8080",
-		Handler:      r,
+		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
 
 	go func() {
+		fmt.Println("Handle Path: ", apiRoot)
 		if err := httpServer.ListenAndServe(); err != nil {
 			if err.Error() != "http: Server closed" {
 				fmt.Fprintf(os.Stderr, "error: %s", err)

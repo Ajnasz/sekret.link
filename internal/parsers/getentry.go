@@ -3,7 +3,6 @@ package parsers
 import (
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"net/http"
 	"path"
 
@@ -31,8 +30,6 @@ func (g GetEntryParser) Parse(u *http.Request) (GetEntryRequestData, error) {
 	}
 	_, uuidFromPath := path.Split(pathDir[0 : len(pathDir)-1])
 	UUID, err := uuid.Parse(uuidFromPath)
-
-	fmt.Println("UUID ERROR", UUID, err)
 
 	if err != nil {
 		return reqData, errors.Join(ErrInvalidUUID, err)

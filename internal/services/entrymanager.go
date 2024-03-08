@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/Ajnasz/sekret.link/internal/models"
@@ -122,16 +121,12 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, key []byte) (
 		return nil, err
 	}
 
-	fmt.Println(entry)
-
 	if entry.RemainingReads <= 0 {
-		fmt.Println("No remaining reads")
 		tx.Rollback()
 		return nil, ErrEntryExpired
 	}
 
 	if entry.Expire.Before(time.Now()) {
-		fmt.Println("EXPIRED")
 		tx.Rollback()
 		return nil, ErrEntryExpired
 	}
@@ -148,7 +143,6 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, key []byte) (
 		return nil, err
 	}
 
-	fmt.Println("DECRYPTED DATA", decryptedData)
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
