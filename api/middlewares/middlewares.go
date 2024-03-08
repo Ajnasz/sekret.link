@@ -8,7 +8,7 @@ import (
 
 func SetupLogging(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
+		if r.Method == http.MethodGet || r.Method == http.MethodDelete || r.Method == http.MethodOptions {
 			log.Println(fmt.Sprintf("%s: %s", r.Method, "/***"))
 		} else {
 			log.Println(fmt.Sprintf("%s: %s", r.Method, r.URL.Path))
