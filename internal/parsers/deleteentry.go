@@ -2,7 +2,6 @@ package parsers
 
 import (
 	"errors"
-	"fmt"
 	"path"
 
 	"github.com/google/uuid"
@@ -21,7 +20,6 @@ func ParseDeleteEntryPath(urlPath string) (string, string, string, error) {
 	uuidPart, keyPart := path.Split(pathDir)
 	_, uuidFromPath := path.Split(uuidPart[0 : len(uuidPart)-1])
 
-	fmt.Println(pathDir)
 	UUID, err := uuid.Parse(uuidFromPath)
 
 	if err != nil {

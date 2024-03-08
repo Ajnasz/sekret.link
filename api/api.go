@@ -53,7 +53,7 @@ func (s SecretHandler) Post(w http.ResponseWriter, r *http.Request) {
 
 	parser := parsers.NewCreateEntryParser(s.config.MaxExpireSeconds)
 	entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter)
-	view := views.NewEntryView(s.config.WebExternalURL)
+	view := views.NewEntryCreateView(s.config.WebExternalURL)
 
 	createHandler := api.NewCreateHandler(
 		s.config.MaxDataSize,
@@ -70,7 +70,7 @@ func (s SecretHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return services.NewAESEncrypter(b)
 	}
 
-	view := views.NewEntryView(s.config.WebExternalURL)
+	view := views.NewEntryReadView()
 	parser := parsers.NewGetEntryParser()
 	entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter)
 	getHandler := api.NewGetHandler(
@@ -88,7 +88,7 @@ func (s SecretHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter)
-	view := views.NewEntryView(s.config.WebExternalURL)
+	view := views.NewEntryDeleteView()
 	deleteHandler := api.NewDeleteHandler(entryManager, view)
 	deleteHandler.Handle(w, r)
 }
