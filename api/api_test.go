@@ -20,8 +20,6 @@ import (
 	"github.com/Ajnasz/sekret.link/internal/durable"
 	"github.com/Ajnasz/sekret.link/internal/models"
 	"github.com/Ajnasz/sekret.link/internal/services"
-	"github.com/Ajnasz/sekret.link/storage/postgresql"
-	"github.com/Ajnasz/sekret.link/testhelper"
 	"github.com/Ajnasz/sekret.link/uuid"
 )
 
@@ -163,7 +161,6 @@ func TestCreateEntry(t *testing.T) {
 
 func TestCreateEntryJSON(t *testing.T) {
 	value := "Foo"
-	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
 
 	ctx := context.Background()
 	db, err := durable.TestConnection(ctx)
@@ -179,7 +176,7 @@ func TestCreateEntryJSON(t *testing.T) {
 	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(value)))
 	req.Header.Add("Accept", "application/json")
 	w := httptest.NewRecorder()
-	NewSecretHandler(NewHandlerConfig(connection.GetDB())).ServeHTTP(w, req)
+	NewSecretHandler(NewHandlerConfig(db)).ServeHTTP(w, req)
 
 	resp := w.Result()
 
@@ -334,16 +331,23 @@ func TestRequestPathsCreateEntry(t *testing.T) {
 		{Name: "/ path", Path: "/", StatusCode: 200},
 		{Name: "Longer path", Path: "/other", StatusCode: 404},
 	}
-	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
+
+	ctx := context.Background()
+	db, err := durable.TestConnection(ctx)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	t.Cleanup(func() {
-		connection.Close()
+		db.Close()
 	})
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
 			req := httptest.NewRequest("POST", fmt.Sprintf("http://example.com%s", testCase.Path), bytes.NewReader([]byte("ASDF")))
 			w := httptest.NewRecorder()
-			NewSecretHandler(NewHandlerConfig(connection.GetDB())).ServeHTTP(w, req)
+			NewSecretHandler(NewHandlerConfig(db)).ServeHTTP(w, req)
 
 			resp := w.Result()
 
@@ -590,15 +594,20 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 }
 
 func TestCreateEntrySizeLimit(t *testing.T) {
-	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
+	ctx := context.Background()
+	db, err := durable.TestConnection(ctx)
+
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() {
-		connection.Close()
+		db.Close()
 	})
 	testCase := "ff"
 
 	req := httptest.NewRequest("POST", "http://example.com?expire=1m", bytes.NewReader([]byte(testCase)))
 	w := httptest.NewRecorder()
-	handlerConfig := NewHandlerConfig(connection.GetDB())
+	handlerConfig := NewHandlerConfig(db)
 	handlerConfig.MaxDataSize = 1
 	handlerConfig.MaxExpireSeconds = 120
 	NewSecretHandler(handlerConfig).ServeHTTP(w, req)
@@ -748,9 +757,15 @@ func FuzzSetAndGetEntry(f *testing.F) {
 	for _, tc := range testCases {
 		f.Add(tc) // Use f.Add to provide a seed corpus
 	}
-	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
+	ctx := context.Background()
+	db, err := durable.TestConnection(ctx)
+
+	if err != nil {
+		f.Fatal(err)
+	}
+
 	f.Cleanup(func() {
-		defer connection.Close()
+		defer db.Close()
 	})
 
 	f.Fuzz(func(t *testing.T, testCase string) {
@@ -760,7 +775,7 @@ func FuzzSetAndGetEntry(f *testing.F) {
 		}
 
 		mux := http.NewServeMux()
-		secretHandler := NewSecretHandler(NewHandlerConfig(connection.GetDB()))
+		secretHandler := NewSecretHandler(NewHandlerConfig(db))
 		secretHandler.RegisterHandlers(mux, "")
 
 		req := httptest.NewRequest("POST", "http://example.com/", bytes.NewReader([]byte(testCase)))

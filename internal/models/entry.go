@@ -45,7 +45,7 @@ type EntryMeta struct {
 type EntryModel struct {
 }
 
-// CreateEntry creates a new storage entry into the database
+// CreateEntry creates a new entry into the database
 func (e *EntryModel) CreateEntry(ctx context.Context, tx *sql.Tx, uuid string, data []byte, remainingReads int, expire time.Duration) (*EntryMeta, error) {
 	now := time.Now()
 	k, err := key.NewGeneratedKey()
@@ -70,7 +70,7 @@ func (e *EntryModel) UpdateAccessed(ctx context.Context, tx *sql.Tx, uuid string
 	return err
 }
 
-// ReadEntry reads a storage entry from the database
+// ReadEntry reads a entry from the database
 // and updates the read count
 func (e *EntryModel) ReadEntry(ctx context.Context, tx *sql.Tx, uuid string) (*Entry, error) {
 	row := tx.QueryRow("SELECT uuid, data, remaining_reads, delete_key, created, accessed, expire FROM entries WHERE uuid=$1 AND remaining_reads > 0 LIMIT 1", uuid)
@@ -102,7 +102,7 @@ func (e *EntryModel) ReadEntryMeta(ctx context.Context, tx *sql.Tx, uuid string)
 	return &s, nil
 }
 
-// DeleteEntry deletes a storage entry from the database
+// DeleteEntry deletes a entry from the database
 // if the delete key matches
 // returns an error if the delete key does not match
 func (e *EntryModel) DeleteEntry(ctx context.Context, tx *sql.Tx, uuid string, deleteKey string) error {
