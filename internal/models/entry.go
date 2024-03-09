@@ -10,7 +10,7 @@ import (
 	// import postgresql driver
 	_ "github.com/lib/pq"
 
-	"github.com/Ajnasz/sekret.link/key"
+	"github.com/Ajnasz/sekret.link/internal/key"
 )
 
 var ErrEntryNotFound = errors.New("entry not found")

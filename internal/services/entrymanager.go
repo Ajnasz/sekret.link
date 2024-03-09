@@ -6,8 +6,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Ajnasz/sekret.link/internal/key"
 	"github.com/Ajnasz/sekret.link/internal/models"
-	"github.com/Ajnasz/sekret.link/key"
 	"github.com/Ajnasz/sekret.link/uuid"
 )
 
