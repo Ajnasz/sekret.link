@@ -45,14 +45,21 @@ type EntryMeta struct {
 type EntryModel struct {
 }
 
+func (e *EntryModel) getDeleteKey() (string, error) {
+	k, err := key.NewGeneratedKey()
+	if err != nil {
+		return "", err
+	}
+	return k.ToHex(), nil
+}
+
 // CreateEntry creates a new entry into the database
 func (e *EntryModel) CreateEntry(ctx context.Context, tx *sql.Tx, uuid string, data []byte, remainingReads int, expire time.Duration) (*EntryMeta, error) {
 	now := time.Now()
-	k, err := key.NewGeneratedKey()
+	deleteKey, err := e.getDeleteKey()
 	if err != nil {
 		return nil, err
 	}
-	deleteKey := k.ToHex()
 
 	_, err = tx.ExecContext(ctx, `INSERT INTO entries (uuid, data, created, expire, remaining_reads, delete_key) VALUES  ($1, $2, $3, $4, $5, $6) RETURNING uuid, delete_key;`, uuid, data, now, now.Add(expire), remainingReads, deleteKey)
 
