@@ -109,7 +109,7 @@ func getAPIRoot(webExternalURL *url.URL) string {
 	return apiRoot
 }
 
-func getConfig() (*api.HandlerConfig, error) {
+func getConfig(ctx context.Context) (*api.HandlerConfig, error) {
 	var (
 		externalURLParam string
 		expireSeconds    int
@@ -153,20 +153,22 @@ func getConfig() (*api.HandlerConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := models.PrepareDatabase(ctx, db); err != nil {
+		return nil, err
+	}
 	handlerConfig.DB = db
 
 	return &handlerConfig, nil
 }
 
 func main() {
-	handlerConfig, err := getConfig()
+	ctx, cancel := context.WithCancel(context.Background())
+	handlerConfig, err := getConfig(ctx)
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %s", err)
 		os.Exit(1)
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
 	go scheduleDeleteExpired(ctx, handlerConfig.DB)
 	httpServer := listen(*handlerConfig)
 

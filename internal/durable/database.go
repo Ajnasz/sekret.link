@@ -4,9 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
-
-	"github.com/Ajnasz/sekret.link/internal/config"
 )
 
 type ConnectionInfo struct {
@@ -20,16 +17,6 @@ type ConnectionInfo struct {
 
 func (c ConnectionInfo) String() string {
 	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s", c.Username, c.Password, c.Host, c.Port, c.Database, c.SslMode)
-}
-
-// getPSQLTestConn returns connection string for tests
-func getPSQLTestConn() string {
-	password := os.Getenv("POSTGRES_PASSWORD")
-
-	if password == "" {
-		password = "sekret_link_test"
-	}
-	return config.GetConnectionString(fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", "postgres", "password", "localhost", 5432, password))
 }
 
 func OpenDatabaseClient(ctx context.Context, connStr string) (*sql.DB, error) {

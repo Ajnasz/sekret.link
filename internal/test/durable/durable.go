@@ -3,10 +3,12 @@ package durable
 import (
 	"context"
 	"database/sql"
+
+	"github.com/Ajnasz/sekret.link/internal/durable"
 )
 
 func TestConnection(ctx context.Context) (*sql.DB, error) {
-	config := ConnectionInfo{
+	config := durable.ConnectionInfo{
 		Host:     "localhost",
 		Port:     5432,
 		Username: "postgres",
@@ -14,5 +16,5 @@ func TestConnection(ctx context.Context) (*sql.DB, error) {
 		Database: "sekret_link_test",
 		SslMode:  "disable",
 	}
-	return OpenDatabaseClient(ctx, config.String())
+	return durable.OpenDatabaseClient(ctx, config.String())
 }

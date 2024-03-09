@@ -17,9 +17,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Ajnasz/sekret.link/internal/durable"
 	"github.com/Ajnasz/sekret.link/internal/models"
 	"github.com/Ajnasz/sekret.link/internal/services"
+	"github.com/Ajnasz/sekret.link/internal/test/durable"
 	"github.com/Ajnasz/sekret.link/internal/uuid"
 )
 

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Ajnasz/sekret.link/internal/durable"
+	"github.com/Ajnasz/sekret.link/internal/test/durable"
 	"github.com/google/uuid"
 )
 
