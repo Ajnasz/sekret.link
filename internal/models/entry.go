@@ -86,7 +86,7 @@ func (e *EntryModel) ReadEntry(ctx context.Context, tx *sql.Tx, uuid string) (*E
 	return &s, nil
 }
 
-func (e *EntryMeta) ReadEntryMeta(ctx context.Context, tx *sql.Tx, uuid string) (*EntryMeta, error) {
+func (e *EntryModel) ReadEntryMeta(ctx context.Context, tx *sql.Tx, uuid string) (*EntryMeta, error) {
 	row := tx.QueryRow("SELECT created, accessed, expire, remaining_reads, delete_key FROM entries WHERE uuid=$1 AND remaining_reads > 0 LIMIT 1", uuid)
 	var s EntryMeta
 	err := row.Scan(&s.Created, &s.Accessed, &s.Expire, &s.RemainingReads, &s.DeleteKey)
@@ -137,4 +137,10 @@ func (e *EntryModel) DeleteEntry(ctx context.Context, tx *sql.Tx, uuid string, d
 	}
 
 	return nil
+}
+
+func (e *EntryModel) DeleteExpired(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, "DELETE FROM entries WHERE expire < NOW()")
+
+	return err
 }

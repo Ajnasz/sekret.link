@@ -17,20 +17,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Ajnasz/sekret.link/encrypter/aes"
-	"github.com/Ajnasz/sekret.link/key"
-	"github.com/Ajnasz/sekret.link/storage"
+	"github.com/Ajnasz/sekret.link/internal/durable"
+	"github.com/Ajnasz/sekret.link/internal/models"
+	"github.com/Ajnasz/sekret.link/internal/services"
 	"github.com/Ajnasz/sekret.link/storage/postgresql"
-	"github.com/Ajnasz/sekret.link/storage/secret"
 	"github.com/Ajnasz/sekret.link/testhelper"
 	"github.com/Ajnasz/sekret.link/uuid"
 )
 
-func NewHandlerConfig(storage storage.VerifyConfirmReader, db *sql.DB) HandlerConfig {
+func NewHandlerConfig(db *sql.DB) HandlerConfig {
 	extURL, _ := url.Parse("http://example.com")
 	return HandlerConfig{
 		ExpireSeconds:    10,
-		EntryStorage:     storage,
 		MaxDataSize:      1024 * 1024,
 		MaxExpireSeconds: 60 * 60 * 24 * 30,
 		WebExternalURL:   extURL,
@@ -40,15 +38,20 @@ func NewHandlerConfig(storage storage.VerifyConfirmReader, db *sql.DB) HandlerCo
 
 func TestCreateEntry(t *testing.T) {
 	value := "Foo"
-	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
+	ctx := context.Background()
+	db, err := durable.TestConnection(ctx)
+
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() {
-		connection.Close()
+		db.Close()
 	})
 
 	t.Run("happy path", func(t *testing.T) {
 		req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(value)))
 		w := httptest.NewRecorder()
-		handlerConfig := NewHandlerConfig(connection, connection.GetDB())
+		handlerConfig := NewHandlerConfig(db)
 		h := NewSecretHandler(handlerConfig)
 		h.ServeHTTP(w, req)
 
@@ -86,9 +89,11 @@ func TestCreateEntry(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		secretStore := secret.NewSecretStorage(connection, aes.New(key))
-		ctx := context.Background()
-		entry, err := secretStore.Read(ctx, savedUUID)
+		encrypter := func(b []byte) services.Encrypter {
+			return services.NewAESEncrypter(b)
+		}
+		entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter)
+		entry, err := entryManager.ReadEntry(ctx, savedUUID, key)
 
 		if err != nil {
 			t.Fatal(err)
@@ -141,7 +146,7 @@ func TestCreateEntry(t *testing.T) {
 		for _, testCase := range testCases {
 			req := httptest.NewRequest("POST", "http://example.com?"+testCase.qs, bytes.NewReader([]byte(testCase.body)))
 			w := httptest.NewRecorder()
-			handlerConfig := NewHandlerConfig(connection, connection.GetDB())
+			handlerConfig := NewHandlerConfig(db)
 			handlerConfig.MaxExpireSeconds = 120
 			h := NewSecretHandler(handlerConfig)
 			h.ServeHTTP(w, req)
@@ -158,13 +163,20 @@ func TestCreateEntry(t *testing.T) {
 func TestCreateEntryJSON(t *testing.T) {
 	value := "Foo"
 	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
+
+	ctx := context.Background()
+	db, err := durable.TestConnection(ctx)
+
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() {
-		connection.Close()
+		db.Close()
 	})
 	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(value)))
 	req.Header.Add("Accept", "application/json")
 	w := httptest.NewRecorder()
-	NewSecretHandler(NewHandlerConfig(connection, connection.GetDB())).ServeHTTP(w, req)
+	NewSecretHandler(NewHandlerConfig(connection.GetDB())).ServeHTTP(w, req)
 
 	resp := w.Result()
 
@@ -179,11 +191,9 @@ func TestCreateEntryJSON(t *testing.T) {
 	}
 
 	var encode SecretResponse
-	err := json.NewDecoder(resp.Body).Decode(&encode)
-
-	if err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&encode); err != nil {
 		b, _ := io.ReadAll(resp.Body)
-		t.Error(err, string(b))
+		t.Fatal(err, string(b))
 	}
 
 	if encode.DeleteKey == "" {
@@ -196,9 +206,11 @@ func TestCreateEntryJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := secret.NewSecretStorage(connection, aes.New(key))
-	ctx := context.Background()
-	entry, err := secretStore.Read(ctx, encode.UUID)
+	encrypter := func(b []byte) services.Encrypter {
+		return services.NewAESEncrypter(b)
+	}
+	entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter)
+	entry, err := entryManager.ReadEntry(ctx, encode.UUID, key)
 
 	if err != nil {
 		t.Fatal(err)
@@ -240,9 +252,10 @@ func createMultipart(values map[string]io.Reader) (*bytes.Buffer, *multipart.Wri
 
 func TestCreateEntryForm(t *testing.T) {
 	value := "Foo"
-	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
+	ctx := context.Background()
+	db, err := durable.TestConnection(ctx)
 	t.Cleanup(func() {
-		defer connection.Close()
+		db.Close()
 	})
 
 	data, multi, err := createMultipart(map[string]io.Reader{
@@ -252,7 +265,7 @@ func TestCreateEntryForm(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	handlerConfig := NewHandlerConfig(connection, connection.GetDB())
+	handlerConfig := NewHandlerConfig(db)
 	handlerConfig.ExpireSeconds = 60
 	req := httptest.NewRequest("POST", fmt.Sprintf("http://example.com/?expire=%ds", handlerConfig.ExpireSeconds), data)
 	req.Header.Set("Content-Type", multi.FormDataContentType())
@@ -278,9 +291,11 @@ func TestCreateEntryForm(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := secret.NewSecretStorage(connection, aes.New(key))
-	ctx := context.Background()
-	entry, err := secretStore.Read(ctx, savedUUID)
+	encrypter := func(b []byte) services.Encrypter {
+		return services.NewAESEncrypter(b)
+	}
+	entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter)
+	entry, err := entryManager.ReadEntry(ctx, savedUUID, key)
 
 	if err != nil {
 		t.Fatal("Getting entry", err)
@@ -320,7 +335,7 @@ func TestRequestPathsCreateEntry(t *testing.T) {
 		t.Run(testCase.Name, func(t *testing.T) {
 			req := httptest.NewRequest("POST", fmt.Sprintf("http://example.com%s", testCase.Path), bytes.NewReader([]byte("ASDF")))
 			w := httptest.NewRecorder()
-			NewSecretHandler(NewHandlerConfig(connection, connection.GetDB())).ServeHTTP(w, req)
+			NewSecretHandler(NewHandlerConfig(connection.GetDB())).ServeHTTP(w, req)
 
 			resp := w.Result()
 
@@ -337,41 +352,40 @@ func TestGetEntry(t *testing.T) {
 	testCases := []struct {
 		Name  string
 		Value string
-		UUID  string
 	}{
 		{
 			"first",
 			"foo",
-			uuid.NewUUIDString(),
 		},
 	}
 
-	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
+	ctx := context.Background()
+	db, err := durable.TestConnection(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	t.Cleanup(func() {
-		connection.Close()
+		db.Close()
 	})
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
-			k := key.NewKey()
-			if err := k.Generate(); err != nil {
-				t.Error(err)
+			encrypter := func(b []byte) services.Encrypter {
+				return services.NewAESEncrypter(b)
 			}
-			rsakey := k.Get()
-			encrypter := aes.New(rsakey)
-			encryptedData, err := encrypter.Encrypt([]byte(testCase.Value))
+			entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter)
+			meta, encKey, err := entryManager.CreateEntry(ctx, []byte(testCase.Value), 1, time.Second*10)
+
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			ctx := context.Background()
-			connection.Write(ctx, testCase.UUID, encryptedData, time.Second*10, 1)
-
-			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(rsakey)), nil)
+			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com/%s/%s", meta.UUID, hex.EncodeToString(encKey)), nil)
 			w := httptest.NewRecorder()
 
 			mux := http.NewServeMux()
-			secretHandler := NewSecretHandler(NewHandlerConfig(connection, connection.GetDB()))
+			secretHandler := NewSecretHandler(NewHandlerConfig(db))
 			secretHandler.RegisterHandlers(mux, "")
 
 			mux.ServeHTTP(w, req)
@@ -393,44 +407,39 @@ func TestGetEntry(t *testing.T) {
 }
 
 func TestGetEntryJSON(t *testing.T) {
-	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
+	ctx := context.Background()
+	db, err := durable.TestConnection(ctx)
+
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() {
-		defer connection.Close()
+		defer db.Close()
 	})
 	testCase := struct {
 		Name  string
 		Value string
-		UUID  string
 	}{
 
 		"first",
 		"foo",
-		uuid.NewUUIDString(),
 	}
 
-	k := key.NewKey()
-	if err := k.Generate(); err != nil {
-		t.Error(err)
+	encrypter := func(b []byte) services.Encrypter {
+		return services.NewAESEncrypter(b)
 	}
-	rsakey := k.Get()
-
-	encrypter := aes.New(rsakey)
-	encryptedData, err := encrypter.Encrypt([]byte(testCase.Value))
+	entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter)
+	meta, encKey, err := entryManager.CreateEntry(ctx, []byte(testCase.Value), 1, time.Second*10)
 	if err != nil {
 		t.Error(err)
 	}
 
-	ctx := context.Background()
-	if _, err := connection.Write(ctx, testCase.UUID, encryptedData, time.Second*10, 1); err != nil {
-		t.Error(err)
-	}
-
-	req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", testCase.UUID, hex.EncodeToString(rsakey)), nil)
+	req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", meta.UUID, hex.EncodeToString(encKey)), nil)
 	req.Header.Add("Accept", "application/json")
 	w := httptest.NewRecorder()
 
 	mux := http.NewServeMux()
-	secretHandler := NewSecretHandler(NewHandlerConfig(connection, connection.GetDB()))
+	secretHandler := NewSecretHandler(NewHandlerConfig(db))
 	secretHandler.RegisterHandlers(mux, "")
 	mux.ServeHTTP(w, req)
 
@@ -464,16 +473,18 @@ func TestGetEntryJSON(t *testing.T) {
 func TestSetAndGetEntry(t *testing.T) {
 	testCase := "foo"
 
-	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
+	ctx := context.Background()
+	db, err := durable.TestConnection(ctx)
+
 	t.Cleanup(func() {
-		connection.Close()
+		db.Close()
 	})
 
 	req := httptest.NewRequest("POST", "http://example.com/", bytes.NewReader([]byte(testCase)))
 	w := httptest.NewRecorder()
 
 	mux := http.NewServeMux()
-	secretHandler := NewSecretHandler(NewHandlerConfig(connection, connection.GetDB()))
+	secretHandler := NewSecretHandler(NewHandlerConfig(db))
 	secretHandler.RegisterHandlers(mux, "")
 	mux.ServeHTTP(w, req)
 
@@ -507,15 +518,16 @@ func TestSetAndGetEntry(t *testing.T) {
 }
 
 func TestCreateEntryWithExpiration(t *testing.T) {
-	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
+	ctx := context.Background()
+	db, err := durable.TestConnection(ctx)
 	t.Cleanup(func() {
-		connection.Close()
+		db.Close()
 	})
 	testCase := "foo"
 
 	req := httptest.NewRequest("POST", "http://example.com?expire=1m", bytes.NewReader([]byte(testCase)))
 	w := httptest.NewRecorder()
-	handlerConfig := NewHandlerConfig(connection, connection.GetDB())
+	handlerConfig := NewHandlerConfig(db)
 	handlerConfig.MaxExpireSeconds = 120
 	NewSecretHandler(handlerConfig).ServeHTTP(w, req)
 
@@ -539,9 +551,11 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	secretStore := secret.NewSecretStorage(connection, aes.New(decodedKey))
-	ctx := context.Background()
-	entry, err := secretStore.Read(ctx, savedUUID)
+	encrypter := func(b []byte) services.Encrypter {
+		return services.NewAESEncrypter(b)
+	}
+	entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter)
+	entry, err := entryManager.ReadEntry(ctx, savedUUID, decodedKey)
 
 	if err != nil {
 		t.Fatal(err)
@@ -565,7 +579,7 @@ func TestCreateEntrySizeLimit(t *testing.T) {
 
 	req := httptest.NewRequest("POST", "http://example.com?expire=1m", bytes.NewReader([]byte(testCase)))
 	w := httptest.NewRecorder()
-	handlerConfig := NewHandlerConfig(connection, connection.GetDB())
+	handlerConfig := NewHandlerConfig(connection.GetDB())
 	handlerConfig.MaxDataSize = 1
 	handlerConfig.MaxExpireSeconds = 120
 	NewSecretHandler(handlerConfig).ServeHTTP(w, req)
@@ -580,54 +594,59 @@ func TestCreateEntrySizeLimit(t *testing.T) {
 
 func TestCreateEntryWithMaxReads(t *testing.T) {
 	value := "FooBarBAzdd"
-	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
+	ctx := context.Background()
+	db, err := durable.TestConnection(ctx)
 	t.Cleanup(func() {
-		connection.Close()
+		db.Close()
 	})
 
 	req := httptest.NewRequest("POST", "http://example.com?maxReads=2", bytes.NewReader([]byte(value)))
 	w := httptest.NewRecorder()
-	NewSecretHandler(NewHandlerConfig(connection, connection.GetDB())).ServeHTTP(w, req)
+	NewSecretHandler(NewHandlerConfig(db)).ServeHTTP(w, req)
 
 	resp := w.Result()
-	body, _ := io.ReadAll(resp.Body)
+	model := &models.EntryModel{}
 
-	responseURL := string(body)
-	savedUUID, keyString, err := uuid.GetUUIDAndSecretFromPath(responseURL)
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	decodedKey, err := hex.DecodeString(keyString)
+	savedUUID := resp.Header.Get("x-entry-uuid")
+	fmt.Println("savedUUID", savedUUID)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	secretStore := secret.NewSecretStorage(connection, aes.New(decodedKey))
-	ctx := context.Background()
-	entry, err := secretStore.Read(ctx, savedUUID)
-
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	entry, err := model.ReadEntryMeta(ctx, tx, savedUUID)
 
-	if entry.MaxReads != 2 {
-		t.Errorf("expected max reads to be: %d, actual: %d", 2, entry.MaxReads)
+	if err != nil {
+		tx.Rollback()
+		t.Fatal(err)
+	}
+
+	tx.Commit()
+
+	if entry.RemainingReads != 2 {
+		t.Errorf("expected max reads to be: %d, actual: %d", 2, entry.RemainingReads)
 	}
 }
 
 func Test_DeleteEntry(t *testing.T) {
-	connection := postgresql.NewStorage(testhelper.GetPSQLTestConn())
+	ctx := context.Background()
+	db, err := durable.TestConnection(ctx)
+
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() {
-		connection.Close()
+		db.Close()
 	})
 
 	t.Run("correct key", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "http://example.com", bytes.NewReader([]byte("foobarbaz")))
 		w := httptest.NewRecorder()
-		handler := NewSecretHandler(NewHandlerConfig(connection, connection.GetDB()))
+		handler := NewSecretHandler(NewHandlerConfig(db))
 		handler.ServeHTTP(w, req)
 
 		resp := w.Result()
@@ -652,7 +671,7 @@ func Test_DeleteEntry(t *testing.T) {
 	t.Run("invalid key", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "http://example.com", bytes.NewReader([]byte("foobarbaz")))
 		w := httptest.NewRecorder()
-		handler := NewSecretHandler(NewHandlerConfig(connection, connection.GetDB()))
+		handler := NewSecretHandler(NewHandlerConfig(db))
 		handler.ServeHTTP(w, req)
 
 		resp := w.Result()
@@ -676,7 +695,7 @@ func Test_DeleteEntry(t *testing.T) {
 	t.Run("without delete key", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "http://example.com", bytes.NewReader([]byte("foobarbaz")))
 		w := httptest.NewRecorder()
-		handler := NewSecretHandler(NewHandlerConfig(connection, connection.GetDB()))
+		handler := NewSecretHandler(NewHandlerConfig(db))
 		handler.ServeHTTP(w, req)
 
 		resp := w.Result()
@@ -716,7 +735,7 @@ func FuzzSetAndGetEntry(f *testing.F) {
 		}
 
 		mux := http.NewServeMux()
-		secretHandler := NewSecretHandler(NewHandlerConfig(connection, connection.GetDB()))
+		secretHandler := NewSecretHandler(NewHandlerConfig(connection.GetDB()))
 		secretHandler.RegisterHandlers(mux, "")
 
 		req := httptest.NewRequest("POST", "http://example.com/", bytes.NewReader([]byte(testCase)))

@@ -15,14 +15,12 @@ import (
 	"github.com/Ajnasz/sekret.link/internal/parsers"
 	"github.com/Ajnasz/sekret.link/internal/services"
 	"github.com/Ajnasz/sekret.link/internal/views"
-	"github.com/Ajnasz/sekret.link/storage"
 )
 
 // HandlerConfig configuration for http handlers
 type HandlerConfig struct {
 	ExpireSeconds    int
 	MaxExpireSeconds int
-	EntryStorage     storage.VerifyConfirmReader
 	MaxDataSize      int64
 	WebExternalURL   *url.URL
 	DB               *sql.DB

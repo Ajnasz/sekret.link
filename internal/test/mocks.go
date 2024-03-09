@@ -52,3 +52,8 @@ func (m *MockEntryModel) DeleteEntry(ctx context.Context, tx *sql.Tx, UUID strin
 	args := m.Called(ctx, tx, UUID, deleteKey)
 	return args.Error(0)
 }
+
+func (m *MockEntryModel) DeleteExpired(ctx context.Context, tx *sql.Tx) error {
+	args := m.Called(ctx, tx)
+	return args.Error(0)
+}

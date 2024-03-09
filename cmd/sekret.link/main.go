@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"flag"
 	"fmt"
 	"net/http"
@@ -16,7 +17,8 @@ import (
 
 	"github.com/Ajnasz/sekret.link/api"
 	"github.com/Ajnasz/sekret.link/config"
-	"github.com/Ajnasz/sekret.link/storage"
+	"github.com/Ajnasz/sekret.link/internal/models"
+	"github.com/Ajnasz/sekret.link/internal/services"
 	"github.com/Ajnasz/sekret.link/storage/postgresql"
 )
 
@@ -50,13 +52,14 @@ func shutDown(shutdowns ...func() error) chan error {
 	return errChan
 }
 
-func scheduleDeleteExpired(ctx context.Context, entryStorage storage.Writer) {
+func scheduleDeleteExpired(ctx context.Context, db *sql.DB) error {
+	manager := services.NewExpiredEntryManager(db, &models.EntryModel{})
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return nil
 		case <-time.After(time.Second):
-			entryStorage.DeleteExpired(ctx)
+			manager.DeleteExpired(ctx)
 		}
 	}
 }
@@ -153,7 +156,6 @@ func getConfig() (*api.HandlerConfig, error) {
 		return nil, fmt.Errorf("no database backend selected")
 	}
 
-	config.EntryStorage = entryStorage
 	config.DB = entryStorage.GetDB()
 
 	return &config, nil
@@ -168,7 +170,7 @@ func main() {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	go scheduleDeleteExpired(ctx, handlerConfig.EntryStorage)
+	go scheduleDeleteExpired(ctx, handlerConfig.DB)
 	httpServer := listen(*handlerConfig)
 
 	termChan := make(chan os.Signal)
@@ -183,7 +185,7 @@ func main() {
 		defer cancel()
 		return httpServer.Shutdown(ctx)
 	}, func() error {
-		return handlerConfig.EntryStorage.Close()
+		return handlerConfig.DB.Close()
 	})
 
 	errored := false

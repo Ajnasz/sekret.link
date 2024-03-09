@@ -7,8 +7,6 @@ import (
 	"github.com/Ajnasz/sekret.link/entries"
 )
 
-type Transform = func(*entries.Entry) (*entries.Entry, error)
-
 // Reader interface to get stored entry
 type Reader interface {
 	// Read reads the secret and deletes from the underlying storage in one step

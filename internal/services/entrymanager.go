@@ -21,6 +21,7 @@ type EntryModel interface {
 	ReadEntry(ctx context.Context, tx *sql.Tx, UUID string) (*models.Entry, error)
 	UpdateAccessed(ctx context.Context, tx *sql.Tx, UUID string) error
 	DeleteEntry(ctx context.Context, tx *sql.Tx, UUID string, deleteKey string) error
+	DeleteExpired(ctx context.Context, tx *sql.Tx) error
 }
 
 // EntryMeta provides the entry meta
@@ -166,6 +167,22 @@ func (e *EntryManager) DeleteEntry(ctx context.Context, UUID string, deleteKey s
 	}
 
 	if err := e.model.DeleteEntry(ctx, tx, UUID, deleteKey); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	tx.Commit()
+	return nil
+}
+
+func (e *EntryManager) DeleteExpired(ctx context.Context) error {
+	tx, err := e.db.Begin()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := e.model.DeleteExpired(ctx, tx); err != nil {
 		tx.Rollback()
 		return err
 	}
