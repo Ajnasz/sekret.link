@@ -12,7 +12,7 @@ import (
 
 	"github.com/Ajnasz/sekret.link/internal/parsers"
 	"github.com/Ajnasz/sekret.link/internal/services"
-	"github.com/Ajnasz/sekret.link/uuid"
+	"github.com/Ajnasz/sekret.link/internal/uuid"
 )
 
 type EntryCreatedResponse struct {

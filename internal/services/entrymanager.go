@@ -8,7 +8,7 @@ import (
 
 	"github.com/Ajnasz/sekret.link/internal/key"
 	"github.com/Ajnasz/sekret.link/internal/models"
-	"github.com/Ajnasz/sekret.link/uuid"
+	"github.com/Ajnasz/sekret.link/internal/uuid"
 )
 
 var ErrEntryExpired = errors.New("entry expired")

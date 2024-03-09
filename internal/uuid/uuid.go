@@ -19,7 +19,9 @@ func GetUUIDUrlWithSecret(u *url.URL, UUID string, key string) (*url.URL, error)
 }
 
 // GetUUIDAndSecretFromPath extracts the secret id and it's key from a path
+// url is expected to be in the format of (/.*)?/UUID/key
 func GetUUIDAndSecretFromPath(urlPath string) (string, string, error) {
+	// delete key is the last item from the path
 	pathDir, key := path.Split(urlPath)
 	if len(pathDir) < 1 {
 		return "", "", fmt.Errorf("Invalid URL %q", urlPath)
@@ -31,17 +33,6 @@ func GetUUIDAndSecretFromPath(urlPath string) (string, string, error) {
 		return "", "", err
 	}
 	return UUID.String(), key, nil
-}
-
-// GetUUIDFromPath gets an uuid from a path
-func GetUUIDFromPath(urlPath string) (string, error) {
-	_, uuidFromPath := path.Split(urlPath)
-	UUID, err := uuid.Parse(uuidFromPath)
-
-	if err != nil {
-		return "", err
-	}
-	return UUID.String(), nil
 }
 
 // NewUUIDString Generates an uuid and returns as a string
