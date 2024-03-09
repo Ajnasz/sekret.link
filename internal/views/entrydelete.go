@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Ajnasz/sekret.link/entries"
 	"github.com/Ajnasz/sekret.link/internal/models"
 	"github.com/Ajnasz/sekret.link/internal/parsers"
 	"github.com/google/uuid"
@@ -21,7 +20,7 @@ func (e EntryDeleteView) RenderDeleteEntry(w http.ResponseWriter, r *http.Reques
 
 func (e EntryDeleteView) RenderDeleteEntryError(w http.ResponseWriter, r *http.Request, err error) {
 
-	if errors.Is(err, entries.ErrEntryNotFound) || errors.Is(err, models.ErrEntryNotFound) {
+	if errors.Is(err, models.ErrEntryNotFound) || errors.Is(err, models.ErrEntryNotFound) {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
