@@ -13,6 +13,7 @@ import (
 func Test_EntryModel_CreateEntry(t *testing.T) {
 	ctx := context.Background()
 	db, err := durable.TestConnection(ctx)
+
 	if err != nil {
 		t.Fatal(err)
 	}

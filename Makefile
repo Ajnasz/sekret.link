@@ -18,9 +18,15 @@ linux: build/${BINARY_NAME}.linux.amd64
 clean:
 	rm -f build/${BINARY_NAME}.*.*
 
+dbcreate:
+	@cd cmd/prepare && go run .
+
+dbcreate-test:
+	@cd cmd/prepare && go run . -postgresDB "postgres://postgres:password@localhost:5432/sekret_link_test?sslmode=disable"
+
 .PHONY: test
-test:
-	go test -v ./...
+test: dbcreate-test
+	go test ./... -count 1
 
 .PHONY: curl curl-bad
 curl:

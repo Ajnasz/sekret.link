@@ -20,6 +20,7 @@ import (
 	"github.com/Ajnasz/sekret.link/internal/config"
 	"github.com/Ajnasz/sekret.link/internal/durable"
 	"github.com/Ajnasz/sekret.link/internal/models"
+	"github.com/Ajnasz/sekret.link/internal/models/migrate"
 	"github.com/Ajnasz/sekret.link/internal/services"
 )
 
@@ -153,7 +154,7 @@ func getConfig(ctx context.Context) (*api.HandlerConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := models.PrepareDatabase(ctx, db); err != nil {
+	if err := migrate.PrepareDatabase(ctx, db); err != nil {
 		return nil, err
 	}
 	handlerConfig.DB = db
