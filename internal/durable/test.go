@@ -12,6 +12,7 @@ func TestConnection(ctx context.Context) (*sql.DB, error) {
 		Username: "postgres",
 		Password: "password",
 		Database: "sekret_link_test",
+		SslMode:  "disable",
 	}
-	return OpenDatabaseClient(ctx, config)
+	return OpenDatabaseClient(ctx, config.String())
 }

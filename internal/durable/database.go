@@ -15,6 +15,11 @@ type ConnectionInfo struct {
 	Username string
 	Password string
 	Database string
+	SslMode  string
+}
+
+func (c ConnectionInfo) String() string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s", c.Username, c.Password, c.Host, c.Port, c.Database, c.SslMode)
 }
 
 // getPSQLTestConn returns connection string for tests
@@ -27,8 +32,7 @@ func getPSQLTestConn() string {
 	return config.GetConnectionString(fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", "postgres", "password", "localhost", 5432, password))
 }
 
-func OpenDatabaseClient(ctx context.Context, c ConnectionInfo) (*sql.DB, error) {
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", c.Username, c.Password, c.Host, c.Port, c.Database)
+func OpenDatabaseClient(ctx context.Context, connStr string) (*sql.DB, error) {
 	db, err := sql.Open("postgres", connStr)
 
 	if err != nil {

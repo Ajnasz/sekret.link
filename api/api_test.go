@@ -44,6 +44,7 @@ func TestCreateEntry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	t.Cleanup(func() {
 		db.Close()
 	})
@@ -170,9 +171,11 @@ func TestCreateEntryJSON(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	t.Cleanup(func() {
 		db.Close()
 	})
+
 	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(value)))
 	req.Header.Add("Accept", "application/json")
 	w := httptest.NewRecorder()
@@ -254,6 +257,11 @@ func TestCreateEntryForm(t *testing.T) {
 	value := "Foo"
 	ctx := context.Background()
 	db, err := durable.TestConnection(ctx)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	t.Cleanup(func() {
 		db.Close()
 	})
@@ -361,6 +369,7 @@ func TestGetEntry(t *testing.T) {
 
 	ctx := context.Background()
 	db, err := durable.TestConnection(ctx)
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -413,6 +422,7 @@ func TestGetEntryJSON(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	t.Cleanup(func() {
 		defer db.Close()
 	})
@@ -476,6 +486,10 @@ func TestSetAndGetEntry(t *testing.T) {
 	ctx := context.Background()
 	db, err := durable.TestConnection(ctx)
 
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	t.Cleanup(func() {
 		db.Close()
 	})
@@ -520,6 +534,11 @@ func TestSetAndGetEntry(t *testing.T) {
 func TestCreateEntryWithExpiration(t *testing.T) {
 	ctx := context.Background()
 	db, err := durable.TestConnection(ctx)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	t.Cleanup(func() {
 		db.Close()
 	})
@@ -596,6 +615,11 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 	value := "FooBarBAzdd"
 	ctx := context.Background()
 	db, err := durable.TestConnection(ctx)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	t.Cleanup(func() {
 		db.Close()
 	})
@@ -639,6 +663,7 @@ func Test_DeleteEntry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	t.Cleanup(func() {
 		db.Close()
 	})

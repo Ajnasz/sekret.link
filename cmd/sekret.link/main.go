@@ -1,3 +1,4 @@
+// Package main is the entry point of the application
 package main
 
 import (
@@ -17,18 +18,14 @@ import (
 
 	"github.com/Ajnasz/sekret.link/api"
 	"github.com/Ajnasz/sekret.link/config"
+	"github.com/Ajnasz/sekret.link/internal/durable"
 	"github.com/Ajnasz/sekret.link/internal/models"
 	"github.com/Ajnasz/sekret.link/internal/services"
-	"github.com/Ajnasz/sekret.link/storage/postgresql"
 )
 
 var (
 	version string
 )
-
-func getStorage(postgresDB string) *postgresql.Storage {
-	return postgresql.NewStorage(config.GetConnectionString(postgresDB))
-}
 
 func shutDown(shutdowns ...func() error) chan error {
 	errChan := make(chan error)
@@ -36,7 +33,7 @@ func shutDown(shutdowns ...func() error) chan error {
 	var wg sync.WaitGroup
 	for i, shutdown := range shutdowns {
 		wg.Add(1)
-		go func(i int, shutdown func() error) {
+		go func(_ int, shutdown func() error) {
 			defer wg.Done()
 			if err := shutdown(); err != nil {
 				errChan <- err
@@ -140,7 +137,7 @@ func getConfig() (*api.HandlerConfig, error) {
 		return nil, err
 	}
 
-	config := api.HandlerConfig{
+	handlerConfig := api.HandlerConfig{
 		ExpireSeconds:    expireSeconds,
 		MaxExpireSeconds: maxExpireSeconds,
 		MaxDataSize:      maxDataSize,
@@ -149,16 +146,16 @@ func getConfig() (*api.HandlerConfig, error) {
 	if maxExpireSeconds < expireSeconds {
 		return nil, fmt.Errorf("`expireSeconds` must be less or equal then `maxExpireSeconds`")
 	}
-	config.WebExternalURL = extURL
+	handlerConfig.WebExternalURL = extURL
 
-	entryStorage := getStorage(postgresDB)
-	if entryStorage == nil {
-		return nil, fmt.Errorf("no database backend selected")
+	db, err := durable.OpenDatabaseClient(context.Background(), config.GetConnectionString(postgresDB))
+
+	if err != nil {
+		return nil, err
 	}
+	handlerConfig.DB = db
 
-	config.DB = entryStorage.GetDB()
-
-	return &config, nil
+	return &handlerConfig, nil
 }
 
 func main() {
