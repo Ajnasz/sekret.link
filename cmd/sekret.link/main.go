@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/Ajnasz/sekret.link/api"
-	"github.com/Ajnasz/sekret.link/config"
+	"github.com/Ajnasz/sekret.link/internal/config"
 	"github.com/Ajnasz/sekret.link/internal/durable"
 	"github.com/Ajnasz/sekret.link/internal/models"
 	"github.com/Ajnasz/sekret.link/internal/services"

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Ajnasz/sekret.link/config"
+	"github.com/Ajnasz/sekret.link/internal/config"
 )
 
 type ConnectionInfo struct {
