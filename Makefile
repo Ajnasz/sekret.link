@@ -8,7 +8,7 @@ BUILD_ARGS=-trimpath -ldflags '-w -s'
 all: clean linux
 
 run:
-	@go run .
+	@cd cmd/sekret.link && POSTGRES_URL="postgres://postgres:password@localhost:5432/sekret_link_test?sslmode=disable" go run . -webExternalURL=/api
 
 build/${BINARY_NAME}.linux.amd64:
 	cd cmd/sekret.link && GOARCH=amd64 GOOS=linux go build ${BUILD_ARGS} -ldflags "-w -s -X main.version=${VERSION} -X main.build=${BUILD}" -o ../../$@
@@ -18,6 +18,22 @@ linux: build/${BINARY_NAME}.linux.amd64
 clean:
 	rm -f build/${BINARY_NAME}.*.*
 
+dbcreate:
+	@cd cmd/prepare && go run .
+
+dbcreate-test:
+	@cd cmd/prepare && go run . -postgresDB "postgres://postgres:password@localhost:5432/sekret_link_test?sslmode=disable"
+
 .PHONY: test
-test:
-	go test -v ./...
+test: dbcreate-test
+	go test ./... -count 1
+
+.PHONY: curl curl-bad
+curl:
+	curl -v --data-binary @go.mod localhost:8080/api/ | xargs -I {} curl localhost:8080{}
+curl-bad:
+	curl -v localhost:8080/api/57c04c70-dd58-11ee-98fc-ebbaf68907f4/8bc419a2de0ccf0b165cd978f8894b77403a2f06019916af0bf48bcade88f518
+
+.PHONY: hurl
+hurl:
+	@hurl --variable api_host='http://localhost:8080' hurl/*.hurl

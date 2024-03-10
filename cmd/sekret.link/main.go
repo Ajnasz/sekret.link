@@ -1,7 +1,9 @@
+// Package main is the entry point of the application
 package main
 
 import (
 	"context"
+	"database/sql"
 	"flag"
 	"fmt"
 	"net/http"
@@ -15,19 +17,16 @@ import (
 	"time"
 
 	"github.com/Ajnasz/sekret.link/api"
-	"github.com/Ajnasz/sekret.link/api/middlewares"
-	"github.com/Ajnasz/sekret.link/config"
-	"github.com/Ajnasz/sekret.link/storage"
-	"github.com/Ajnasz/sekret.link/storage/postgresql"
+	"github.com/Ajnasz/sekret.link/internal/config"
+	"github.com/Ajnasz/sekret.link/internal/durable"
+	"github.com/Ajnasz/sekret.link/internal/models"
+	"github.com/Ajnasz/sekret.link/internal/models/migrate"
+	"github.com/Ajnasz/sekret.link/internal/services"
 )
 
 var (
 	version string
 )
-
-func getStorage(postgresDB string) *postgresql.Storage {
-	return postgresql.NewStorage(config.GetConnectionString(postgresDB))
-}
 
 func shutDown(shutdowns ...func() error) chan error {
 	errChan := make(chan error)
@@ -35,7 +34,7 @@ func shutDown(shutdowns ...func() error) chan error {
 	var wg sync.WaitGroup
 	for i, shutdown := range shutdowns {
 		wg.Add(1)
-		go func(i int, shutdown func() error) {
+		go func(_ int, shutdown func() error) {
 			defer wg.Done()
 			if err := shutdown(); err != nil {
 				errChan <- err
@@ -51,39 +50,35 @@ func shutDown(shutdowns ...func() error) chan error {
 	return errChan
 }
 
-func scheduleDeleteExpired(ctx context.Context, entryStorage storage.Writer) {
+func scheduleDeleteExpired(ctx context.Context, db *sql.DB) error {
+	manager := services.NewExpiredEntryManager(db, &models.EntryModel{})
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return nil
 		case <-time.After(time.Second):
-			entryStorage.DeleteExpired(ctx)
+			manager.DeleteExpired(ctx)
 		}
 	}
 }
 
 func listen(handlerConfig api.HandlerConfig) *http.Server {
-	apiRoot := getAPIRoot(handlerConfig.WebExternalURL)
-	fmt.Println("Handle Path: ", apiRoot)
+	mux := http.NewServeMux()
 
-	r := http.NewServeMux()
-	r.Handle(
-		apiRoot,
-		http.StripPrefix(
-			apiRoot,
-			middlewares.SetupLogging(
-				middlewares.SetupHeaders(api.NewSecretHandler(handlerConfig)),
-			),
-		),
-	)
+	apiRoot := getAPIRoot(handlerConfig.WebExternalURL)
+
+	secretHandler := api.NewSecretHandler(handlerConfig)
+	secretHandler.RegisterHandlers(mux, apiRoot)
+
 	httpServer := &http.Server{
 		Addr:         ":8080",
-		Handler:      r,
+		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
 
 	go func() {
+		fmt.Println("Handle Path: ", apiRoot)
 		if err := httpServer.ListenAndServe(); err != nil {
 			if err.Error() != "http: Server closed" {
 				fmt.Fprintf(os.Stderr, "error: %s", err)
@@ -115,7 +110,7 @@ func getAPIRoot(webExternalURL *url.URL) string {
 	return apiRoot
 }
 
-func getConfig() (*api.HandlerConfig, error) {
+func getConfig(ctx context.Context) (*api.HandlerConfig, error) {
 	var (
 		externalURLParam string
 		expireSeconds    int
@@ -143,7 +138,7 @@ func getConfig() (*api.HandlerConfig, error) {
 		return nil, err
 	}
 
-	config := api.HandlerConfig{
+	handlerConfig := api.HandlerConfig{
 		ExpireSeconds:    expireSeconds,
 		MaxExpireSeconds: maxExpireSeconds,
 		MaxDataSize:      maxDataSize,
@@ -152,28 +147,30 @@ func getConfig() (*api.HandlerConfig, error) {
 	if maxExpireSeconds < expireSeconds {
 		return nil, fmt.Errorf("`expireSeconds` must be less or equal then `maxExpireSeconds`")
 	}
-	config.WebExternalURL = extURL
+	handlerConfig.WebExternalURL = extURL
 
-	entryStorage := getStorage(postgresDB)
-	if entryStorage == nil {
-		return nil, fmt.Errorf("no database backend selected")
+	db, err := durable.OpenDatabaseClient(context.Background(), config.GetConnectionString(postgresDB))
+
+	if err != nil {
+		return nil, err
 	}
+	if err := migrate.PrepareDatabase(ctx, db); err != nil {
+		return nil, err
+	}
+	handlerConfig.DB = db
 
-	config.EntryStorage = entryStorage
-
-	return &config, nil
+	return &handlerConfig, nil
 }
 
 func main() {
-	handlerConfig, err := getConfig()
+	ctx, cancel := context.WithCancel(context.Background())
+	handlerConfig, err := getConfig(ctx)
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %s", err)
 		os.Exit(1)
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	go scheduleDeleteExpired(ctx, handlerConfig.EntryStorage)
+	go scheduleDeleteExpired(ctx, handlerConfig.DB)
 	httpServer := listen(*handlerConfig)
 
 	termChan := make(chan os.Signal)
@@ -188,7 +185,7 @@ func main() {
 		defer cancel()
 		return httpServer.Shutdown(ctx)
 	}, func() error {
-		return handlerConfig.EntryStorage.Close()
+		return handlerConfig.DB.Close()
 	})
 
 	errored := false
