@@ -10,18 +10,18 @@ func TestNewKey(t *testing.T) {
 
 	err := k.Generate()
 	if err != nil {
-		t.Errorf("Generate returned error on first call")
+		t.Fatal("Generate returned error on first call")
 	}
 	err = k.Generate()
 
 	if err != ErrorKeyAlreadyGenerated {
-		t.Errorf("Generate returned error %s, expected %s", err, ErrorKeyAlreadyGenerated)
+		t.Fatalf("Generate returned error %s, expected %s", err, ErrorKeyAlreadyGenerated)
 	}
 
 	bytesKey := k.Get()
 
 	if len(bytesKey) != 32 {
-		t.Errorf("Expected k.Get() return a 32 length byte slice")
+		t.Fatalf("Expected k.Get() return a 32 length byte slice")
 	}
 
 	hexStr := k.ToHex()
@@ -32,11 +32,11 @@ func TestNewKey(t *testing.T) {
 	}
 
 	if !isHex {
-		t.Errorf("expected %s to match hex string regexp", hexStr)
+		t.Fatalf("expected %s to match hex string regexp", hexStr)
 	}
 
 	str := k.String()
 	if str != hexStr {
-		t.Errorf("Stringer interface expected to return hex value: %s, but got %s", hexStr, str)
+		t.Fatalf("Stringer interface expected to return hex value: %s, but got %s", hexStr, str)
 	}
 }

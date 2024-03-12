@@ -15,6 +15,7 @@ import (
 
 var ErrEntryNotFound = errors.New("entry not found")
 var ErrInvalidKey = errors.New("invalid key")
+var ErrCreateEntry = errors.New("failed to create entry")
 
 // uuid uuid PRIMARY KEY,
 // data BYTEA,
@@ -55,13 +56,26 @@ func (e *EntryModel) getDeleteKey() (string, error) {
 
 // CreateEntry creates a new entry into the database
 func (e *EntryModel) CreateEntry(ctx context.Context, tx *sql.Tx, uuid string, data []byte, remainingReads int, expire time.Duration) (*EntryMeta, error) {
-	now := time.Now()
 	deleteKey, err := e.getDeleteKey()
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, ErrCreateEntry)
 	}
 
-	_, err = tx.ExecContext(ctx, `INSERT INTO entries (uuid, data, created, expire, remaining_reads, delete_key) VALUES  ($1, $2, $3, $4, $5, $6) RETURNING uuid, delete_key;`, uuid, data, now, now.Add(expire), remainingReads, deleteKey)
+	now := time.Now()
+	res, err := tx.ExecContext(ctx, `INSERT INTO entries (uuid, data, created, expire, remaining_reads, delete_key) VALUES  ($1, $2, $3, $4, $5, $6) RETURNING uuid, delete_key;`, uuid, data, now, now.Add(expire), remainingReads, deleteKey)
+
+	if err != nil {
+		return nil, errors.Join(err, ErrCreateEntry)
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return nil, errors.Join(err, ErrCreateEntry)
+	}
+
+	if rows != 1 {
+		return nil, ErrCreateEntry
+	}
 
 	return &EntryMeta{
 		UUID:           uuid,
