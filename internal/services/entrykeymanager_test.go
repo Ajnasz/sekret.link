@@ -84,7 +84,6 @@ func TestEntryKeyManager_Create(t *testing.T) {
 	model := &MockEntryKeyModel{}
 	hasher := &MockHasher{}
 	encrypter := &EncrypterMock{}
-	manager := NewEntryKeyManager(db, model, hasher, encrypter)
 	entryUUID := "test-entry-uuid"
 	dek := []byte("test-dek")
 	encryptedKey := []byte("test-encrypted-key")
@@ -106,7 +105,12 @@ func TestEntryKeyManager_Create(t *testing.T) {
 	model.On("SetExpire", ctx, mock.Anything, "test-uuid", expire).Return(nil)
 	model.On("SetMaxRead", ctx, mock.Anything, "test-uuid", maxRead).Return(nil)
 
-	entryKey, err := manager.Create(ctx, entryUUID, dek, &expire, &maxRead)
+	crypto := func(key []byte) Encrypter {
+		return encrypter
+	}
+
+	manager := NewEntryKeyManager(db, model, hasher, crypto)
+	entryKey, key, err := manager.Create(ctx, entryUUID, dek, &expire, &maxRead)
 
 	model.AssertExpectations(t)
 	encrypter.AssertExpectations(t)
@@ -119,6 +123,7 @@ func TestEntryKeyManager_Create(t *testing.T) {
 	assert.Equal(t, expire, entryKey.Expire.Time)
 	assert.True(t, entryKey.Expire.Valid)
 	assert.Equal(t, int16(maxRead), entryKey.RemainingReads.Int16)
+	assert.NotEmpty(t, key.Get())
 }
 
 func TestEntryKeyManager_Create_NoExpire(t *testing.T) {
@@ -136,7 +141,6 @@ func TestEntryKeyManager_Create_NoExpire(t *testing.T) {
 	model := &MockEntryKeyModel{}
 	hasher := &MockHasher{}
 	encrypter := &EncrypterMock{}
-	manager := NewEntryKeyManager(db, model, hasher, encrypter)
 	dek := []byte("test-dek")
 	entryUUID := "test-entry-uuid"
 	encryptedKey := []byte("test-encrypted-key")
@@ -154,7 +158,11 @@ func TestEntryKeyManager_Create_NoExpire(t *testing.T) {
 		RemainingReads: sql.NullInt16{Int16: 0, Valid: false},
 	}, nil)
 
-	entryKey, err := manager.Create(ctx, entryUUID, dek, nil, nil)
+	crypto := func(key []byte) Encrypter {
+		return encrypter
+	}
+	manager := NewEntryKeyManager(db, model, hasher, crypto)
+	entryKey, key, err := manager.Create(ctx, entryUUID, dek, nil, nil)
 
 	hasher.AssertExpectations(t)
 	encrypter.AssertExpectations(t)
@@ -165,6 +173,7 @@ func TestEntryKeyManager_Create_NoExpire(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "test-uuid", entryKey.UUID)
 	assert.False(t, entryKey.Expire.Valid)
+	assert.NotEmpty(t, key.Get())
 }
 
 func TestEntryKeyManager_Create_NoMaxRead(t *testing.T) {
@@ -182,7 +191,6 @@ func TestEntryKeyManager_Create_NoMaxRead(t *testing.T) {
 	model := &MockEntryKeyModel{}
 	hasher := &MockHasher{}
 	encrypter := &EncrypterMock{}
-	manager := NewEntryKeyManager(db, model, hasher, encrypter)
 	entryUUID := "test-entry-uuid"
 	dek := []byte("test-dek")
 	encryptedKey := []byte("test-encrypted-key")
@@ -200,7 +208,12 @@ func TestEntryKeyManager_Create_NoMaxRead(t *testing.T) {
 		RemainingReads: sql.NullInt16{Int16: 0, Valid: false},
 	}, nil)
 
-	entryKey, err := manager.Create(ctx, entryUUID, dek, nil, nil)
+	crypto := func(key []byte) Encrypter {
+		return encrypter
+	}
+
+	manager := NewEntryKeyManager(db, model, hasher, crypto)
+	entryKey, key, err := manager.Create(ctx, entryUUID, dek, nil, nil)
 
 	model.AssertExpectations(t)
 	hasher.AssertExpectations(t)
@@ -211,4 +224,6 @@ func TestEntryKeyManager_Create_NoMaxRead(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "test-uuid", entryKey.UUID)
 	assert.False(t, entryKey.RemainingReads.Valid)
+	// key.Get should not return an empty string
+	assert.NotEmpty(t, key.Get())
 }

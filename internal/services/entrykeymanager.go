@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/Ajnasz/sekret.link/internal/key"
 	"github.com/Ajnasz/sekret.link/internal/models"
 )
 
@@ -25,10 +26,10 @@ type EntryKeyManager struct {
 	db        *sql.DB
 	model     EntryKeyModel
 	hasher    Hasher
-	encrypter Encrypter
+	encrypter EncrypterFactory
 }
 
-func NewEntryKeyManager(db *sql.DB, model EntryKeyModel, hasher Hasher, encrypter Encrypter) *EntryKeyManager {
+func NewEntryKeyManager(db *sql.DB, model EntryKeyModel, hasher Hasher, encrypter EncrypterFactory) *EntryKeyManager {
 	return &EntryKeyManager{
 		db:        db,
 		model:     model,
@@ -37,30 +38,37 @@ func NewEntryKeyManager(db *sql.DB, model EntryKeyModel, hasher Hasher, encrypte
 	}
 }
 
-func (e *EntryKeyManager) Create(ctx context.Context, entryUUID string, dek []byte, expire *time.Time, maxRead *int) (*models.EntryKey, error) {
+func (e *EntryKeyManager) Create(ctx context.Context, entryUUID string, dek []byte, expire *time.Time, maxRead *int) (*models.EntryKey, *key.Key, error) {
 
 	tx, err := e.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	encryptedKey, err := e.encrypter.Encrypt(dek)
+	k, err := key.NewGeneratedKey()
+
 	if err != nil {
 		tx.Rollback()
-		return nil, err
+		return nil, nil, err
+	}
+	encrypter := e.encrypter(k.Get())
+	encryptedKey, err := encrypter.Encrypt(dek)
+	if err != nil {
+		tx.Rollback()
+		return nil, nil, err
 	}
 	hash := e.hasher.Hash(dek)
 	entryKey, err := e.model.Create(ctx, tx, entryUUID, encryptedKey, hash)
 	if err != nil {
 		tx.Rollback()
-		return nil, err
+		return nil, nil, err
 	}
 
 	if expire != nil {
 		err := e.model.SetExpire(ctx, tx, entryKey.UUID, *expire)
 		if err != nil {
 			tx.Rollback()
-			return nil, err
+			return nil, nil, err
 		}
 		entryKey.Expire = sql.NullTime{
 			Time:  *expire,
@@ -72,7 +80,7 @@ func (e *EntryKeyManager) Create(ctx context.Context, entryUUID string, dek []by
 		err := e.model.SetMaxRead(ctx, tx, entryKey.UUID, *maxRead)
 		if err != nil {
 			tx.Rollback()
-			return nil, err
+			return nil, nil, err
 		}
 
 		entryKey.RemainingReads = sql.NullInt16{
@@ -82,8 +90,8 @@ func (e *EntryKeyManager) Create(ctx context.Context, entryUUID string, dek []by
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return entryKey, nil
+	return entryKey, k, nil
 }

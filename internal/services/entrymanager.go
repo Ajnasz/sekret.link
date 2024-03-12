@@ -73,14 +73,14 @@ func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingRe
 	if err != nil {
 		return nil, nil, err
 	}
-	k, err := key.NewGeneratedKey()
+	dek, err := key.NewGeneratedKey()
 
 	if err != nil {
 		tx.Rollback()
 		return nil, nil, err
 	}
 
-	crypto := e.crypto(k.Get())
+	crypto := e.crypto(dek.Get())
 
 	encryptedData, err := crypto.Encrypt(data)
 	if err != nil {
@@ -103,7 +103,7 @@ func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingRe
 		Created:        meta.Created,
 		Accessed:       meta.Accessed.Time,
 		Expire:         meta.Expire,
-	}, k.Get(), nil
+	}, dek.Get(), nil
 
 }
 
