@@ -9,16 +9,18 @@ import (
 	"github.com/google/uuid"
 )
 
+type DeleteEntryResponse struct{}
+
 type EntryDeleteView struct{}
 
 func NewEntryDeleteView() EntryDeleteView {
 	return EntryDeleteView{}
 }
-func (e EntryDeleteView) RenderDeleteEntry(w http.ResponseWriter, r *http.Request) {
+func (e EntryDeleteView) Render(w http.ResponseWriter, r *http.Request, data DeleteEntryResponse) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
-func (e EntryDeleteView) RenderDeleteEntryError(w http.ResponseWriter, r *http.Request, err error) {
+func (e EntryDeleteView) RenderError(w http.ResponseWriter, r *http.Request, err error) {
 
 	if errors.Is(err, models.ErrEntryNotFound) || errors.Is(err, models.ErrEntryNotFound) {
 		http.Error(w, "Not Found", http.StatusNotFound)
