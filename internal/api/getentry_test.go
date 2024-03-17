@@ -9,6 +9,7 @@ import (
 
 	"github.com/Ajnasz/sekret.link/internal/parsers"
 	"github.com/Ajnasz/sekret.link/internal/services"
+	"github.com/Ajnasz/sekret.link/internal/views"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -16,11 +17,11 @@ type MockGetEntryView struct {
 	mock.Mock
 }
 
-func (m *MockGetEntryView) RenderReadEntry(w http.ResponseWriter, r *http.Request, entry *services.Entry, key string) {
-	m.Called(w, r, entry, key)
+func (m *MockGetEntryView) Render(w http.ResponseWriter, r *http.Request, entry views.EntryReadResponse) {
+	m.Called(w, r, entry)
 }
 
-func (m *MockGetEntryView) RenderReadEntryError(w http.ResponseWriter, r *http.Request, err error) {
+func (m *MockGetEntryView) RenderError(w http.ResponseWriter, r *http.Request, err error) {
 	m.Called(w, r, err)
 }
 
@@ -49,7 +50,7 @@ func TestGetHandle(t *testing.T) {
 
 	handler := NewGetHandler(parserMock, managerMock, viewMock)
 
-	viewMock.On("RenderReadEntry", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
+	viewMock.On("Render", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
 	// viewMock.On("RenderReadEntryError", mock.Anything, mock.Anything, mock.Anything).Return()
 	parserMock.On("Parse", mock.Anything).Return(parsers.GetEntryRequestData{
 		UUID:      "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb",
