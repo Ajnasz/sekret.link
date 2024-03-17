@@ -32,7 +32,7 @@ func NewGenerateEntryKeyView(webExternalURL *url.URL) GenerateEntryKeyView {
 }
 
 // RenderGenerateEntryKey renders the response for the GenerateEntryKey endpoint.
-func (g GenerateEntryKeyView) RenderGenerateEntryKey(w http.ResponseWriter, r *http.Request, response GenerateEntryKeyResponseData) {
+func (g GenerateEntryKeyView) Render(w http.ResponseWriter, r *http.Request, response GenerateEntryKeyResponseData) {
 	w.Header().Add("x-entry-uuid", response.UUID)
 	w.Header().Add("x-entry-key", response.Key)
 	w.Header().Add("x-entry-expire", response.Expire.Format(time.RFC3339))
@@ -54,7 +54,7 @@ func (g GenerateEntryKeyView) RenderGenerateEntryKey(w http.ResponseWriter, r *h
 }
 
 // RenderGenerateEntryKeyError renders the error response for the GenerateEntryKey endpoint.
-func (v GenerateEntryKeyView) RenderGenerateEntryKeyError(w http.ResponseWriter, r *http.Request, err error) {
+func (v GenerateEntryKeyView) RenderError(w http.ResponseWriter, r *http.Request, err error) {
 	if errors.Is(err, parsers.ErrInvalidUUID) {
 		http.Error(w, "Invalid UUID", http.StatusBadRequest)
 		return

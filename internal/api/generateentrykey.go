@@ -21,14 +21,14 @@ type GenerateEntryKeyManager interface {
 
 type GenerateEntryKeyHandler struct {
 	entryManager GenerateEntryKeyManager
-	view         GenerateEntryKeyView
+	view         views.View[views.GenerateEntryKeyResponseData]
 	parser       parsers.Parser[parsers.GenerateEntryKeyRequestData]
 }
 
 func NewGenerateEntryKeyHandler(
 	parser parsers.Parser[parsers.GenerateEntryKeyRequestData],
 	entryManager GenerateEntryKeyManager,
-	view GenerateEntryKeyView,
+	view views.View[views.GenerateEntryKeyResponseData],
 ) GenerateEntryKeyHandler {
 	return GenerateEntryKeyHandler{
 		view:         view,
@@ -52,7 +52,7 @@ func (g GenerateEntryKeyHandler) handle(w http.ResponseWriter, r *http.Request) 
 		return err
 	}
 
-	g.view.RenderGenerateEntryKey(w, r, views.GenerateEntryKeyResponseData{
+	g.view.Render(w, r, views.GenerateEntryKeyResponseData{
 		UUID:   request.UUID,
 		Key:    hex.EncodeToString(entry.KEK),
 		Expire: entry.Expire,
@@ -62,6 +62,6 @@ func (g GenerateEntryKeyHandler) handle(w http.ResponseWriter, r *http.Request) 
 
 func (g GenerateEntryKeyHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	if err := g.handle(w, r); err != nil {
-		g.view.RenderGenerateEntryKeyError(w, r, err)
+		g.view.RenderError(w, r, err)
 	}
 }

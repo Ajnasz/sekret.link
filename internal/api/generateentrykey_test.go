@@ -18,11 +18,11 @@ type MockGenerateEntryKeyView struct {
 	mock.Mock
 }
 
-func (m *MockGenerateEntryKeyView) RenderGenerateEntryKey(w http.ResponseWriter, r *http.Request, entry views.GenerateEntryKeyResponseData) {
+func (m *MockGenerateEntryKeyView) Render(w http.ResponseWriter, r *http.Request, entry views.GenerateEntryKeyResponseData) {
 	m.Called(w, r, entry)
 }
 
-func (m *MockGenerateEntryKeyView) RenderGenerateEntryKeyError(w http.ResponseWriter, r *http.Request, err error) {
+func (m *MockGenerateEntryKeyView) RenderError(w http.ResponseWriter, r *http.Request, err error) {
 	m.Called(w, r, err)
 }
 
@@ -54,7 +54,7 @@ func TestGenerateEntryKey_Handle(t *testing.T) {
 	newKey := []byte{18, 18, 18, 18, 174, 173, 15}
 	expire := time.Now().Add(time.Hour * 24)
 
-	viewMock.On("RenderGenerateEntryKey", mock.Anything, mock.Anything, views.GenerateEntryKeyResponseData{
+	viewMock.On("Render", mock.Anything, mock.Anything, views.GenerateEntryKeyResponseData{
 		UUID:   "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb",
 		Key:    hex.EncodeToString(newKey),
 		Expire: expire,
@@ -85,7 +85,7 @@ func TestGenerateEntryKey_HandleParseError(t *testing.T) {
 
 	parserMock.On("Parse", mock.Anything).Return(parsers.GenerateEntryKeyRequestData{}, assert.AnError)
 
-	viewMock.On("RenderGenerateEntryKeyError", mock.Anything, mock.Anything, mock.Anything).Return()
+	viewMock.On("RenderError", mock.Anything, mock.Anything, mock.Anything).Return()
 	handler.Handle(nil, nil)
 	managerMock.AssertExpectations(t)
 	parserMock.AssertExpectations(t)
@@ -99,7 +99,7 @@ func TestGenerateEntryKey_HandleManagerError(t *testing.T) {
 
 	handler := NewGenerateEntryKeyHandler(parserMock, managerMock, viewMock)
 
-	viewMock.On("RenderGenerateEntryKeyError", mock.Anything, mock.Anything, mock.Anything).Return()
+	viewMock.On("RenderError", mock.Anything, mock.Anything, mock.Anything).Return()
 	parserMock.On("Parse", mock.Anything).Return(parsers.GenerateEntryKeyRequestData{
 		UUID: "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb",
 		Key:  []byte{18, 18, 18, 18, 174, 173, 15},
