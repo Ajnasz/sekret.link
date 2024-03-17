@@ -9,6 +9,7 @@ import (
 
 	"github.com/Ajnasz/sekret.link/internal/parsers"
 	"github.com/Ajnasz/sekret.link/internal/services"
+	"github.com/Ajnasz/sekret.link/internal/views"
 )
 
 // CreateEntryParser is an interface for parsing the create entry request
@@ -32,7 +33,7 @@ type CreateHandler struct {
 	maxDataSize  int64
 	parser       CreateEntryParser
 	entryManager CreateEntryManager
-	view         CreateEntryView
+	view         views.View[views.EntryCreatedResponse]
 }
 
 // NewCreateHandler creates a new CreateHandler
@@ -40,7 +41,7 @@ func NewCreateHandler(
 	maxDataSize int64,
 	parser CreateEntryParser,
 	entryManager CreateEntryManager,
-	view CreateEntryView,
+	view views.View[views.EntryCreatedResponse],
 ) CreateHandler {
 	return CreateHandler{
 		maxDataSize:  maxDataSize,
@@ -67,7 +68,9 @@ func (c CreateHandler) handle(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	c.view.RenderEntryCreated(w, r, entry, hex.EncodeToString(key))
+	viewData := views.BuildCreatedResponse(entry, hex.EncodeToString(key))
+
+	c.view.Render(w, r, viewData)
 	return nil
 }
 
@@ -76,6 +79,6 @@ func (c CreateHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	err := c.handle(w, r)
 
 	if err != nil {
-		c.view.RenderCreateEntryErrorResponse(w, r, err)
+		c.view.RenderError(w, r, err)
 	}
 }
