@@ -3,33 +3,34 @@ package services
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
+	"github.com/Ajnasz/sekret.link/internal/hasher"
 	"github.com/Ajnasz/sekret.link/internal/key"
 	"github.com/Ajnasz/sekret.link/internal/models"
 )
 
+var ErrEntryKeyNotFound = errors.New("entry key not found")
+
 type EntryKeyModel interface {
 	Create(ctx context.Context, tx *sql.Tx, entryUUID string, encryptedKey []byte, hash []byte) (*models.EntryKey, error)
-	Get(ctx context.Context, db *sql.DB, entryUUID string) ([]models.EntryKey, error)
+	Get(ctx context.Context, tx *sql.Tx, entryUUID string) ([]models.EntryKey, error)
 	Delete(ctx context.Context, tx *sql.Tx, uuid string) error
 	SetExpire(ctx context.Context, tx *sql.Tx, uuid string, expire time.Time) error
-	SetMaxRead(ctx context.Context, tx *sql.Tx, uuid string, maxRead int) error
+	SetMaxReads(ctx context.Context, tx *sql.Tx, uuid string, maxRead int) error
 	Use(ctx context.Context, tx *sql.Tx, uuid string) error
-}
-
-type Hasher interface {
-	Hash(data []byte) []byte
 }
 
 type EntryKeyManager struct {
 	db        *sql.DB
+	tx        *sql.Tx
 	model     EntryKeyModel
-	hasher    Hasher
+	hasher    hasher.Hasher
 	encrypter EncrypterFactory
 }
 
-func NewEntryKeyManager(db *sql.DB, model EntryKeyModel, hasher Hasher, encrypter EncrypterFactory) *EntryKeyManager {
+func NewEntryKeyManager(db *sql.DB, model EntryKeyModel, hasher hasher.Hasher, encrypter EncrypterFactory) *EntryKeyManager {
 	return &EntryKeyManager{
 		db:        db,
 		model:     model,
@@ -45,29 +46,35 @@ func (e *EntryKeyManager) Create(ctx context.Context, entryUUID string, dek []by
 		return nil, nil, err
 	}
 
+	entryKey, k, err := e.CreateWithTx(ctx, tx, entryUUID, dek, expire, maxRead)
+
+	if err := tx.Commit(); err != nil {
+		return nil, nil, err
+	}
+
+	return entryKey, k, nil
+}
+func (e *EntryKeyManager) CreateWithTx(ctx context.Context, tx *sql.Tx, entryUUID string, dek []byte, expire *time.Time, maxRead *int) (*models.EntryKey, *key.Key, error) {
 	k, err := key.NewGeneratedKey()
 
 	if err != nil {
-		tx.Rollback()
 		return nil, nil, err
 	}
 	encrypter := e.encrypter(k.Get())
 	encryptedKey, err := encrypter.Encrypt(dek)
 	if err != nil {
-		tx.Rollback()
 		return nil, nil, err
 	}
+
 	hash := e.hasher.Hash(dek)
 	entryKey, err := e.model.Create(ctx, tx, entryUUID, encryptedKey, hash)
 	if err != nil {
-		tx.Rollback()
 		return nil, nil, err
 	}
 
 	if expire != nil {
 		err := e.model.SetExpire(ctx, tx, entryKey.UUID, *expire)
 		if err != nil {
-			tx.Rollback()
 			return nil, nil, err
 		}
 		entryKey.Expire = sql.NullTime{
@@ -77,9 +84,8 @@ func (e *EntryKeyManager) Create(ctx context.Context, entryUUID string, dek []by
 	}
 
 	if maxRead != nil {
-		err := e.model.SetMaxRead(ctx, tx, entryKey.UUID, *maxRead)
+		err := e.model.SetMaxReads(ctx, tx, entryKey.UUID, *maxRead)
 		if err != nil {
-			tx.Rollback()
 			return nil, nil, err
 		}
 
@@ -87,6 +93,97 @@ func (e *EntryKeyManager) Create(ctx context.Context, entryUUID string, dek []by
 			Int16: int16(*maxRead),
 			Valid: true,
 		}
+	}
+	return entryKey, k, nil
+}
+
+func (e *EntryKeyManager) Delete(ctx context.Context, uuid string) error {
+	tx, err := e.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	if err := e.model.Delete(ctx, tx, uuid); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (e *EntryKeyManager) findDEK(ctx context.Context, tx *sql.Tx, entryUUID string, key []byte) (dek []byte, entryKey *models.EntryKey, err error) {
+	entryKeys, err := e.model.Get(ctx, tx, entryUUID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for _, ek := range entryKeys {
+		crypter := e.encrypter(key)
+		decrypted, err := crypter.Decrypt(ek.EncryptedKey)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		hash := e.hasher.Hash(decrypted)
+
+		if hasher.Compare(hash, ek.KeyHash) {
+			return decrypted, &ek, nil
+		}
+	}
+
+	return nil, nil, ErrEntryKeyNotFound
+}
+
+// GetDEK returns the decrypted data encryption key and the entry key
+// if the key is not found it returns ErrEntryKeyNotFound
+// if the key is found but the hash does not match it returns an error
+func (e *EntryKeyManager) GetDEK(ctx context.Context, entryUUID string, key []byte) (dek []byte, entryKey *models.EntryKey, err error) {
+	tx, err := e.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	dek, entryKey, err = e.findDEK(ctx, tx, entryUUID, key)
+
+	if err != nil {
+		tx.Rollback()
+		return nil, nil, err
+	}
+
+	if err := e.model.Use(ctx, tx, entryKey.UUID); err != nil {
+		tx.Rollback()
+		return nil, nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, nil, err
+	}
+
+	return dek, entryKey, nil
+}
+
+// GenerateEncryptionKey creates a new key for the entry
+func (e EntryKeyManager) GenerateEncryptionKey(ctx context.Context, entryUUID string, existingKey []byte, expire *time.Time, maxRead *int) (*models.EntryKey, *key.Key, error) {
+	tx, err := e.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	dek, _, err := e.findDEK(ctx, tx, entryUUID, existingKey)
+
+	if err != nil {
+		tx.Rollback()
+		return nil, nil, err
+	}
+
+	entryKey, k, err := e.CreateWithTx(ctx, tx, entryUUID, dek, expire, maxRead)
+	if err != nil {
+		tx.Rollback()
+		return nil, nil, err
 	}
 
 	if err := tx.Commit(); err != nil {

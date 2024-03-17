@@ -3,7 +3,6 @@ package parsers
 import (
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -25,7 +24,6 @@ func (g GetEntryParser) Parse(req *http.Request) (GetEntryRequestData, error) {
 	var reqData GetEntryRequestData
 	keyString := req.PathValue("key")
 	if keyString == "" {
-		fmt.Println("EMPTY KEY", req.URL.Path)
 		return reqData, ErrInvalidKey
 	}
 

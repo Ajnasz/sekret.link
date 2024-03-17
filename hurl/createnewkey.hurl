@@ -15,17 +15,6 @@ entry_delete_key: header "x-entry-delete-key"
 
 
 # Retrieve the entry
-GET {{api_host}}/api/{{entry_uuid}}/{{entry_key}}
+GET {{api_host}}/api/key/{{entry_uuid}}/{{entry_key}}
 
 HTTP 200
-[Asserts]
-{
-    "name": "John Doe",
-    "email": "john.do@acheron.space"
-}
-
-
-# Should not be able to retrieve the entry again
-GET {{api_host}}/api/{{entry_uuid}}/{{entry_key}}
-
-HTTP 404

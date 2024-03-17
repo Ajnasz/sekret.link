@@ -43,7 +43,6 @@ func (g *GetEntryManagerMock) ReadEntry(ctx context.Context, UUID string, key []
 }
 
 func TestGetHandle(t *testing.T) {
-
 	viewMock := new(MockGetEntryView)
 	parserMock := new(GetEntryParserMock)
 	managerMock := new(GetEntryManagerMock)

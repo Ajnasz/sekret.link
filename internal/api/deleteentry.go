@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/Ajnasz/sekret.link/internal/parsers"
@@ -38,7 +37,6 @@ func (d DeleteHandler) handle(w http.ResponseWriter, r *http.Request) error {
 	UUID, _, deleteKey, err := parsers.ParseDeleteEntryPath(r.URL.Path)
 
 	if err != nil {
-		fmt.Println("parse error", err)
 		return err
 	}
 

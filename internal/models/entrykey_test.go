@@ -107,7 +107,7 @@ func Test_EntryKeyModel_Get(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	entryKeys, err := model.Get(ctx, db, uid)
+	entryKeys, err := model.Get(ctx, tx, uid)
 
 	if err != nil {
 		t.Fatal(err)
@@ -140,9 +140,14 @@ func Test_EntryKeyModel_Get_Empty(t *testing.T) {
 	}
 	defer db.Close()
 
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	model := &EntryKeyModel{}
 
-	entryKeys, err := model.Get(ctx, db, uuid.New().String())
+	entryKeys, err := model.Get(ctx, tx, uuid.New().String())
 
 	if err != nil {
 		t.Fatal(err)
@@ -204,7 +209,7 @@ func Test_EntryKeyModel_Delete(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	entryKeys, err := model.Get(ctx, db, uid)
+	entryKeys, err := model.Get(ctx, tx, uid)
 
 	if err != nil {
 		tx.Rollback()
@@ -277,8 +282,6 @@ func Test_EntryKeyModel_SetExpire(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fmt.Println(entryKey.UUID)
-
 	err = model.SetExpire(ctx, tx, entryKey.UUID, time.Now().Add(time.Hour))
 
 	if err != nil {
@@ -294,7 +297,7 @@ func Test_EntryKeyModel_SetExpire(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	entryKeys, err := model.Get(ctx, db, uid)
+	entryKeys, err := model.Get(ctx, tx, uid)
 
 	if err != nil {
 		tx.Rollback()

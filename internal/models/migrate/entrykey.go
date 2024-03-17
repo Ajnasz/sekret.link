@@ -18,10 +18,11 @@ func (e *EntryKeyMigration) Create(ctx context.Context, tx *sql.Tx) error {
 	uuid UUID PRIMARY KEY,
 	entry_uuid UUID NOT NULL,
 	encrypted_key BYTEA NOT NULL,
-	key_hash CHAR(64) NOT NULL,
-	created TIMESTAMPTZ,
+	key_hash BYTEA NOT NULL,
 	expire TIMESTAMPTZ DEFAULT NULL,
 	remaining_reads SMALLINT DEFAULT NULL,
+	accesed TIMESTAMPTZ DEFAULT NULL,
+	created TIMESTAMPTZ,
 	FOREIGN KEY (entry_uuid) REFERENCES entries(uuid) ON DELETE CASCADE
 	);
 `

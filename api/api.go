@@ -11,6 +11,7 @@ import (
 
 	"github.com/Ajnasz/sekret.link/api/middlewares"
 	"github.com/Ajnasz/sekret.link/internal/api"
+	"github.com/Ajnasz/sekret.link/internal/hasher"
 	"github.com/Ajnasz/sekret.link/internal/models"
 	"github.com/Ajnasz/sekret.link/internal/parsers"
 	"github.com/Ajnasz/sekret.link/internal/services"
@@ -50,7 +51,8 @@ func (s SecretHandler) Post(w http.ResponseWriter, r *http.Request) {
 	}
 
 	parser := parsers.NewCreateEntryParser(s.config.MaxExpireSeconds)
-	entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter)
+	keyManager := services.NewEntryKeyManager(s.config.DB, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), encrypter)
+	entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter, keyManager)
 	view := views.NewEntryCreateView(s.config.WebExternalURL)
 
 	createHandler := api.NewCreateHandler(
@@ -70,7 +72,8 @@ func (s SecretHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	view := views.NewEntryReadView()
 	parser := parsers.NewGetEntryParser()
-	entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter)
+	keyManager := services.NewEntryKeyManager(s.config.DB, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), encrypter)
+	entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter, keyManager)
 	getHandler := api.NewGetHandler(
 		parser,
 		entryManager,
@@ -85,7 +88,8 @@ func (s SecretHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return services.NewAESEncrypter(b)
 	}
 
-	entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter)
+	keyManager := services.NewEntryKeyManager(s.config.DB, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), encrypter)
+	entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter, keyManager)
 	view := views.NewEntryDeleteView()
 	deleteHandler := api.NewDeleteHandler(entryManager, view)
 	deleteHandler.Handle(w, r)
@@ -95,6 +99,25 @@ func (s SecretHandler) Delete(w http.ResponseWriter, r *http.Request) {
 func (s SecretHandler) Options(w http.ResponseWriter, r *http.Request) {
 	// Your OPTIONS method logic goes here
 	w.WriteHeader(http.StatusOK)
+}
+
+func (s SecretHandler) GenerateEncryptionKey(w http.ResponseWriter, r *http.Request) {
+	encrypter := func(b []byte) services.Encrypter {
+		return services.NewAESEncrypter(b)
+	}
+
+	keyManager := services.NewEntryKeyManager(s.config.DB, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), encrypter)
+	entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter, keyManager)
+	view := views.NewGenerateEntryKeyView(s.config.WebExternalURL)
+	parser := parsers.NewGenerateEntryKeyParser()
+	getHandler := api.NewGenerateEntryKeyHandler(
+		parser,
+		entryManager,
+		view,
+	)
+
+	getHandler.Handle(w, r)
+
 }
 
 // NotFound handler
@@ -163,6 +186,17 @@ func (s SecretHandler) RegisterHandlers(mux *http.ServeMux, apiRoot string) {
 			apiRoot,
 			middlewares.SetupLogging(
 				middlewares.SetupHeaders(http.HandlerFunc(s.Options)),
+			),
+		),
+	)
+
+	// TODO
+	mux.Handle(
+		fmt.Sprintf("GET %s", path.Join(clearApiRoot(apiRoot), "key", "{uuid}", "{key}")),
+		http.StripPrefix(
+			apiRoot,
+			middlewares.SetupLogging(
+				middlewares.SetupHeaders(http.HandlerFunc(s.GenerateEncryptionKey)),
 			),
 		),
 	)

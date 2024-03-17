@@ -45,8 +45,8 @@ func (e *EntryKeyModel) Create(ctx context.Context, tx *sql.Tx, entryUUID string
 	}, err
 }
 
-func (e *EntryKeyModel) Get(ctx context.Context, db *sql.DB, entryUUID string) ([]EntryKey, error) {
-	rows, err := db.QueryContext(ctx, `
+func (e *EntryKeyModel) Get(ctx context.Context, tx *sql.Tx, entryUUID string) ([]EntryKey, error) {
+	rows, err := tx.QueryContext(ctx, `
 		SELECT uuid, entry_uuid, encrypted_key, key_hash, created, expire, remaining_reads
 		FROM entry_key
 		WHERE entry_uuid = $1
@@ -95,7 +95,7 @@ func (e *EntryKeyModel) SetExpire(ctx context.Context, tx *sql.Tx, uuid string, 
 	return err
 }
 
-func SetMaxReads(ctx context.Context, tx *sql.Tx, uuid string, maxReads int) error {
+func (e *EntryKeyModel) SetMaxReads(ctx context.Context, tx *sql.Tx, uuid string, maxReads int) error {
 	_, err := tx.ExecContext(ctx, `
 		UPDATE entry_key
 		SET remaining_reads = $1

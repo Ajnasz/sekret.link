@@ -37,3 +37,11 @@ curl-bad:
 .PHONY: hurl
 hurl:
 	@hurl --variable api_host='http://localhost:8080' hurl/*.hurl
+
+
+cover.out:
+	go test ./... -coverprofile cover.out
+
+cover.html: cover.out
+	go tool cover -html=cover.out -o cover.html
+

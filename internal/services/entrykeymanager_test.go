@@ -21,8 +21,8 @@ func (m *MockEntryKeyModel) Create(ctx context.Context, tx *sql.Tx, entryUUID st
 	return args.Get(0).(*models.EntryKey), args.Error(1)
 }
 
-func (m *MockEntryKeyModel) Get(ctx context.Context, db *sql.DB, entryUUID string) ([]models.EntryKey, error) {
-	args := m.Called(ctx, db, entryUUID)
+func (m *MockEntryKeyModel) Get(ctx context.Context, tx *sql.Tx, entryUUID string) ([]models.EntryKey, error) {
+	args := m.Called(ctx, tx, entryUUID)
 	return args.Get(0).([]models.EntryKey), args.Error(1)
 }
 
@@ -36,7 +36,7 @@ func (m *MockEntryKeyModel) SetExpire(ctx context.Context, tx *sql.Tx, uuid stri
 	return args.Error(0)
 }
 
-func (m *MockEntryKeyModel) SetMaxRead(ctx context.Context, tx *sql.Tx, uuid string, maxRead int) error {
+func (m *MockEntryKeyModel) SetMaxReads(ctx context.Context, tx *sql.Tx, uuid string, maxRead int) error {
 	args := m.Called(ctx, tx, uuid, maxRead)
 	return args.Error(0)
 }
@@ -103,7 +103,7 @@ func TestEntryKeyManager_Create(t *testing.T) {
 	}, nil)
 
 	model.On("SetExpire", ctx, mock.Anything, "test-uuid", expire).Return(nil)
-	model.On("SetMaxRead", ctx, mock.Anything, "test-uuid", maxRead).Return(nil)
+	model.On("SetMaxReads", ctx, mock.Anything, "test-uuid", maxRead).Return(nil)
 
 	crypto := func(key []byte) Encrypter {
 		return encrypter
@@ -225,5 +225,267 @@ func TestEntryKeyManager_Create_NoMaxRead(t *testing.T) {
 	assert.Equal(t, "test-uuid", entryKey.UUID)
 	assert.False(t, entryKey.RemainingReads.Valid)
 	// key.Get should not return an empty string
+	assert.NotEmpty(t, key.Get())
+}
+
+func TestEntryKeyManager_GetDEK(t *testing.T) {
+	db, sqlMock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+
+	defer db.Close()
+
+	ctx := context.Background()
+	model := &MockEntryKeyModel{}
+	hasher := &MockHasher{}
+	encrypter := &EncrypterMock{}
+	entryUUID := "test-entry-uuid"
+	encryptedKey := []byte("test-encrypted-key")
+	dek := []byte("test-dek")
+	hash := []byte("test-hash")
+
+	sqlMock.ExpectBegin()
+	sqlMock.ExpectCommit()
+	hasher.On("Hash", dek).Return(hash)
+	encrypter.On("Decrypt", encryptedKey).Return(dek, nil)
+	model.On("Get", ctx, mock.Anything, entryUUID).Return([]models.EntryKey{
+		{
+			UUID:         "test-uuid",
+			EntryUUID:    entryUUID,
+			EncryptedKey: encryptedKey,
+			KeyHash:      hash,
+			Created:      time.Now(),
+		},
+	}, nil)
+	model.On("Use", ctx, mock.Anything, "test-uuid").Return(nil)
+
+	crypto := func(key []byte) Encrypter {
+		return encrypter
+	}
+
+	manager := NewEntryKeyManager(db, model, hasher, crypto)
+	foundDEK, entryKey, err := manager.GetDEK(ctx, entryUUID, dek)
+
+	model.AssertExpectations(t)
+	hasher.AssertExpectations(t)
+	encrypter.AssertExpectations(t)
+	if sqlMock.ExpectationsWereMet() != nil {
+		t.Errorf("there were unfulfilled expectations: %s", sqlMock.ExpectationsWereMet())
+	}
+	assert.NoError(t, err)
+	assert.Equal(t, dek, foundDEK)
+	assert.Equal(t, "test-uuid", entryKey.UUID)
+}
+
+func TestEntryKeyManager_GetDEK_NotFound(t *testing.T) {
+	db, sqlMock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+
+	defer db.Close()
+
+	ctx := context.Background()
+	model := &MockEntryKeyModel{}
+	hasher := &MockHasher{}
+	encrypter := &EncrypterMock{}
+	entryUUID := "test-entry-uuid"
+	dek := []byte("test-dek")
+
+	sqlMock.ExpectBegin()
+	sqlMock.ExpectRollback()
+	model.On("Get", ctx, mock.Anything, entryUUID).Return([]models.EntryKey{}, nil)
+
+	crypto := func(key []byte) Encrypter {
+		return encrypter
+	}
+
+	manager := NewEntryKeyManager(db, model, hasher, crypto)
+	foundDEK, entryKey, err := manager.GetDEK(ctx, entryUUID, dek)
+
+	model.AssertExpectations(t)
+	hasher.AssertExpectations(t)
+	encrypter.AssertExpectations(t)
+	if sqlMock.ExpectationsWereMet() != nil {
+		t.Errorf("there were unfulfilled expectations: %s", sqlMock.ExpectationsWereMet())
+	}
+	assert.Error(t, err)
+	assert.Nil(t, foundDEK)
+	assert.Nil(t, entryKey)
+}
+
+func TestEntryKeyManager_GetDEK_DecryptError(t *testing.T) {
+	db, sqlMock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+
+	defer db.Close()
+
+	ctx := context.Background()
+	model := &MockEntryKeyModel{}
+	hasher := &MockHasher{}
+	encrypter := &EncrypterMock{}
+	entryUUID := "test-entry-uuid"
+	encryptedKey := []byte("test-encrypted-keyke")
+	dek := []byte("test-dekk")
+	hash := []byte("test-hashh")
+
+	sqlMock.ExpectBegin()
+	sqlMock.ExpectRollback()
+
+	encrypter.On("Decrypt", encryptedKey).Return([]byte{}, assert.AnError)
+
+	model.On("Get", ctx, mock.Anything, entryUUID).Return([]models.EntryKey{
+		{
+			UUID:         "test-uuid",
+			EntryUUID:    entryUUID,
+			EncryptedKey: encryptedKey,
+			KeyHash:      hash,
+			Created:      time.Now(),
+		},
+	}, nil)
+
+	crypto := func(key []byte) Encrypter {
+		return encrypter
+	}
+
+	manager := NewEntryKeyManager(db, model, hasher, crypto)
+	foundDEK, entryKey, err := manager.GetDEK(ctx, entryUUID, dek)
+
+	assert.Error(t, err)
+	assert.Nil(t, foundDEK)
+	assert.Nil(t, entryKey)
+	model.AssertExpectations(t)
+	hasher.AssertExpectations(t)
+	encrypter.AssertExpectations(t)
+	if sqlMock.ExpectationsWereMet() != nil {
+		t.Errorf("there were unfulfilled expectations: %s", sqlMock.ExpectationsWereMet())
+	}
+}
+
+func TestEntryManager_InvalidDEK(t *testing.T) {
+	db, sqlMock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+
+	defer db.Close()
+
+	ctx := context.Background()
+	model := &MockEntryKeyModel{}
+	hasher := &MockHasher{}
+	encrypter := &EncrypterMock{}
+	entryUUID := "test-entry-uuid"
+	encryptedKey := []byte("test-encrypted-key")
+	dek := []byte("test-dek")
+	badDEK := []byte("bad-dek")
+	hash := []byte("test-hash")
+	badHash := []byte("bad-hash")
+
+	sqlMock.ExpectBegin()
+	sqlMock.ExpectRollback()
+	encrypter.On("Decrypt", encryptedKey).Return(badDEK, nil)
+	hasher.On("Hash", badDEK).Return(badHash)
+
+	model.On("Get", ctx, mock.Anything, entryUUID).Return([]models.EntryKey{
+		{
+			UUID:         "test-uuid",
+			EntryUUID:    entryUUID,
+			EncryptedKey: encryptedKey,
+			KeyHash:      hash,
+			Created:      time.Now(),
+		},
+	}, nil)
+
+	crypto := func(key []byte) Encrypter {
+		return encrypter
+	}
+
+	manager := NewEntryKeyManager(db, model, hasher, crypto)
+	foundDEK, entryKey, err := manager.GetDEK(ctx, entryUUID, dek)
+
+	model.AssertExpectations(t)
+	hasher.AssertExpectations(t)
+	encrypter.AssertExpectations(t)
+	if sqlMock.ExpectationsWereMet() != nil {
+		t.Errorf("there were unfulfilled expectations: %s", sqlMock.ExpectationsWereMet())
+	}
+	assert.Error(t, err)
+	assert.Nil(t, foundDEK)
+	assert.Nil(t, entryKey)
+}
+
+func TestEntryKeyManager_GenerateEncryptionKey(t *testing.T) {
+	// reads an existing key from the db, creates a new key, and returns the new key
+
+	db, sqlMock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+
+	defer db.Close()
+
+	ctx := context.Background()
+	model := &MockEntryKeyModel{}
+	hasher := &MockHasher{}
+	encrypter := &EncrypterMock{}
+
+	entryUUID := "test-entry-uuid"
+	encryptedKey := []byte("test-encrypted-key")
+	newEncryptedKey := []byte("new-test-encrypted-key")
+	dek := []byte("test-dek")
+	hash := []byte("test-hash")
+	expire := time.Now()
+	maxRead := 10
+
+	sqlMock.ExpectBegin()
+	sqlMock.ExpectCommit()
+
+	model.On("Get", ctx, mock.Anything, entryUUID).Return([]models.EntryKey{
+		{
+			UUID:         "test-uuid",
+			EntryUUID:    entryUUID,
+			EncryptedKey: encryptedKey,
+			KeyHash:      hash,
+			Created:      time.Now(),
+		},
+	}, nil)
+	encrypter.On("Decrypt", encryptedKey).Return(dek, nil)
+	hasher.On("Hash", dek).Return(hash)
+
+	encrypter.On("Encrypt", mock.Anything).Return(newEncryptedKey, nil)
+	model.On("Create", ctx, mock.Anything, entryUUID, newEncryptedKey, hash).Return(&models.EntryKey{
+		UUID:           "new-test-uuid",
+		EntryUUID:      entryUUID,
+		EncryptedKey:   newEncryptedKey,
+		KeyHash:        hash,
+		Created:        time.Now(),
+		Expire:         sql.NullTime{Time: time.Now(), Valid: false},
+		RemainingReads: sql.NullInt16{Int16: 0, Valid: false},
+	}, nil)
+	model.On("SetExpire", ctx, mock.Anything, "new-test-uuid", expire).Return(nil)
+	model.On("SetMaxReads", ctx, mock.Anything, "new-test-uuid", maxRead).Return(nil)
+
+	crypto := func(key []byte) Encrypter {
+		return encrypter
+	}
+
+	manager := NewEntryKeyManager(db, model, hasher, crypto)
+
+	entryKey, key, err := manager.GenerateEncryptionKey(ctx, entryUUID, encryptedKey, &expire, &maxRead)
+
+	model.AssertExpectations(t)
+	hasher.AssertExpectations(t)
+	encrypter.AssertExpectations(t)
+	if sqlMock.ExpectationsWereMet() != nil {
+		t.Errorf("there were unfulfilled expectations: %s", sqlMock.ExpectationsWereMet())
+	}
+	assert.NoError(t, err)
+	assert.Equal(t, "new-test-uuid", entryKey.UUID)
+	assert.Equal(t, expire, entryKey.Expire.Time)
+	assert.True(t, entryKey.Expire.Valid)
+	assert.Equal(t, int16(maxRead), entryKey.RemainingReads.Int16)
 	assert.NotEmpty(t, key.Get())
 }

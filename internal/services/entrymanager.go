@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"time"
 
@@ -19,9 +20,15 @@ var ErrEntryNotFound = errors.New("entry not found")
 type EntryModel interface {
 	CreateEntry(ctx context.Context, tx *sql.Tx, UUID string, data []byte, remainingReads int, expire time.Duration) (*models.EntryMeta, error)
 	ReadEntry(ctx context.Context, tx *sql.Tx, UUID string) (*models.Entry, error)
+	// TODO rename to Use
 	UpdateAccessed(ctx context.Context, tx *sql.Tx, UUID string) error
 	DeleteEntry(ctx context.Context, tx *sql.Tx, UUID string, deleteKey string) error
 	DeleteExpired(ctx context.Context, tx *sql.Tx) error
+}
+
+type EntryKey struct {
+	RemainingReads int
+	Expire         time.Time
 }
 
 // EntryMeta provides the entry meta
@@ -44,6 +51,13 @@ type Entry struct {
 	Expire         time.Time
 }
 
+type EntryKeyer interface {
+	Create(ctx context.Context, entryUUID string, dek []byte, expire *time.Time, maxRead *int) (entryKey *models.EntryKey, kek *key.Key, err error)
+	CreateWithTx(ctx context.Context, tx *sql.Tx, entryUUID string, dek []byte, expire *time.Time, maxRead *int) (entryKey *models.EntryKey, kek *key.Key, err error)
+	GetDEK(ctx context.Context, entryUUID string, kek []byte) (dek []byte, entryKey *models.EntryKey, err error)
+	GenerateEncryptionKey(ctx context.Context, entryUUID string, existingKey []byte, expire *time.Time, maxRead *int) (*models.EntryKey, *key.Key, error)
+}
+
 type EncrypterFactory = func(key []byte) Encrypter
 
 func (e *Entry) IsExpired() bool {
@@ -52,17 +66,19 @@ func (e *Entry) IsExpired() bool {
 
 // EntryManager provides the entry service
 type EntryManager struct {
-	db     *sql.DB
-	model  EntryModel
-	crypto EncrypterFactory
+	db         *sql.DB
+	model      EntryModel
+	crypto     EncrypterFactory
+	keyManager EntryKeyer
 }
 
 // NewEntryManager creates a new EntryService
-func NewEntryManager(db *sql.DB, model EntryModel, crypto EncrypterFactory) *EntryManager {
+func NewEntryManager(db *sql.DB, model EntryModel, crypto EncrypterFactory, keyManager EntryKeyer) *EntryManager {
 	return &EntryManager{
-		db:     db,
-		model:  model,
-		crypto: crypto,
+		db:         db,
+		model:      model,
+		crypto:     crypto,
+		keyManager: keyManager,
 	}
 }
 
@@ -94,6 +110,14 @@ func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingRe
 		return nil, nil, err
 	}
 
+	expireAt := time.Now().Add(expire)
+	_, kek, err := e.keyManager.CreateWithTx(ctx, tx, uid, dek.Get(), &expireAt, &remainingReads)
+
+	if err != nil {
+		tx.Rollback()
+		return nil, nil, err
+	}
+
 	tx.Commit()
 
 	return &EntryMeta{
@@ -103,7 +127,7 @@ func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingRe
 		Created:        meta.Created,
 		Accessed:       meta.Accessed.Time,
 		Expire:         meta.Expire,
-	}, dek.Get(), nil
+	}, kek.Get(), nil
 
 }
 
@@ -132,7 +156,13 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, key []byte) (
 		return nil, ErrEntryExpired
 	}
 
-	crypto := e.crypto(key)
+	dek, _, err := e.keyManager.GetDEK(ctx, UUID, key)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	crypto := e.crypto(dek)
 	decryptedData, err := crypto.Decrypt(entry.Data)
 	if err != nil {
 		tx.Rollback()
@@ -189,4 +219,40 @@ func (e *EntryManager) DeleteExpired(ctx context.Context) error {
 
 	tx.Commit()
 	return nil
+}
+
+func nullOrZero[T any](v driver.Valuer) T {
+	var zeroRet T
+	val, err := v.Value()
+
+	if err != nil {
+		return zeroRet
+	}
+
+	if val == nil {
+		return zeroRet
+	}
+
+	return val.(T)
+}
+
+type EntryKeyData struct {
+	EntryUUID      string
+	KEK            []byte
+	RemainingReads int
+	Expire         time.Time
+}
+
+func (e *EntryManager) GenerateEntryKey(ctx context.Context, entryUUID string, key []byte) (*EntryKeyData, error) {
+	meta, kek, err := e.keyManager.GenerateEncryptionKey(ctx, entryUUID, key, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &EntryKeyData{
+		EntryUUID:      entryUUID,
+		RemainingReads: int(nullOrZero[int16](meta.RemainingReads)),
+		Expire:         nullOrZero[time.Time](meta.Expire),
+		KEK:            kek.Get(),
+	}, nil
 }

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Ajnasz/sekret.link/internal/key"
 	"github.com/Ajnasz/sekret.link/internal/models"
 	"github.com/Ajnasz/sekret.link/internal/test"
 	"github.com/DATA-DOG/go-sqlmock"
@@ -48,14 +49,20 @@ func Test_EntryService_Create(t *testing.T) {
 		return entryCrypto
 	}
 
-	service := NewEntryManager(db, entryModel, crypto)
+	keyManager := new(test.MockEntryKeyer)
+	kek := key.NewKey()
+	kek.Set([]byte("kek"))
+	keyManager.On("CreateWithTx", ctx, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.EntryKey{}, kek, nil)
+
+	service := NewEntryManager(db, entryModel, crypto, keyManager)
 	meta, key, err := service.CreateEntry(ctx, data, 1, time.Minute)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, meta)
-	assert.NotNil(t, key)
+	assert.Equal(t, key, kek.Get())
 
 	entryModel.AssertExpectations(t)
+	keyManager.AssertExpectations(t)
 	if meta.UUID == "" {
 		t.Error("expected UUID to be set")
 	}
@@ -104,7 +111,9 @@ func TestCreateError(t *testing.T) {
 		return entryCrypto
 	}
 
-	service := NewEntryManager(db, entryModel, crypto)
+	keyManager := new(test.MockEntryKeyer)
+
+	service := NewEntryManager(db, entryModel, crypto, keyManager)
 	meta, key, err := service.CreateEntry(ctx, data, 1, time.Minute)
 
 	assert.Error(t, err)
@@ -112,6 +121,7 @@ func TestCreateError(t *testing.T) {
 	assert.Nil(t, key)
 
 	entryModel.AssertExpectations(t)
+	keyManager.AssertExpectations(t)
 }
 
 func TestReadEntry(t *testing.T) {
@@ -152,7 +162,11 @@ func TestReadEntry(t *testing.T) {
 		return entryCrypto
 	}
 
-	service := NewEntryManager(db, entryModel, crypto)
+	keyManager := new(test.MockEntryKeyer)
+
+	keyManager.On("GetDEK", ctx, "uuid", key).Return([]byte("dek"), &models.EntryKey{}, nil)
+
+	service := NewEntryManager(db, entryModel, crypto, keyManager)
 	data, err := service.ReadEntry(ctx, "uuid", key)
 
 	assert.NoError(t, err)
@@ -191,14 +205,16 @@ func TestReadEntryError(t *testing.T) {
 	crypto := func(key []byte) Encrypter {
 		return entryCrypto
 	}
+	keyManager := new(test.MockEntryKeyer)
 
-	service := NewEntryManager(db, entryModel, crypto)
+	service := NewEntryManager(db, entryModel, crypto, keyManager)
 	data, err := service.ReadEntry(ctx, "uuid", []byte("key"))
 
 	assert.Error(t, err)
 	assert.Nil(t, data)
 
 	entryModel.AssertExpectations(t)
+	keyManager.AssertExpectations(t)
 	if sqlMock.ExpectationsWereMet() != nil {
 		t.Errorf("there were unfulfilled expectations: %s", sqlMock.ExpectationsWereMet())
 	}
@@ -225,13 +241,15 @@ func TestDeleteEntry(t *testing.T) {
 	crypto := func(key []byte) Encrypter {
 		return entryCrypto
 	}
+	keyManager := new(test.MockEntryKeyer)
 
-	service := NewEntryManager(db, entryModel, crypto)
+	service := NewEntryManager(db, entryModel, crypto, keyManager)
 	err = service.DeleteEntry(ctx, "uuid", "delete_key")
 
 	assert.NoError(t, err)
 
 	entryModel.AssertExpectations(t)
+	keyManager.AssertExpectations(t)
 	if sqlMock.ExpectationsWereMet() != nil {
 		t.Errorf("there were unfulfilled expectations: %s", sqlMock.ExpectationsWereMet())
 	}
@@ -259,12 +277,15 @@ func TestDeleteEntryError(t *testing.T) {
 		return entryCrypto
 	}
 
-	service := NewEntryManager(db, entryModel, crypto)
+	keyManager := new(test.MockEntryKeyer)
+
+	service := NewEntryManager(db, entryModel, crypto, keyManager)
 	err = service.DeleteEntry(ctx, "uuid", "delete_key")
 
 	assert.Error(t, err)
 
 	entryModel.AssertExpectations(t)
+	keyManager.AssertExpectations(t)
 	if sqlMock.ExpectationsWereMet() != nil {
 		t.Errorf("there were unfulfilled expectations: %s", sqlMock.ExpectationsWereMet())
 	}
@@ -292,13 +313,16 @@ func TestDeleteEntryInvalidDeleteKey(t *testing.T) {
 		return entryCrypto
 	}
 
-	service := NewEntryManager(db, entryModel, crypto)
+	keyManager := new(test.MockEntryKeyer)
+
+	service := NewEntryManager(db, entryModel, crypto, keyManager)
 	err = service.DeleteEntry(ctx, "uuid", "delete_key")
 
 	assert.Error(t, err)
 	assert.Equal(t, models.ErrEntryNotFound, err)
 
 	entryModel.AssertExpectations(t)
+	keyManager.AssertExpectations(t)
 
 	if sqlMock.ExpectationsWereMet() != nil {
 		t.Errorf("there were unfulfilled expectations: %s", sqlMock.ExpectationsWereMet())

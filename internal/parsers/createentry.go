@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/Ajnasz/sekret.link/internal/parsers/expiration"
 )
 
 type CreateEntryParser struct {
@@ -64,26 +66,12 @@ func getBody(r *http.Request) ([]byte, error) {
 }
 
 func (c CreateEntryParser) calculateExpiration(expire string, defaultExpire time.Duration) (time.Duration, error) {
-	if expire == "" {
-		return defaultExpire, nil
-	}
-
-	userExpire, err := time.ParseDuration(expire)
+	exp, err := expiration.CalculateExpiration(expire, defaultExpire, c.maxExpireSeconds)
 	if err != nil {
-		return 0, err
-	}
-
-	maxExpire := time.Duration(c.maxExpireSeconds) * time.Second
-
-	if userExpire > maxExpire {
 		return 0, ErrInvalidExpirationDate
 	}
 
-	if userExpire <= 0 {
-		return 0, ErrInvalidExpirationDate
-	}
-
-	return userExpire, nil
+	return exp, nil
 }
 
 func (c CreateEntryParser) getSecretExpiration(r *http.Request) (time.Duration, error) {
