@@ -42,7 +42,6 @@ func NewEntryReadView() EntryReadView {
 
 func (e EntryReadView) Render(w http.ResponseWriter, r *http.Request, response EntryReadResponse) {
 	if r.Header.Get("Accept") == "application/json" {
-
 		json.NewEncoder(w).Encode(response)
 	} else {
 		w.WriteHeader(http.StatusOK)

@@ -121,11 +121,11 @@ func (e *EntryKeyManager) findDEK(ctx context.Context, tx *sql.Tx, entryUUID str
 		return nil, nil, err
 	}
 
+	crypter := e.encrypter(key)
 	for _, ek := range entryKeys {
-		crypter := e.encrypter(key)
 		decrypted, err := crypter.Decrypt(ek.EncryptedKey)
 		if err != nil {
-			return nil, nil, err
+			continue
 		}
 
 		hash := e.hasher.Hash(decrypted)
