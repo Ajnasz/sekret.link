@@ -9,7 +9,7 @@ import (
 // expiration date is larger than the system maximum expiration date
 var ErrInvalidExpirationDate = errors.New("Invalid expiration date")
 
-func CalculateExpiration(expire string, defaultExpire time.Duration, maxExpireSeconds int) (time.Duration, error) {
+func Parse(expire string, defaultExpire time.Duration, maxExpireSeconds int) (time.Duration, error) {
 	if expire == "" {
 		return defaultExpire, nil
 	}

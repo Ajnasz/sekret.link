@@ -4,10 +4,10 @@ import (
 	"io"
 	"mime"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/Ajnasz/sekret.link/internal/parsers/expiration"
+	"github.com/Ajnasz/sekret.link/internal/parsers/maxreads"
 )
 
 type CreateEntryParser struct {
@@ -66,7 +66,7 @@ func getBody(r *http.Request) ([]byte, error) {
 }
 
 func (c CreateEntryParser) calculateExpiration(expire string, defaultExpire time.Duration) (time.Duration, error) {
-	exp, err := expiration.CalculateExpiration(expire, defaultExpire, c.maxExpireSeconds)
+	exp, err := expiration.Parse(expire, defaultExpire, c.maxExpireSeconds)
 	if err != nil {
 		return 0, ErrInvalidExpirationDate
 	}
@@ -82,28 +82,15 @@ func (c CreateEntryParser) getSecretExpiration(r *http.Request) (time.Duration, 
 	return c.calculateExpiration(expiration, time.Second*time.Duration(c.maxExpireSeconds))
 }
 
-func getSecretMaxReads(r *http.Request) (int, error) {
+func (c CreateEntryParser) getSecretMaxReads(r *http.Request) (int, error) {
 	r.ParseForm()
-	const minMaxReadCount int = 1
-	val := r.Form.Get("maxReads")
-	if val == "" {
-		return minMaxReadCount, nil
-	}
 
-	maxReads, err := strconv.Atoi(val)
+	reads, err := maxreads.Parse(r.Form.Get("maxReads"))
 	if err != nil {
-		if _, isNumError := err.(*strconv.NumError); isNumError {
-			return 0, ErrInvalidMaxRead
-		}
-
-		return 0, err
-	}
-
-	if maxReads < minMaxReadCount {
 		return 0, ErrInvalidMaxRead
 	}
 
-	return maxReads, nil
+	return reads, nil
 }
 
 func (c CreateEntryParser) Parse(r *http.Request) (*CreateEntryRequestData, error) {
@@ -123,7 +110,7 @@ func (c CreateEntryParser) Parse(r *http.Request) (*CreateEntryRequestData, erro
 		return nil, err
 	}
 
-	maxReads, err := getSecretMaxReads(r)
+	maxReads, err := c.getSecretMaxReads(r)
 
 	if err != nil {
 		return nil, err

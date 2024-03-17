@@ -55,14 +55,18 @@ func (g GenerateEntryKeyView) RenderGenerateEntryKey(w http.ResponseWriter, r *h
 
 // RenderGenerateEntryKeyError renders the error response for the GenerateEntryKey endpoint.
 func (v GenerateEntryKeyView) RenderGenerateEntryKeyError(w http.ResponseWriter, r *http.Request, err error) {
-	if errors.Is(err, parsers.ErrInvalidExpirationDate) {
+	if errors.Is(err, parsers.ErrInvalidUUID) {
+		http.Error(w, "Invalid UUID", http.StatusBadRequest)
+		return
+	} else if errors.Is(err, parsers.ErrInvalidKey) {
+		http.Error(w, "Invalid key", http.StatusBadRequest)
+		return
+	} else if errors.Is(err, parsers.ErrInvalidExpirationDate) {
 		http.Error(w, "Invalid expiration", http.StatusBadRequest)
 		return
 	} else if errors.Is(err, parsers.ErrInvalidMaxRead) {
 		http.Error(w, "Invalid max read", http.StatusBadRequest)
 		return
-	} else if errors.Is(err, parsers.ErrInvalidData) {
-		http.Error(w, "Invalid data", http.StatusBadRequest)
 	} else {
 		http.Error(w, "Internal error", http.StatusInternalServerError)
 	}

@@ -60,9 +60,8 @@ func TestGenerateEntryKey_Handle(t *testing.T) {
 		Expire: expire,
 	}).Return()
 	parserMock.On("Parse", mock.Anything).Return(parsers.GenerateEntryKeyRequestData{
-		UUID:      "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb",
-		KeyString: "12121212aeadf",
-		Key:       []byte{18, 18, 18, 18, 174, 173, 15},
+		UUID: "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb",
+		Key:  []byte{18, 18, 18, 18, 174, 173, 15},
 	}, nil)
 
 	managerMock.On("GenerateEntryKey", mock.Anything, "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb", []byte{18, 18, 18, 18, 174, 173, 15}).Return(&services.EntryKeyData{
@@ -102,9 +101,8 @@ func TestGenerateEntryKey_HandleManagerError(t *testing.T) {
 
 	viewMock.On("RenderGenerateEntryKeyError", mock.Anything, mock.Anything, mock.Anything).Return()
 	parserMock.On("Parse", mock.Anything).Return(parsers.GenerateEntryKeyRequestData{
-		UUID:      "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb",
-		KeyString: "12121212aeadf",
-		Key:       []byte{18, 18, 18, 18, 174, 173, 15},
+		UUID: "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb",
+		Key:  []byte{18, 18, 18, 18, 174, 173, 15},
 	}, nil)
 
 	managerMock.On("GenerateEntryKey", mock.Anything, "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb", []byte{18, 18, 18, 18, 174, 173, 15}).Return(&services.EntryKeyData{}, []byte{}, assert.AnError)

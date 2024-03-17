@@ -39,6 +39,17 @@ type SecretHandler struct {
 }
 
 // POST method handler
+// This method is responsible for creating a new entry
+// url: /
+// query:
+//   - expire: the expiration time of the entry
+//   - maxReads: the maximum number of reads for the entry
+//
+// method: POST
+// response: 200 OK
+// response: 400 Bad Request
+// response: 500 Internal Server Error
+// response: 413 Payload Too Large
 func (s SecretHandler) Post(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" && r.URL.Path != "" {
 		http.Error(w, "Not found", http.StatusNotFound)
@@ -101,6 +112,17 @@ func (s SecretHandler) Options(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// GenerateEncryptionKey provides a way to generate a new encryption key for an existing entry
+// This allows to share the same entry with multiple users without sharing the encryption key
+// url: /key/{uuid}/{key}
+// - uuid: the uuid of the entry
+// - key: the key of the entry
+// query:
+//   - expire: the expiration time of the new key
+//   - maxReads: the maximum number of reads for the new key
+//
+// method: GET
+// response: 200 OK
 func (s SecretHandler) GenerateEncryptionKey(w http.ResponseWriter, r *http.Request) {
 	encrypter := func(b []byte) services.Encrypter {
 		return services.NewAESEncrypter(b)
@@ -109,7 +131,7 @@ func (s SecretHandler) GenerateEncryptionKey(w http.ResponseWriter, r *http.Requ
 	keyManager := services.NewEntryKeyManager(s.config.DB, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), encrypter)
 	entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, encrypter, keyManager)
 	view := views.NewGenerateEntryKeyView(s.config.WebExternalURL)
-	parser := parsers.NewGenerateEntryKeyParser()
+	parser := parsers.NewGenerateEntryKeyParser(s.config.MaxExpireSeconds)
 	getHandler := api.NewGenerateEntryKeyHandler(
 		parser,
 		entryManager,
