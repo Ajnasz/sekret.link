@@ -9,7 +9,6 @@ import (
 
 	"github.com/Ajnasz/sekret.link/internal/key"
 	"github.com/Ajnasz/sekret.link/internal/models"
-	"github.com/Ajnasz/sekret.link/internal/test"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -32,7 +31,7 @@ func Test_EntryService_Create(t *testing.T) {
 
 	data := []byte("data")
 	encryptedData := []byte("encrypted")
-	entryModel := new(test.MockEntryModel)
+	entryModel := new(models.MockEntryModel)
 	entryModel.
 		On("CreateEntry", ctx, mock.Anything, mock.Anything, encryptedData, 1, mock.Anything).
 		Return(&models.EntryMeta{
@@ -43,7 +42,7 @@ func Test_EntryService_Create(t *testing.T) {
 			Expire:         timenow.Add(time.Minute),
 		}, nil)
 
-	entryCrypto := new(test.MockEntryCrypto)
+	entryCrypto := new(MockEntryCrypto)
 	entryCrypto.On("Encrypt", data).Return(encryptedData, nil)
 	crypto := func(key []byte) Encrypter {
 		return entryCrypto
@@ -100,12 +99,12 @@ func TestCreateError(t *testing.T) {
 	data := []byte("data")
 	encryptedData := []byte("encrypted")
 
-	entryModel := new(test.MockEntryModel)
+	entryModel := new(models.MockEntryModel)
 	entryModel.
 		On("CreateEntry", ctx, mock.Anything, mock.Anything, encryptedData, 1, mock.Anything).
 		Return(&models.EntryMeta{}, fmt.Errorf("error"))
 
-	entryCrypto := new(test.MockEntryCrypto)
+	entryCrypto := new(MockEntryCrypto)
 	entryCrypto.On("Encrypt", data).Return(encryptedData, nil)
 	crypto := func(key []byte) Encrypter {
 		return entryCrypto
@@ -148,7 +147,7 @@ func TestReadEntry(t *testing.T) {
 		Data: []byte("encrypted"),
 	}
 
-	entryModel := new(test.MockEntryModel)
+	entryModel := new(models.MockEntryModel)
 	entryModel.
 		On("ReadEntry", ctx, mock.Anything, "uuid").
 		Return(&entry, nil)
@@ -157,7 +156,7 @@ func TestReadEntry(t *testing.T) {
 		Return(nil)
 
 	key := []byte("key")
-	entryCrypto := new(test.MockEntryCrypto)
+	entryCrypto := new(MockEntryCrypto)
 	entryCrypto.On("Decrypt", []byte("encrypted")).Return([]byte("data"), nil)
 
 	crypto := func(key []byte) Encrypter {
@@ -198,12 +197,12 @@ func TestReadEntryError(t *testing.T) {
 
 	ctx := context.Background()
 
-	entryModel := new(test.MockEntryModel)
+	entryModel := new(models.MockEntryModel)
 	entryModel.
 		On("ReadEntry", ctx, mock.Anything, "uuid").
 		Return(&models.Entry{}, fmt.Errorf("error"))
 
-	entryCrypto := new(test.MockEntryCrypto)
+	entryCrypto := new(MockEntryCrypto)
 	crypto := func(key []byte) Encrypter {
 		return entryCrypto
 	}
@@ -234,12 +233,12 @@ func TestDeleteEntry(t *testing.T) {
 
 	ctx := context.Background()
 
-	entryModel := new(test.MockEntryModel)
+	entryModel := new(models.MockEntryModel)
 	entryModel.
 		On("DeleteEntry", ctx, mock.Anything, "uuid", "delete_key").
 		Return(nil)
 
-	entryCrypto := new(test.MockEntryCrypto)
+	entryCrypto := new(MockEntryCrypto)
 	crypto := func(key []byte) Encrypter {
 		return entryCrypto
 	}
@@ -269,12 +268,12 @@ func TestDeleteEntryError(t *testing.T) {
 
 	ctx := context.Background()
 
-	entryModel := new(test.MockEntryModel)
+	entryModel := new(models.MockEntryModel)
 	entryModel.
 		On("DeleteEntry", ctx, mock.Anything, "uuid", "delete_key").
 		Return(fmt.Errorf("error"))
 
-	entryCrypto := new(test.MockEntryCrypto)
+	entryCrypto := new(MockEntryCrypto)
 	crypto := func(key []byte) Encrypter {
 		return entryCrypto
 	}
@@ -305,12 +304,12 @@ func TestDeleteEntryInvalidDeleteKey(t *testing.T) {
 
 	ctx := context.Background()
 
-	entryModel := new(test.MockEntryModel)
+	entryModel := new(models.MockEntryModel)
 	entryModel.
 		On("DeleteEntry", ctx, mock.Anything, "uuid", "delete_key").
 		Return(models.ErrEntryNotFound)
 
-	entryCrypto := new(test.MockEntryCrypto)
+	entryCrypto := new(MockEntryCrypto)
 	crypto := func(key []byte) Encrypter {
 		return entryCrypto
 	}

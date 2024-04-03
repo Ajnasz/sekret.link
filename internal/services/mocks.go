@@ -37,3 +37,17 @@ func (m *MockEntryKeyer) GenerateEncryptionKey(ctx context.Context, entryUUID st
 	args := m.Called(ctx, entryUUID, existingKey, expire, maxRead)
 	return args.Get(0).(*EntryKey), args.Get(1).(*key.Key), args.Error(2)
 }
+
+type MockEntryCrypto struct {
+	mock.Mock
+}
+
+func (m *MockEntryCrypto) Encrypt(data []byte) ([]byte, error) {
+	args := m.Called(data)
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (m *MockEntryCrypto) Decrypt(data []byte) ([]byte, error) {
+	args := m.Called(data)
+	return args.Get(0).([]byte), args.Error(1)
+}
