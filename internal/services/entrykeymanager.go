@@ -39,7 +39,7 @@ func NewEntryKeyManager(db *sql.DB, model EntryKeyModel, hasher hasher.Hasher, e
 	}
 }
 
-func (e *EntryKeyManager) Create(ctx context.Context, entryUUID string, dek []byte, expire *time.Time, maxRead *int) (*models.EntryKey, *key.Key, error) {
+func (e *EntryKeyManager) Create(ctx context.Context, entryUUID string, dek []byte, expire *time.Time, maxRead *int) (*EntryKey, *key.Key, error) {
 
 	tx, err := e.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -54,7 +54,30 @@ func (e *EntryKeyManager) Create(ctx context.Context, entryUUID string, dek []by
 
 	return entryKey, k, nil
 }
-func (e *EntryKeyManager) CreateWithTx(ctx context.Context, tx *sql.Tx, entryUUID string, dek []byte, expire *time.Time, maxRead *int) (*models.EntryKey, *key.Key, error) {
+
+type EntryKey struct {
+	UUID           string
+	EntryUUID      string
+	EncryptedKey   []byte
+	KeyHash        []byte
+	Created        time.Time
+	Expire         time.Time
+	RemainingReads int
+}
+
+func modelEntryKeyToEntryKey(m *models.EntryKey) *EntryKey {
+	return &EntryKey{
+		UUID:           m.UUID,
+		EntryUUID:      m.EntryUUID,
+		EncryptedKey:   m.EncryptedKey,
+		KeyHash:        m.KeyHash,
+		Created:        m.Created,
+		Expire:         m.Expire.Time,
+		RemainingReads: int(m.RemainingReads.Int16),
+	}
+}
+
+func (e *EntryKeyManager) CreateWithTx(ctx context.Context, tx *sql.Tx, entryUUID string, dek []byte, expire *time.Time, maxRead *int) (*EntryKey, *key.Key, error) {
 	k, err := key.NewGeneratedKey()
 
 	if err != nil {
@@ -94,7 +117,7 @@ func (e *EntryKeyManager) CreateWithTx(ctx context.Context, tx *sql.Tx, entryUUI
 			Valid: true,
 		}
 	}
-	return entryKey, k, nil
+	return modelEntryKeyToEntryKey(entryKey), k, nil
 }
 
 func (e *EntryKeyManager) Delete(ctx context.Context, uuid string) error {
@@ -141,20 +164,14 @@ func (e *EntryKeyManager) findDEK(ctx context.Context, tx *sql.Tx, entryUUID str
 // GetDEK returns the decrypted data encryption key and the entry key
 // if the key is not found it returns ErrEntryKeyNotFound
 // if the key is found but the hash does not match it returns an error
-func (e *EntryKeyManager) GetDEK(ctx context.Context, entryUUID string, key []byte) (dek []byte, entryKey *models.EntryKey, err error) {
+func (e *EntryKeyManager) GetDEK(ctx context.Context, entryUUID string, key []byte) (dek []byte, entryKey *EntryKey, err error) {
 	tx, err := e.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	dek, entryKey, err = e.findDEK(ctx, tx, entryUUID, key)
-
+	dek, entryKey, err = e.GetDEKTx(ctx, tx, entryUUID, key)
 	if err != nil {
-		tx.Rollback()
-		return nil, nil, err
-	}
-
-	if err := e.model.Use(ctx, tx, entryKey.UUID); err != nil {
 		tx.Rollback()
 		return nil, nil, err
 	}
@@ -166,8 +183,34 @@ func (e *EntryKeyManager) GetDEK(ctx context.Context, entryUUID string, key []by
 	return dek, entryKey, nil
 }
 
+// GetDEKTx returns the decrypted data encryption key and the entry key
+// if the key is not found it returns ErrEntryKeyNotFound
+// if the key is found but the hash does not match it returns an error
+func (e *EntryKeyManager) GetDEKTx(ctx context.Context, tx *sql.Tx, entryUUID string, key []byte) (dek []byte, entryKey *EntryKey, err error) {
+	dek, entryKeyModel, err := e.findDEK(ctx, tx, entryUUID, key)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if err := validateEntryKey(entryKeyModel); err != nil {
+		return nil, nil, err
+	}
+
+	if e.model == nil {
+		return nil, nil, errors.New("model is nil")
+	}
+
+	if err := e.model.Use(ctx, tx, entryKeyModel.UUID); err != nil {
+		return nil, nil, err
+	}
+
+	return dek, modelEntryKeyToEntryKey(entryKeyModel), nil
+
+}
+
 // GenerateEncryptionKey creates a new key for the entry
-func (e EntryKeyManager) GenerateEncryptionKey(ctx context.Context, entryUUID string, existingKey []byte, expire *time.Time, maxRead *int) (*models.EntryKey, *key.Key, error) {
+func (e EntryKeyManager) GenerateEncryptionKey(ctx context.Context, entryUUID string, existingKey []byte, expire *time.Time, maxRead *int) (*EntryKey, *key.Key, error) {
 	tx, err := e.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, nil, err

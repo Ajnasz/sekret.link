@@ -49,10 +49,10 @@ func Test_EntryService_Create(t *testing.T) {
 		return entryCrypto
 	}
 
-	keyManager := new(test.MockEntryKeyer)
+	keyManager := new(MockEntryKeyer)
 	kek := key.NewKey()
 	kek.Set([]byte("kek"))
-	keyManager.On("CreateWithTx", ctx, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&models.EntryKey{}, kek, nil)
+	keyManager.On("CreateWithTx", ctx, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&EntryKey{}, kek, nil)
 
 	service := NewEntryManager(db, entryModel, crypto, keyManager)
 	meta, key, err := service.CreateEntry(ctx, data, 1, time.Minute)
@@ -111,7 +111,7 @@ func TestCreateError(t *testing.T) {
 		return entryCrypto
 	}
 
-	keyManager := new(test.MockEntryKeyer)
+	keyManager := new(MockEntryKeyer)
 
 	service := NewEntryManager(db, entryModel, crypto, keyManager)
 	meta, key, err := service.CreateEntry(ctx, data, 1, time.Minute)
@@ -137,13 +137,15 @@ func TestReadEntry(t *testing.T) {
 	ctx := context.Background()
 
 	entry := models.Entry{
-		UUID:           "uuid",
-		Data:           []byte("encrypted"),
-		RemainingReads: 1,
-		DeleteKey:      "delete_key",
-		Created:        timenow,
-		Accessed:       sql.NullTime{Time: timenow, Valid: true},
-		Expire:         timenow.Add(time.Minute),
+		EntryMeta: models.EntryMeta{
+			UUID:           "uuid",
+			RemainingReads: 1,
+			DeleteKey:      "delete_key",
+			Created:        timenow,
+			Accessed:       sql.NullTime{Time: timenow, Valid: true},
+			Expire:         timenow.Add(time.Minute),
+		},
+		Data: []byte("encrypted"),
 	}
 
 	entryModel := new(test.MockEntryModel)
@@ -162,9 +164,9 @@ func TestReadEntry(t *testing.T) {
 		return entryCrypto
 	}
 
-	keyManager := new(test.MockEntryKeyer)
+	keyManager := new(MockEntryKeyer)
 
-	keyManager.On("GetDEK", ctx, "uuid", key).Return([]byte("dek"), &models.EntryKey{}, nil)
+	keyManager.On("GetDEKTx", ctx, mock.Anything, "uuid", key).Return([]byte("dek"), &EntryKey{}, nil)
 
 	service := NewEntryManager(db, entryModel, crypto, keyManager)
 	data, err := service.ReadEntry(ctx, "uuid", key)
@@ -205,7 +207,7 @@ func TestReadEntryError(t *testing.T) {
 	crypto := func(key []byte) Encrypter {
 		return entryCrypto
 	}
-	keyManager := new(test.MockEntryKeyer)
+	keyManager := new(MockEntryKeyer)
 
 	service := NewEntryManager(db, entryModel, crypto, keyManager)
 	data, err := service.ReadEntry(ctx, "uuid", []byte("key"))
@@ -241,7 +243,7 @@ func TestDeleteEntry(t *testing.T) {
 	crypto := func(key []byte) Encrypter {
 		return entryCrypto
 	}
-	keyManager := new(test.MockEntryKeyer)
+	keyManager := new(MockEntryKeyer)
 
 	service := NewEntryManager(db, entryModel, crypto, keyManager)
 	err = service.DeleteEntry(ctx, "uuid", "delete_key")
@@ -277,7 +279,7 @@ func TestDeleteEntryError(t *testing.T) {
 		return entryCrypto
 	}
 
-	keyManager := new(test.MockEntryKeyer)
+	keyManager := new(MockEntryKeyer)
 
 	service := NewEntryManager(db, entryModel, crypto, keyManager)
 	err = service.DeleteEntry(ctx, "uuid", "delete_key")
@@ -313,7 +315,7 @@ func TestDeleteEntryInvalidDeleteKey(t *testing.T) {
 		return entryCrypto
 	}
 
-	keyManager := new(test.MockEntryKeyer)
+	keyManager := new(MockEntryKeyer)
 
 	service := NewEntryManager(db, entryModel, crypto, keyManager)
 	err = service.DeleteEntry(ctx, "uuid", "delete_key")

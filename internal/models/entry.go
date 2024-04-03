@@ -17,6 +17,15 @@ var ErrEntryNotFound = errors.New("entry not found")
 var ErrInvalidKey = errors.New("invalid key")
 var ErrCreateEntry = errors.New("failed to create entry")
 
+type EntryMeta struct {
+	UUID           string
+	RemainingReads int
+	DeleteKey      string
+	Created        time.Time
+	Accessed       sql.NullTime
+	Expire         time.Time
+}
+
 // uuid uuid PRIMARY KEY,
 // data BYTEA,
 // remaining_reads SMALLINT DEFAULT 1,
@@ -25,22 +34,8 @@ var ErrCreateEntry = errors.New("failed to create entry")
 // accessed TIMESTAMPTZ,
 // expire TIMESTAMPTZ
 type Entry struct {
-	UUID           string
-	Data           []byte
-	RemainingReads int
-	DeleteKey      string
-	Created        time.Time
-	Accessed       sql.NullTime
-	Expire         time.Time
-}
-
-type EntryMeta struct {
-	UUID           string
-	RemainingReads int
-	DeleteKey      string
-	Created        time.Time
-	Accessed       sql.NullTime
-	Expire         time.Time
+	EntryMeta
+	Data []byte
 }
 
 type EntryModel struct {

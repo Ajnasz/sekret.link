@@ -67,6 +67,7 @@ func (e *EntryKeyModel) Get(ctx context.Context, tx *sql.Tx, entryUUID string) (
 		if err != nil {
 			return nil, err
 		}
+
 		entryKeys = append(entryKeys, ek)
 	}
 

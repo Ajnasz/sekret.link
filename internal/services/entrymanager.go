@@ -15,20 +15,19 @@ import (
 var ErrEntryExpired = errors.New("entry expired")
 var ErrEntryNotFound = errors.New("entry not found")
 
-// EntryModel is the interface for the entry model
-// It is used to create, read and access entries
-type EntryModel interface {
-	CreateEntry(ctx context.Context, tx *sql.Tx, UUID string, data []byte, remainingReads int, expire time.Duration) (*models.EntryMeta, error)
-	ReadEntry(ctx context.Context, tx *sql.Tx, UUID string) (*models.Entry, error)
-	// TODO rename to Use
-	UpdateAccessed(ctx context.Context, tx *sql.Tx, UUID string) error
-	DeleteEntry(ctx context.Context, tx *sql.Tx, UUID string, deleteKey string) error
-	DeleteExpired(ctx context.Context, tx *sql.Tx) error
-}
+func nullOrZero[T any](v driver.Valuer) T {
+	var zeroRet T
+	val, err := v.Value()
 
-type EntryKey struct {
-	RemainingReads int
-	Expire         time.Time
+	if err != nil {
+		return zeroRet
+	}
+
+	if val == nil {
+		return zeroRet
+	}
+
+	return val.(T)
 }
 
 // EntryMeta provides the entry meta
@@ -51,17 +50,11 @@ type Entry struct {
 	Expire         time.Time
 }
 
-type EntryKeyer interface {
-	Create(ctx context.Context, entryUUID string, dek []byte, expire *time.Time, maxRead *int) (entryKey *models.EntryKey, kek *key.Key, err error)
-	CreateWithTx(ctx context.Context, tx *sql.Tx, entryUUID string, dek []byte, expire *time.Time, maxRead *int) (entryKey *models.EntryKey, kek *key.Key, err error)
-	GetDEK(ctx context.Context, entryUUID string, kek []byte) (dek []byte, entryKey *models.EntryKey, err error)
-	GenerateEncryptionKey(ctx context.Context, entryUUID string, existingKey []byte, expire *time.Time, maxRead *int) (*models.EntryKey, *key.Key, error)
-}
-
-type EncrypterFactory = func(key []byte) Encrypter
-
-func (e *Entry) IsExpired() bool {
-	return e.Expire.Before(time.Now())
+type EntryKeyData struct {
+	EntryUUID      string
+	KEK            []byte
+	RemainingReads int
+	Expire         time.Time
 }
 
 // EntryManager provides the entry service
@@ -82,6 +75,12 @@ func NewEntryManager(db *sql.DB, model EntryModel, crypto EncrypterFactory, keyM
 	}
 }
 
+// CreateEntry creates a new entry
+// It generates a new UUID for the entry
+// It encrypts the data with a new generated key
+// It stores the encrypted data in the database
+// It stores the key in the key manager
+// It returns the meta data of the entry and the key
 func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingReads int, expire time.Duration) (*EntryMeta, []byte, error) {
 	uid := uuid.NewUUIDString()
 
@@ -103,7 +102,6 @@ func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingRe
 		tx.Rollback()
 		return nil, nil, err
 	}
-	// meta, err := e.model.CreateEntry(ctx, tx, uid, data, remainingReads, expire)
 	meta, err := e.model.CreateEntry(ctx, tx, uid, encryptedData, remainingReads, expire)
 	if err != nil {
 		tx.Rollback()
@@ -128,9 +126,15 @@ func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingRe
 		Accessed:       meta.Accessed.Time,
 		Expire:         meta.Expire,
 	}, kek.Get(), nil
-
 }
 
+// ReadEntry reads an entry
+// It reads the entry from the database
+// It reads the key from the key manager
+// It decrypts the data with the key
+// It returns the decrypted data
+// It returns an error if the entry is not found or expired
+// It returns an error if the key is not found
 func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, key []byte) (*Entry, error) {
 	tx, err := e.db.Begin()
 	if err != nil {
@@ -146,17 +150,12 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, key []byte) (
 		return nil, err
 	}
 
-	if entry.RemainingReads <= 0 {
+	if err := validateEntry(entry); err != nil {
 		tx.Rollback()
-		return nil, ErrEntryExpired
+		return nil, err
 	}
 
-	if entry.Expire.Before(time.Now()) {
-		tx.Rollback()
-		return nil, ErrEntryExpired
-	}
-
-	dek, _, err := e.keyManager.GetDEK(ctx, UUID, key)
+	dek, _, err := e.keyManager.GetDEKTx(ctx, tx, UUID, key)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -221,28 +220,6 @@ func (e *EntryManager) DeleteExpired(ctx context.Context) error {
 	return nil
 }
 
-func nullOrZero[T any](v driver.Valuer) T {
-	var zeroRet T
-	val, err := v.Value()
-
-	if err != nil {
-		return zeroRet
-	}
-
-	if val == nil {
-		return zeroRet
-	}
-
-	return val.(T)
-}
-
-type EntryKeyData struct {
-	EntryUUID      string
-	KEK            []byte
-	RemainingReads int
-	Expire         time.Time
-}
-
 func (e *EntryManager) GenerateEntryKey(ctx context.Context, entryUUID string, key []byte) (*EntryKeyData, error) {
 	meta, kek, err := e.keyManager.GenerateEncryptionKey(ctx, entryUUID, key, nil, nil)
 	if err != nil {
@@ -251,8 +228,8 @@ func (e *EntryManager) GenerateEntryKey(ctx context.Context, entryUUID string, k
 
 	return &EntryKeyData{
 		EntryUUID:      entryUUID,
-		RemainingReads: int(nullOrZero[int16](meta.RemainingReads)),
-		Expire:         nullOrZero[time.Time](meta.Expire),
+		RemainingReads: meta.RemainingReads,
+		Expire:         meta.Expire,
 		KEK:            kek.Get(),
 	}, nil
 }
