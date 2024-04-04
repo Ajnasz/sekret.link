@@ -127,6 +127,13 @@ func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingRe
 		Expire:         meta.Expire,
 	}, kek.Get(), nil
 }
+func (e *EntryManager) readEntryLegacy(ctx context.Context, key []byte, entry *models.Entry) ([]byte, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	crypto := e.crypto(key)
+	return crypto.Decrypt(entry.Data)
+}
 
 // ReadEntry reads an entry
 // It reads the entry from the database
@@ -136,6 +143,9 @@ func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingRe
 // It returns an error if the entry is not found or expired
 // It returns an error if the key is not found
 func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, key []byte) (*Entry, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
 	tx, err := e.db.Begin()
 	if err != nil {
 		return nil, err
@@ -156,16 +166,26 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, key []byte) (
 	}
 
 	dek, _, err := e.keyManager.GetDEKTx(ctx, tx, UUID, key)
+	var decryptedData []byte
 	if err != nil {
-		tx.Rollback()
-		return nil, err
-	}
+		if errors.Is(err, ErrEntryKeyNotFound) {
+			legacyData, legacyErr := e.readEntryLegacy(ctx, key, entry)
+			if legacyErr != nil {
+				return nil, err
+			}
 
-	crypto := e.crypto(dek)
-	decryptedData, err := crypto.Decrypt(entry.Data)
-	if err != nil {
-		tx.Rollback()
-		return nil, err
+			decryptedData = legacyData
+		} else {
+			tx.Rollback()
+			return nil, err
+		}
+	} else {
+		crypto := e.crypto(dek)
+		decryptedData, err = crypto.Decrypt(entry.Data)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
 	}
 
 	if err := e.model.UpdateAccessed(ctx, tx, UUID); err != nil {
