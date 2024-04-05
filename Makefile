@@ -38,6 +38,7 @@ curl-bad:
 hurl:
 	@hurl --verbose --error-format=long --variable api_host='http://localhost:8080' hurl/*.hurl
 
+coverage: cover.out cover.html
 
 cover.out:
 	go test ./... -coverprofile cover.out
