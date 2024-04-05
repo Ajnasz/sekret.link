@@ -11,19 +11,53 @@ import (
 	"github.com/google/uuid"
 )
 
-func Test_EntryKeyModel_Create(t *testing.T) {
-	ctx := context.Background()
+func getTestDbTx(ctx context.Context) (*sql.DB, *sql.Tx, error) {
 	db, err := durable.TestConnection(ctx)
 
 	if err != nil {
-		t.Fatal(err)
+		return nil, nil, err
 	}
-	defer db.Close()
 
 	tx, err := db.Begin()
+
+	if err != nil {
+		defer db.Close()
+		return nil, nil, err
+	}
+
+	return db, tx, nil
+}
+
+func createTestEntryKey(ctx context.Context, tx *sql.Tx) (string, string, error) {
+	uid := uuid.New().String()
+
+	entryModel := &EntryModel{}
+
+	_, err := entryModel.CreateEntry(ctx, tx, uid, []byte("test data"), 2, 3600)
+
+	if err != nil {
+		return "", "", err
+	}
+
+	model := &EntryKeyModel{}
+
+	entryKey, err := model.Create(ctx, tx, uid, []byte("test"), []byte("hash entrykey use tx"))
+
+	if err != nil {
+		return "", "", err
+	}
+
+	return uid, entryKey.UUID, nil
+}
+
+func Test_EntryKeyModel_Create(t *testing.T) {
+	ctx := context.Background()
+	db, tx, err := getTestDbTx(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer db.Close()
 
 	uid := uuid.New().String()
 
@@ -67,18 +101,12 @@ func Test_EntryKeyModel_Create(t *testing.T) {
 
 func Test_EntryKeyModel_Get(t *testing.T) {
 	ctx := context.Background()
-	db, err := durable.TestConnection(ctx)
+	db, tx, err := getTestDbTx(ctx)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
-
-	tx, err := db.Begin()
-
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	uid := uuid.New().String()
 
@@ -134,17 +162,12 @@ func Test_EntryKeyModel_Get(t *testing.T) {
 
 func Test_EntryKeyModel_Get_Empty(t *testing.T) {
 	ctx := context.Background()
-	db, err := durable.TestConnection(ctx)
+	db, tx, err := getTestDbTx(ctx)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
-
-	tx, err := db.Begin()
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	model := &EntryKeyModel{}
 
@@ -162,18 +185,12 @@ func Test_EntryKeyModel_Get_Empty(t *testing.T) {
 
 func Test_EntryKeyModel_Delete(t *testing.T) {
 	ctx := context.Background()
-	db, err := durable.TestConnection(ctx)
+	db, tx, err := getTestDbTx(ctx)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
-
-	tx, err := db.Begin()
-
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	uid, entryKeyUUID, err := createTestEntryKey(ctx, tx)
 
@@ -209,7 +226,7 @@ func Test_EntryKeyModel_Delete(t *testing.T) {
 
 func Test_EntryKeyModel_Delete_Empty(t *testing.T) {
 	ctx := context.Background()
-	db, err := durable.TestConnection(ctx)
+	db, tx, err := getTestDbTx(ctx)
 
 	if err != nil {
 		t.Fatal(err)
@@ -217,13 +234,6 @@ func Test_EntryKeyModel_Delete_Empty(t *testing.T) {
 	defer db.Close()
 
 	model := &EntryKeyModel{}
-
-	tx, err := db.Begin()
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	err = model.Delete(ctx, tx, uuid.New().String())
 
 	if err != nil {
@@ -234,19 +244,13 @@ func Test_EntryKeyModel_Delete_Empty(t *testing.T) {
 
 func Test_EntryKeyModel_SetExpire(t *testing.T) {
 	ctx := context.Background()
-	db, err := durable.TestConnection(ctx)
+	db, tx, err := getTestDbTx(ctx)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer db.Close()
-
-	tx, err := db.Begin()
-
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	model := &EntryKeyModel{}
 
@@ -293,7 +297,7 @@ func Test_EntryKeyModel_SetExpire(t *testing.T) {
 
 func Test_EntryKeyModel_SetExpire_Empty(t *testing.T) {
 	ctx := context.Background()
-	db, err := durable.TestConnection(ctx)
+	db, tx, err := getTestDbTx(ctx)
 
 	if err != nil {
 		t.Fatal(err)
@@ -302,12 +306,6 @@ func Test_EntryKeyModel_SetExpire_Empty(t *testing.T) {
 	defer db.Close()
 
 	model := &EntryKeyModel{}
-
-	tx, err := db.Begin()
-
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	err = model.SetExpire(ctx, tx, uuid.New().String(), time.Now().Add(time.Hour))
 
@@ -316,43 +314,15 @@ func Test_EntryKeyModel_SetExpire_Empty(t *testing.T) {
 	}
 }
 
-func createTestEntryKey(ctx context.Context, tx *sql.Tx) (string, string, error) {
-	uid := uuid.New().String()
-
-	entryModel := &EntryModel{}
-
-	_, err := entryModel.CreateEntry(ctx, tx, uid, []byte("test data"), 2, 3600)
-
-	if err != nil {
-		return "", "", err
-	}
-
-	model := &EntryKeyModel{}
-
-	entryKey, err := model.Create(ctx, tx, uid, []byte("test"), []byte("hash entrykey use tx"))
-
-	if err != nil {
-		return "", "", err
-	}
-
-	return uid, entryKey.UUID, nil
-}
-
 func Test_EntryKeyModel_UseTx(t *testing.T) {
 	ctx := context.Background()
-	db, err := durable.TestConnection(ctx)
+	db, tx, err := getTestDbTx(ctx)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer db.Close()
-
-	tx, err := db.Begin()
-
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	uid, entryKeyUUID, err := createTestEntryKey(ctx, tx)
 
@@ -373,7 +343,6 @@ func Test_EntryKeyModel_UseTx(t *testing.T) {
 	}
 
 	entryKeys, err := model.Get(ctx, tx, uid)
-	fmt.Printf("%+v\n", entryKeys)
 
 	if err != nil {
 		tx.Rollback()
