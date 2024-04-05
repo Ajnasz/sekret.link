@@ -14,8 +14,7 @@ import (
 type EntryModel interface {
 	CreateEntry(ctx context.Context, tx *sql.Tx, UUID string, data []byte, remainingReads int, expire time.Duration) (*models.EntryMeta, error)
 	ReadEntry(ctx context.Context, tx *sql.Tx, UUID string) (*models.Entry, error)
-	// TODO rename to Use
-	UpdateAccessed(ctx context.Context, tx *sql.Tx, UUID string) error
+	Use(ctx context.Context, tx *sql.Tx, UUID string) error
 	DeleteEntry(ctx context.Context, tx *sql.Tx, UUID string, deleteKey string) error
 	DeleteExpired(ctx context.Context, tx *sql.Tx) error
 }

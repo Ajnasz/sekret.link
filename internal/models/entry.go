@@ -81,7 +81,7 @@ func (e *EntryModel) CreateEntry(ctx context.Context, tx *sql.Tx, uuid string, d
 	}, err
 }
 
-func (e *EntryModel) UpdateAccessed(ctx context.Context, tx *sql.Tx, uuid string) error {
+func (e *EntryModel) Use(ctx context.Context, tx *sql.Tx, uuid string) error {
 	_, err := tx.ExecContext(ctx, "UPDATE entries SET accessed = NOW(), remaining_reads = remaining_reads - 1 WHERE uuid = $1 AND remaining_reads > 0", uuid)
 	return err
 }

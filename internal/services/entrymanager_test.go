@@ -152,7 +152,7 @@ func TestReadEntry(t *testing.T) {
 		On("ReadEntry", ctx, mock.Anything, "uuid").
 		Return(&entry, nil)
 	entryModel.
-		On("UpdateAccessed", ctx, mock.Anything, "uuid").
+		On("Use", ctx, mock.Anything, "uuid").
 		Return(nil)
 
 	key := []byte("key")
@@ -165,8 +165,10 @@ func TestReadEntry(t *testing.T) {
 
 	keyManager := new(MockEntryKeyer)
 
-	keyManager.On("GetDEKTx", ctx, mock.Anything, "uuid", key).Return([]byte("dek"), &EntryKey{}, nil)
-	keyManager.On("UseTx", ctx, mock.Anything, entry.UUID).Return(nil)
+	keyManager.On("GetDEKTx", ctx, mock.Anything, "uuid", key).Return([]byte("dek"), &EntryKey{
+		UUID: "entrykey uuid",
+	}, nil)
+	keyManager.On("UseTx", ctx, mock.Anything, "entrykey uuid").Return(nil)
 
 	service := NewEntryManager(db, entryModel, crypto, keyManager)
 	data, err := service.ReadEntry(ctx, "uuid", key)

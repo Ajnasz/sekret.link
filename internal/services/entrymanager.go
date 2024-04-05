@@ -166,7 +166,7 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, key []byte) (
 		return nil, err
 	}
 
-	dek, _, err := e.keyManager.GetDEKTx(ctx, tx, UUID, key)
+	dek, entryKey, err := e.keyManager.GetDEKTx(ctx, tx, UUID, key)
 	var decryptedData []byte
 	if err != nil {
 		if errors.Is(err, ErrEntryKeyNotFound) {
@@ -189,13 +189,13 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, key []byte) (
 			return nil, err
 		}
 
-		if err := e.keyManager.UseTx(ctx, tx, UUID); err != nil {
+		if err := e.keyManager.UseTx(ctx, tx, entryKey.UUID); err != nil {
 			tx.Rollback()
 			return nil, err
 		}
 	}
 
-	if err := e.model.UpdateAccessed(ctx, tx, UUID); err != nil {
+	if err := e.model.Use(ctx, tx, UUID); err != nil {
 		tx.Rollback()
 		return nil, err
 	}

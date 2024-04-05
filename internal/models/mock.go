@@ -28,7 +28,7 @@ func (m *MockEntryModel) ReadEntry(ctx context.Context, tx *sql.Tx, UUID string)
 	return args.Get(0).(*Entry), args.Error(1)
 }
 
-func (m *MockEntryModel) UpdateAccessed(ctx context.Context, tx *sql.Tx, UUID string) error {
+func (m *MockEntryModel) Use(ctx context.Context, tx *sql.Tx, UUID string) error {
 	args := m.Called(ctx, tx, UUID)
 	return args.Error(0)
 }
