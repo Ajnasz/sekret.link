@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"testing"
 	"time"
@@ -174,26 +175,11 @@ func Test_EntryKeyModel_Delete(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	uid := uuid.New().String()
-
-	entryModel := &EntryModel{}
-	_, err = entryModel.CreateEntry(ctx, tx, uid, []byte("test data"), 2, 3600)
-
-	if err != nil {
-		tx.Rollback()
-		t.Fatal(err)
-	}
+	uid, entryKeyUUID, err := createTestEntryKey(ctx, tx)
 
 	model := &EntryKeyModel{}
 
-	entryKey, err := model.Create(ctx, tx, uid, []byte("test"), []byte("hash entry keymodel delete"))
-
-	if err != nil {
-		tx.Rollback()
-		t.Fatal(err)
-	}
-
-	err = model.Delete(ctx, tx, entryKey.UUID)
+	err = model.Delete(ctx, tx, entryKeyUUID)
 
 	if err != nil {
 		tx.Rollback()
@@ -219,7 +205,6 @@ func Test_EntryKeyModel_Delete(t *testing.T) {
 	if len(entryKeys) != 0 {
 		t.Fatalf("expected 0 got %d", len(entryKeys))
 	}
-
 }
 
 func Test_EntryKeyModel_Delete_Empty(t *testing.T) {
@@ -263,26 +248,15 @@ func Test_EntryKeyModel_SetExpire(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	uid := uuid.New().String()
-
-	entryModel := &EntryModel{}
-	_, err = entryModel.CreateEntry(ctx, tx, uid, []byte("test data"), 2, 3600)
-
-	if err != nil {
-		tx.Rollback()
-		t.Fatal(err)
-	}
-
 	model := &EntryKeyModel{}
 
-	entryKey, err := model.Create(ctx, tx, uid, []byte("test"), []byte("hash entrykey set expire"))
-
+	uid, entryKeyUUID, err := createTestEntryKey(ctx, tx)
 	if err != nil {
 		tx.Rollback()
 		t.Fatal(err)
 	}
 
-	err = model.SetExpire(ctx, tx, entryKey.UUID, time.Now().Add(time.Hour))
+	err = model.SetExpire(ctx, tx, entryKeyUUID, time.Now().Add(time.Hour))
 
 	if err != nil {
 		tx.Rollback()
@@ -340,5 +314,77 @@ func Test_EntryKeyModel_SetExpire_Empty(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
 
+func createTestEntryKey(ctx context.Context, tx *sql.Tx) (string, string, error) {
+	uid := uuid.New().String()
+
+	entryModel := &EntryModel{}
+
+	_, err := entryModel.CreateEntry(ctx, tx, uid, []byte("test data"), 2, 3600)
+
+	if err != nil {
+		return "", "", err
+	}
+
+	model := &EntryKeyModel{}
+
+	entryKey, err := model.Create(ctx, tx, uid, []byte("test"), []byte("hash entrykey use tx"))
+
+	if err != nil {
+		return "", "", err
+	}
+
+	return uid, entryKey.UUID, nil
+}
+
+func Test_EntryKeyModel_UseTx(t *testing.T) {
+	ctx := context.Background()
+	db, err := durable.TestConnection(ctx)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer db.Close()
+
+	tx, err := db.Begin()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	uid, entryKeyUUID, err := createTestEntryKey(ctx, tx)
+
+	model := &EntryKeyModel{}
+
+	if err := model.SetMaxReads(ctx, tx, entryKeyUUID, 2); err != nil {
+		t.Fatal(err)
+	}
+
+	err = model.Use(ctx, tx, entryKeyUUID)
+
+	tx.Commit()
+
+	tx, err = db.Begin()
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	entryKeys, err := model.Get(ctx, tx, uid)
+	fmt.Printf("%+v\n", entryKeys)
+
+	if err != nil {
+		tx.Rollback()
+		t.Fatal(err)
+	}
+
+	if len(entryKeys) != 1 {
+		t.Fatalf("expected 1 got %d", len(entryKeys))
+	}
+
+	if entryKeys[0].RemainingReads.Int16 != 1 {
+		t.Errorf("expected 1 got %d", entryKeys[0].RemainingReads.Int16)
+	}
 }

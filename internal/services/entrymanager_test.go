@@ -166,6 +166,7 @@ func TestReadEntry(t *testing.T) {
 	keyManager := new(MockEntryKeyer)
 
 	keyManager.On("GetDEKTx", ctx, mock.Anything, "uuid", key).Return([]byte("dek"), &EntryKey{}, nil)
+	keyManager.On("UseTx", ctx, mock.Anything, entry.UUID).Return(nil)
 
 	service := NewEntryManager(db, entryModel, crypto, keyManager)
 	data, err := service.ReadEntry(ctx, "uuid", key)

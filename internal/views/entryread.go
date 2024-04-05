@@ -60,6 +60,11 @@ func (e EntryReadView) RenderError(w http.ResponseWriter, r *http.Request, err e
 		return
 	}
 
+	if errors.Is(err, services.ErrEntryNoRemainingReads) {
+		http.Error(w, "Gone", http.StatusGone)
+		return
+	}
+
 	if errors.Is(err, parsers.ErrInvalidUUID) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return

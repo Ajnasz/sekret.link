@@ -38,6 +38,11 @@ func (m *MockEntryKeyer) GenerateEncryptionKey(ctx context.Context, entryUUID st
 	return args.Get(0).(*EntryKey), args.Get(1).(*key.Key), args.Error(2)
 }
 
+func (m *MockEntryKeyer) UseTx(ctx context.Context, tx *sql.Tx, entryUUID string) error {
+	args := m.Called(ctx, tx, entryUUID)
+	return args.Error(0)
+}
+
 type MockEntryCrypto struct {
 	mock.Mock
 }

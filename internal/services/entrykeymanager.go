@@ -138,6 +138,10 @@ func (e *EntryKeyManager) Delete(ctx context.Context, uuid string) error {
 	return nil
 }
 
+func (e *EntryKeyManager) UseTx(ctx context.Context, tx *sql.Tx, entryUUID string) error {
+	return e.model.Use(ctx, tx, entryUUID)
+}
+
 func (e *EntryKeyManager) findDEK(ctx context.Context, tx *sql.Tx, entryUUID string, key []byte) (dek []byte, entryKey *models.EntryKey, err error) {
 	entryKeys, err := e.model.Get(ctx, tx, entryUUID)
 	if err != nil {

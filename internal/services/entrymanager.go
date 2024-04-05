@@ -14,6 +14,7 @@ import (
 
 var ErrEntryExpired = errors.New("entry expired")
 var ErrEntryNotFound = errors.New("entry not found")
+var ErrEntryNoRemainingReads = errors.New("entry has no remaining reads")
 
 func nullOrZero[T any](v driver.Valuer) T {
 	var zeroRet T
@@ -170,11 +171,12 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, key []byte) (
 	if err != nil {
 		if errors.Is(err, ErrEntryKeyNotFound) {
 			legacyData, legacyErr := e.readEntryLegacy(ctx, key, entry)
-			if legacyErr != nil {
+			if legacyErr == nil {
+				decryptedData = legacyData
+			} else {
+				tx.Rollback()
 				return nil, err
 			}
-
-			decryptedData = legacyData
 		} else {
 			tx.Rollback()
 			return nil, err
@@ -183,6 +185,11 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, key []byte) (
 		crypto := e.crypto(dek)
 		decryptedData, err = crypto.Decrypt(entry.Data)
 		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+
+		if err := e.keyManager.UseTx(ctx, tx, UUID); err != nil {
 			tx.Rollback()
 			return nil, err
 		}

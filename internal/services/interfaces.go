@@ -26,6 +26,7 @@ type EntryKeyer interface {
 	CreateWithTx(ctx context.Context, tx *sql.Tx, entryUUID string, dek []byte, expire *time.Time, maxRead *int) (entryKey *EntryKey, kek *key.Key, err error)
 	GetDEKTx(ctx context.Context, tx *sql.Tx, entryUUID string, kek []byte) (dek []byte, entryKey *EntryKey, err error)
 	GenerateEncryptionKey(ctx context.Context, entryUUID string, existingKey []byte, expire *time.Time, maxRead *int) (*EntryKey, *key.Key, error)
+	UseTx(ctx context.Context, tx *sql.Tx, entryUUID string) error
 }
 
 // EncrypterFactory is function to create a new Encrypter for a given key

@@ -32,7 +32,7 @@ func validateEntryKey(entryKey *models.EntryKey) error {
 	}
 
 	if entryKey.RemainingReads.Valid && entryKey.RemainingReads.Int16 <= 0 {
-		return ErrEntryExpired
+		return ErrEntryNoRemainingReads
 	}
 
 	return nil
