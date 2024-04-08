@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"database/sql"
-	"database/sql/driver"
 	"errors"
 	"time"
 
@@ -15,21 +14,6 @@ import (
 var ErrEntryExpired = errors.New("entry expired")
 var ErrEntryNotFound = errors.New("entry not found")
 var ErrEntryNoRemainingReads = errors.New("entry has no remaining reads")
-
-func nullOrZero[T any](v driver.Valuer) T {
-	var zeroRet T
-	val, err := v.Value()
-
-	if err != nil {
-		return zeroRet
-	}
-
-	if val == nil {
-		return zeroRet
-	}
-
-	return val.(T)
-}
 
 // EntryMeta provides the entry meta
 type EntryMeta struct {

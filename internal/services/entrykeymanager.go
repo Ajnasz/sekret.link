@@ -131,11 +131,7 @@ func (e *EntryKeyManager) Delete(ctx context.Context, uuid string) error {
 		return err
 	}
 
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-
-	return nil
+	return tx.Commit()
 }
 
 func (e *EntryKeyManager) UseTx(ctx context.Context, tx *sql.Tx, entryUUID string) error {

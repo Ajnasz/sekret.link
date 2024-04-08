@@ -632,3 +632,37 @@ func Test_EntryKeyManager_GetDEKTx_Expired(t *testing.T) {
 	assert.Nil(t, foundDEK)
 	assert.Nil(t, entryKey)
 }
+
+func Test_EntryKeyManager_Delete(t *testing.T) {
+	db, sqlMock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+
+	defer db.Close()
+
+	ctx := context.Background()
+	model := &MockEntryKeyModel{}
+	hasher := &MockHasher{}
+	encrypter := &EncrypterMock{}
+	uuid := "test-uuid"
+
+	sqlMock.ExpectBegin()
+	sqlMock.ExpectCommit()
+	model.On("Delete", ctx, mock.Anything, uuid).Return(nil)
+
+	crypto := func(key []byte) Encrypter {
+		return encrypter
+	}
+
+	manager := NewEntryKeyManager(db, model, hasher, crypto)
+	err = manager.Delete(ctx, uuid)
+
+	model.AssertExpectations(t)
+	hasher.AssertExpectations(t)
+	encrypter.AssertExpectations(t)
+	if sqlMock.ExpectationsWereMet() != nil {
+		t.Errorf("there were unfulfilled expectations: %s", sqlMock.ExpectationsWereMet())
+	}
+	assert.NoError(t, err)
+}
