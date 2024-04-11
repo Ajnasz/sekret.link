@@ -12,7 +12,7 @@ import (
 	"github.com/Ajnasz/sekret.link/internal/services"
 )
 
-type SecretResponse struct {
+type EntryReadResponse struct {
 	UUID      string
 	Key       string
 	Data      string
@@ -22,9 +22,10 @@ type SecretResponse struct {
 	DeleteKey string
 }
 
-func buildSecretResponse(meta services.Entry) SecretResponse {
-	return SecretResponse{
+func BuildEntryReadResponse(meta services.Entry, key string) EntryReadResponse {
+	return EntryReadResponse{
 		UUID:      meta.UUID,
+		Key:       key,
 		Created:   meta.Created,
 		Expire:    meta.Expire,
 		Accessed:  meta.Accessed,
@@ -39,19 +40,16 @@ func NewEntryReadView() EntryReadView {
 	return EntryReadView{}
 }
 
-func (e EntryReadView) RenderReadEntry(w http.ResponseWriter, r *http.Request, entry *services.Entry, keyString string) {
+func (e EntryReadView) Render(w http.ResponseWriter, r *http.Request, response EntryReadResponse) {
 	if r.Header.Get("Accept") == "application/json" {
-		response := buildSecretResponse(*entry)
-
-		response.Key = keyString
 		json.NewEncoder(w).Encode(response)
 	} else {
 		w.WriteHeader(http.StatusOK)
-		w.Write(entry.Data)
+		w.Write([]byte(response.Data))
 	}
 }
 
-func (e EntryReadView) RenderReadEntryError(w http.ResponseWriter, r *http.Request, err error) {
+func (e EntryReadView) RenderError(w http.ResponseWriter, r *http.Request, err error) {
 	if errors.Is(err, services.ErrEntryExpired) {
 		http.Error(w, "Gone", http.StatusGone)
 		return
@@ -59,6 +57,11 @@ func (e EntryReadView) RenderReadEntryError(w http.ResponseWriter, r *http.Reque
 
 	if errors.Is(err, services.ErrEntryNotFound) {
 		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	if errors.Is(err, services.ErrEntryNoRemainingReads) {
+		http.Error(w, "Gone", http.StatusGone)
 		return
 	}
 

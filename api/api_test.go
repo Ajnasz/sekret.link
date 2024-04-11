@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Ajnasz/sekret.link/internal/hasher"
 	"github.com/Ajnasz/sekret.link/internal/models"
 	"github.com/Ajnasz/sekret.link/internal/services"
 	"github.com/Ajnasz/sekret.link/internal/test/durable"
@@ -91,7 +92,9 @@ func TestCreateEntry(t *testing.T) {
 		encrypter := func(b []byte) services.Encrypter {
 			return services.NewAESEncrypter(b)
 		}
-		entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter)
+		keyManager := services.NewEntryKeyManager(db, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), encrypter)
+
+		entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter, keyManager)
 		entry, err := entryManager.ReadEntry(ctx, savedUUID, key)
 
 		if err != nil {
@@ -209,7 +212,8 @@ func TestCreateEntryJSON(t *testing.T) {
 	encrypter := func(b []byte) services.Encrypter {
 		return services.NewAESEncrypter(b)
 	}
-	entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter)
+	keyManager := services.NewEntryKeyManager(db, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), encrypter)
+	entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter, keyManager)
 	entry, err := entryManager.ReadEntry(ctx, encode.UUID, key)
 
 	if err != nil {
@@ -299,7 +303,8 @@ func TestCreateEntryForm(t *testing.T) {
 	encrypter := func(b []byte) services.Encrypter {
 		return services.NewAESEncrypter(b)
 	}
-	entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter)
+	keyManager := services.NewEntryKeyManager(db, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), encrypter)
+	entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter, keyManager)
 	entry, err := entryManager.ReadEntry(ctx, savedUUID, key)
 
 	if err != nil {
@@ -387,7 +392,9 @@ func TestGetEntry(t *testing.T) {
 			encrypter := func(b []byte) services.Encrypter {
 				return services.NewAESEncrypter(b)
 			}
-			entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter)
+
+			keyManager := services.NewEntryKeyManager(db, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), encrypter)
+			entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter, keyManager)
 			meta, encKey, err := entryManager.CreateEntry(ctx, []byte(testCase.Value), 1, time.Second*10)
 
 			if err != nil {
@@ -442,7 +449,9 @@ func TestGetEntryJSON(t *testing.T) {
 	encrypter := func(b []byte) services.Encrypter {
 		return services.NewAESEncrypter(b)
 	}
-	entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter)
+
+	keyManager := services.NewEntryKeyManager(db, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), encrypter)
+	entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter, keyManager)
 	meta, encKey, err := entryManager.CreateEntry(ctx, []byte(testCase.Value), 1, time.Second*10)
 	if err != nil {
 		t.Error(err)
@@ -577,7 +586,8 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 	encrypter := func(b []byte) services.Encrypter {
 		return services.NewAESEncrypter(b)
 	}
-	entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter)
+	keyManager := services.NewEntryKeyManager(db, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), encrypter)
+	entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter, keyManager)
 	entry, err := entryManager.ReadEntry(ctx, savedUUID, decodedKey)
 
 	if err != nil {
@@ -641,7 +651,6 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 	model := &models.EntryModel{}
 
 	savedUUID := resp.Header.Get("x-entry-uuid")
-	fmt.Println("savedUUID", savedUUID)
 
 	if err != nil {
 		t.Fatal(err)

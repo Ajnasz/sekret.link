@@ -24,7 +24,7 @@ type EntryCreatedResponse struct {
 	DeleteKey string
 }
 
-func buildCreatedResponse(meta *services.EntryMeta, keyString string) EntryCreatedResponse {
+func BuildCreatedResponse(meta *services.EntryMeta, keyString string) EntryCreatedResponse {
 	return EntryCreatedResponse{
 		UUID:      meta.UUID,
 		Created:   meta.Created,
@@ -43,20 +43,18 @@ func NewEntryCreateView(webExternalURL *url.URL) EntryCreateView {
 	return EntryCreateView{webExternalURL: webExternalURL}
 }
 
-func (e EntryCreateView) RenderEntryCreated(w http.ResponseWriter, r *http.Request, entry *services.EntryMeta, keyString string) {
+func (e EntryCreateView) Render(w http.ResponseWriter, r *http.Request, entry EntryCreatedResponse) {
 	w.Header().Add("x-entry-uuid", entry.UUID)
-	w.Header().Add("x-entry-key", keyString)
+	w.Header().Add("x-entry-key", entry.Key)
 	w.Header().Add("x-entry-expire", entry.Expire.Format(time.RFC3339))
 	w.Header().Add("x-entry-delete-key", entry.DeleteKey)
 
 	if r.Header.Get("Accept") == "application/json" {
 		w.Header().Set("Content-Type", "application/json")
 
-		response := buildCreatedResponse(entry, keyString)
-
-		json.NewEncoder(w).Encode(response)
+		json.NewEncoder(w).Encode(entry)
 	} else {
-		newURL, err := uuid.GetUUIDUrlWithSecret(e.webExternalURL, entry.UUID, keyString)
+		newURL, err := uuid.GetUUIDUrlWithSecret(e.webExternalURL, entry.UUID, entry.Key)
 		if err != nil {
 			log.Println("Get UUID URL with secret failed", err)
 			http.Error(w, "Internal error", http.StatusInternalServerError)
@@ -67,7 +65,7 @@ func (e EntryCreateView) RenderEntryCreated(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-func (e EntryCreateView) RenderCreateEntryErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
+func (e EntryCreateView) RenderError(w http.ResponseWriter, r *http.Request, err error) {
 	if errors.Is(err, parsers.ErrInvalidExpirationDate) {
 		http.Error(w, "Invalid expiration", http.StatusBadRequest)
 		return

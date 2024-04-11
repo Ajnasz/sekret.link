@@ -23,3 +23,9 @@ HTTP 200
     "name": "John Doe",
     "email": "john.do@acheron.space"
 }
+
+
+# Should not be able to retrieve the entry again
+GET {{api_host}}/api/{{entry_uuid}}/{{entry_key}}
+
+HTTP 404

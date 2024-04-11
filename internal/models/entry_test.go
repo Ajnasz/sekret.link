@@ -65,7 +65,7 @@ func Test_EntryModel_CreateEntry(t *testing.T) {
 	}
 }
 
-func Test_EntryModel_UpdateAccessed(t *testing.T) {
+func Test_EntryModel_Use(t *testing.T) {
 	ctx := context.Background()
 	db, err := durable.TestConnection(ctx)
 	if err != nil {
@@ -91,7 +91,7 @@ func Test_EntryModel_UpdateAccessed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := model.UpdateAccessed(ctx, tx, uid); err != nil {
+	if err := model.Use(ctx, tx, uid); err != nil {
 		t.Fatal(errors.Join(err, errors.New("failed to access entry")))
 	}
 

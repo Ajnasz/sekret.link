@@ -15,6 +15,16 @@ import (
 
 var ErrEntryNotFound = errors.New("entry not found")
 var ErrInvalidKey = errors.New("invalid key")
+var ErrCreateEntry = errors.New("failed to create entry")
+
+type EntryMeta struct {
+	UUID           string
+	RemainingReads int
+	DeleteKey      string
+	Created        time.Time
+	Accessed       sql.NullTime
+	Expire         time.Time
+}
 
 // uuid uuid PRIMARY KEY,
 // data BYTEA,
@@ -24,22 +34,8 @@ var ErrInvalidKey = errors.New("invalid key")
 // accessed TIMESTAMPTZ,
 // expire TIMESTAMPTZ
 type Entry struct {
-	UUID           string
-	Data           []byte
-	RemainingReads int
-	DeleteKey      string
-	Created        time.Time
-	Accessed       sql.NullTime
-	Expire         time.Time
-}
-
-type EntryMeta struct {
-	UUID           string
-	RemainingReads int
-	DeleteKey      string
-	Created        time.Time
-	Accessed       sql.NullTime
-	Expire         time.Time
+	EntryMeta
+	Data []byte
 }
 
 type EntryModel struct {
@@ -55,13 +51,26 @@ func (e *EntryModel) getDeleteKey() (string, error) {
 
 // CreateEntry creates a new entry into the database
 func (e *EntryModel) CreateEntry(ctx context.Context, tx *sql.Tx, uuid string, data []byte, remainingReads int, expire time.Duration) (*EntryMeta, error) {
-	now := time.Now()
 	deleteKey, err := e.getDeleteKey()
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, ErrCreateEntry)
 	}
 
-	_, err = tx.ExecContext(ctx, `INSERT INTO entries (uuid, data, created, expire, remaining_reads, delete_key) VALUES  ($1, $2, $3, $4, $5, $6) RETURNING uuid, delete_key;`, uuid, data, now, now.Add(expire), remainingReads, deleteKey)
+	now := time.Now()
+	res, err := tx.ExecContext(ctx, `INSERT INTO entries (uuid, data, created, expire, remaining_reads, delete_key) VALUES  ($1, $2, $3, $4, $5, $6) RETURNING uuid, delete_key;`, uuid, data, now, now.Add(expire), remainingReads, deleteKey)
+
+	if err != nil {
+		return nil, errors.Join(err, ErrCreateEntry)
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return nil, errors.Join(err, ErrCreateEntry)
+	}
+
+	if rows != 1 {
+		return nil, ErrCreateEntry
+	}
 
 	return &EntryMeta{
 		UUID:           uuid,
@@ -72,7 +81,7 @@ func (e *EntryModel) CreateEntry(ctx context.Context, tx *sql.Tx, uuid string, d
 	}, err
 }
 
-func (e *EntryModel) UpdateAccessed(ctx context.Context, tx *sql.Tx, uuid string) error {
+func (e *EntryModel) Use(ctx context.Context, tx *sql.Tx, uuid string) error {
 	_, err := tx.ExecContext(ctx, "UPDATE entries SET accessed = NOW(), remaining_reads = remaining_reads - 1 WHERE uuid = $1 AND remaining_reads > 0", uuid)
 	return err
 }

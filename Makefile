@@ -36,4 +36,17 @@ curl-bad:
 
 .PHONY: hurl
 hurl:
-	@hurl --variable api_host='http://localhost:8080' hurl/*.hurl
+	@hurl --verbose --error-format=long --variable api_host='http://localhost:8080' hurl/*.hurl
+
+.PHONY: coverage clean-cover
+clean-cover:
+	rm -f cover.out cover.html
+
+coverage: cover.out cover.html
+
+cover.out:
+	go test ./... -coverprofile cover.out
+
+cover.html: cover.out
+	go tool cover -html=cover.out -o cover.html
+

@@ -7,6 +7,7 @@ import (
 
 	"github.com/Ajnasz/sekret.link/internal/parsers"
 	"github.com/Ajnasz/sekret.link/internal/services"
+	"github.com/Ajnasz/sekret.link/internal/views"
 )
 
 // GetEntryManager is the interface for getting an entry
@@ -26,7 +27,7 @@ var ErrInvalidKeyError = errors.New("invalid key")
 // GetHandler is the handler for getting an entry
 type GetHandler struct {
 	entryManager GetEntryManager
-	view         GetEntryView
+	view         views.View[views.EntryReadResponse]
 	parser       parsers.Parser[parsers.GetEntryRequestData]
 }
 
@@ -34,7 +35,7 @@ type GetHandler struct {
 func NewGetHandler(
 	parser parsers.Parser[parsers.GetEntryRequestData],
 	entryManager GetEntryManager,
-	view GetEntryView,
+	view views.View[views.EntryReadResponse],
 ) GetHandler {
 	return GetHandler{
 		view:         view,
@@ -58,7 +59,7 @@ func (g GetHandler) handle(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	g.view.RenderReadEntry(w, r, entry, request.KeyString)
+	g.view.Render(w, r, views.BuildEntryReadResponse(*entry, request.KeyString))
 
 	return nil
 }
@@ -67,6 +68,6 @@ func (g GetHandler) handle(w http.ResponseWriter, r *http.Request) error {
 func (g GetHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	err := g.handle(w, r)
 	if err != nil {
-		g.view.RenderReadEntryError(w, r, err)
+		g.view.RenderError(w, r, err)
 	}
 }

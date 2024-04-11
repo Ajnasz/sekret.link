@@ -11,6 +11,7 @@ import (
 
 	"github.com/Ajnasz/sekret.link/internal/parsers"
 	"github.com/Ajnasz/sekret.link/internal/services"
+	"github.com/Ajnasz/sekret.link/internal/views"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -44,11 +45,11 @@ type MockEntryView struct {
 	mock.Mock
 }
 
-func (m *MockEntryView) RenderEntryCreated(w http.ResponseWriter, r *http.Request, entry *services.EntryMeta, key string) {
-	m.Called(w, r, entry, key)
+func (m *MockEntryView) Render(w http.ResponseWriter, r *http.Request, data views.EntryCreatedResponse) {
+	m.Called(w, r, data)
 }
 
-func (m *MockEntryView) RenderCreateEntryErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
+func (m *MockEntryView) RenderError(w http.ResponseWriter, r *http.Request, err error) {
 	m.Called(w, r, err)
 }
 
@@ -64,7 +65,7 @@ func Test_CreateEntryHandle(t *testing.T) {
 
 	parser.On("Parse", request).Return(&parsers.CreateEntryRequestData{}, nil)
 	entryManager.On("CreateEntry", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&services.EntryMeta{}, []byte("key"), nil)
-	view.On("RenderEntryCreated", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
+	view.On("Render", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	handler := NewCreateHandler(10, parser, entryManager, view)
 
@@ -88,7 +89,7 @@ func Test_CreateEntryHandleParserError(t *testing.T) {
 	response := httptest.NewRecorder()
 
 	parser.On("Parse", request).Return(&parsers.CreateEntryRequestData{}, errors.New("error"))
-	view.On("RenderCreateEntryErrorResponse", mock.Anything, mock.Anything, mock.Anything).Return()
+	view.On("RenderError", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	handler := NewCreateHandler(10, parser, entryManager, view)
 
@@ -112,7 +113,7 @@ func Test_CreateEntryHandleError(t *testing.T) {
 
 	parser.On("Parse", request).Return(&parsers.CreateEntryRequestData{}, nil)
 	entryManager.On("CreateEntry", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&services.EntryMeta{}, []byte("key"), errors.New("error"))
-	view.On("RenderCreateEntryErrorResponse", mock.Anything, mock.Anything, mock.Anything).Return()
+	view.On("RenderError", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	handler := NewCreateHandler(10, parser, entryManager, view)
 

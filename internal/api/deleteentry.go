@@ -2,10 +2,10 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/Ajnasz/sekret.link/internal/parsers"
+	"github.com/Ajnasz/sekret.link/internal/views"
 )
 
 // DeleteEntryManager is the interface for deleting an entry
@@ -22,11 +22,11 @@ type DeleteEntryView interface {
 // DeleteHandler is the handler for deleting an entry
 type DeleteHandler struct {
 	entryManager DeleteEntryManager
-	view         DeleteEntryView
+	view         views.View[views.DeleteEntryResponse]
 }
 
 // NewDeleteHandler creates a new DeleteHandler instance
-func NewDeleteHandler(entryManager DeleteEntryManager, view DeleteEntryView) DeleteHandler {
+func NewDeleteHandler(entryManager DeleteEntryManager, view views.View[views.DeleteEntryResponse]) DeleteHandler {
 	return DeleteHandler{
 		entryManager: entryManager,
 		view:         view,
@@ -38,7 +38,6 @@ func (d DeleteHandler) handle(w http.ResponseWriter, r *http.Request) error {
 	UUID, _, deleteKey, err := parsers.ParseDeleteEntryPath(r.URL.Path)
 
 	if err != nil {
-		fmt.Println("parse error", err)
 		return err
 	}
 
@@ -48,13 +47,13 @@ func (d DeleteHandler) handle(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	d.view.RenderDeleteEntry(w, r)
+	d.view.Render(w, r, views.DeleteEntryResponse{})
 	return nil
 }
 
 // Handle handles the delete request
 func (d DeleteHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	if err := d.handle(w, r); err != nil {
-		d.view.RenderDeleteEntryError(w, r, err)
+		d.view.RenderError(w, r, err)
 	}
 }

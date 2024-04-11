@@ -10,9 +10,10 @@ import (
 // Key object which already has a generated key
 var ErrorKeyAlreadyGenerated = errors.New("key already generated")
 var ErrorKeyGenerateFailed = errors.New("Key generation failed")
+var ErrorInvalidKey = errors.New("invalid key")
 
 // SizeAES256 the byte size required for aes 256 encoding
-const SizeAES256 uint = 32
+const SizeAES256 int = 32
 
 // NewKey creates a Key struct
 func NewKey() *Key {
@@ -36,7 +37,7 @@ type Key struct {
 	b64 string
 }
 
-func (k Key) generateRandomBytes(size uint) ([]byte, error) {
+func (k Key) generateRandomBytes(size int) ([]byte, error) {
 	bytes := make([]byte, size)
 	if _, err := rand.Read(bytes); err != nil {
 		return nil, err
@@ -61,12 +62,22 @@ func (k *Key) Generate() error {
 }
 
 // Get returns the key
-func (k Key) Get() []byte {
+func (k *Key) Get() []byte {
 	return k.key
 }
 
+func (k *Key) Set(key []byte) error {
+	if len(key) != SizeAES256 {
+		return ErrorInvalidKey
+	}
+
+	k.key = key
+
+	return nil
+}
+
 // ToHex Converts the key to hex string
-func (k Key) ToHex() string {
+func (k *Key) ToHex() string {
 	if k.hex == "" {
 		k.hex = hex.EncodeToString(k.key)
 	}
@@ -74,6 +85,6 @@ func (k Key) ToHex() string {
 	return k.hex
 }
 
-func (k Key) String() string {
+func (k *Key) String() string {
 	return k.ToHex()
 }

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Ajnasz/sekret.link/internal/parsers"
+	"github.com/Ajnasz/sekret.link/internal/views"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -24,11 +25,11 @@ type MockDeleteEntryView struct {
 	mock.Mock
 }
 
-func (m *MockDeleteEntryView) RenderDeleteEntry(w http.ResponseWriter, r *http.Request) {
+func (m *MockDeleteEntryView) Render(w http.ResponseWriter, r *http.Request, data views.DeleteEntryResponse) {
 	m.Called(w, r)
 }
 
-func (m *MockDeleteEntryView) RenderDeleteEntryError(w http.ResponseWriter, r *http.Request, err error) {
+func (m *MockDeleteEntryView) RenderError(w http.ResponseWriter, r *http.Request, err error) {
 	m.Called(w, r, err)
 }
 
@@ -37,7 +38,7 @@ func Test_DeleteHandle(t *testing.T) {
 	view := new(MockDeleteEntryView)
 
 	entryManager.On("DeleteEntry", mock.Anything, "40e7d7d6-db0d-11ee-b9ee-1340bdbad9b2", "delete-key").Return(nil)
-	view.On("RenderDeleteEntry", mock.Anything, mock.Anything).Return()
+	view.On("Render", mock.Anything, mock.Anything).Return()
 
 	handler := NewDeleteHandler(entryManager, view)
 
@@ -55,7 +56,7 @@ func Test_DeleteHandle_InvalidUUID(t *testing.T) {
 	entryManager := new(MockDeleteEntryManager)
 	view := new(MockDeleteEntryView)
 
-	view.On("RenderDeleteEntryError", mock.Anything, mock.Anything, mock.MatchedBy(func(err error) bool {
+	view.On("RenderError", mock.Anything, mock.Anything, mock.MatchedBy(func(err error) bool {
 		return errors.Is(err, parsers.ErrInvalidUUID)
 	})).Return()
 
