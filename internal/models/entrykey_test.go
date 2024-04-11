@@ -57,7 +57,11 @@ func Test_EntryKeyModel_Create(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close failed: %v", err)
+		}
+	}()
 
 	uid := uuid.New().String()
 
@@ -71,10 +75,15 @@ func Test_EntryKeyModel_Create(t *testing.T) {
 
 	entryKey, err := model.Create(ctx, tx, uid, []byte("test"), []byte("hashke"))
 
-	tx.Commit()
-
 	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			t.Errorf("rollback failed: %v", err)
+		}
 		t.Fatal(err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		t.Errorf("commit failed: %v", err)
 	}
 
 	if entryKey.UUID == "" {
@@ -106,7 +115,11 @@ func Test_EntryKeyModel_Get(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close failed: %v", err)
+		}
+	}()
 
 	uid := uuid.New().String()
 
@@ -123,13 +136,17 @@ func Test_EntryKeyModel_Get(t *testing.T) {
 		_, err = model.Create(ctx, tx, uid, []byte("test"), []byte(fmt.Sprintf("hashke %d", i)))
 
 		if err != nil {
-			tx.Rollback()
+			if err := tx.Rollback(); err != nil {
+				t.Error(err)
+			}
 			t.Fatal(err)
 		}
 
 	}
 
-	tx.Commit()
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
 
 	tx, err = db.Begin()
 	if err != nil {
@@ -139,7 +156,14 @@ func Test_EntryKeyModel_Get(t *testing.T) {
 	entryKeys, err := model.Get(ctx, tx, uid)
 
 	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			t.Error(err)
+		}
 		t.Fatal(err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		t.Errorf("commit failed: %v", err)
 	}
 
 	if len(entryKeys) != 10 {
@@ -157,7 +181,6 @@ func Test_EntryKeyModel_Get(t *testing.T) {
 	if entryKeys[0].KeyHash == nil {
 		t.Error("expected encrypted key to be set")
 	}
-
 }
 
 func Test_EntryKeyModel_Get_Empty(t *testing.T) {
@@ -167,20 +190,33 @@ func Test_EntryKeyModel_Get_Empty(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}()
 
 	model := &EntryKeyModel{}
 
 	entryKeys, err := model.Get(ctx, tx, uuid.New().String())
 
 	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			t.Error(err)
+		}
 		t.Fatal(err)
 	}
 
-	if len(entryKeys) != 0 {
-		t.Fatalf("expected 0 got %d", len(entryKeys))
+	if err := tx.Commit(); err != nil {
+		t.Errorf("commit failed: %v", err)
 	}
 
+	if len(entryKeys) != 0 {
+		if err := tx.Rollback(); err != nil {
+			t.Error(err)
+		}
+		t.Fatalf("expected 0 got %d", len(entryKeys))
+	}
 }
 
 func Test_EntryKeyModel_Delete(t *testing.T) {
@@ -199,24 +235,33 @@ func Test_EntryKeyModel_Delete(t *testing.T) {
 	err = model.Delete(ctx, tx, entryKeyUUID)
 
 	if err != nil {
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			t.Errorf("rollback failed: %v", err)
+		}
 		t.Fatal(err)
 	}
 
-	tx.Commit()
+	if err := tx.Commit(); err != nil {
+		t.Errorf("commit failed: %v", err)
+	}
 
 	tx, err = db.Begin()
 
 	if err != nil {
-
 		t.Fatal(err)
 	}
 
 	entryKeys, err := model.Get(ctx, tx, uid)
 
 	if err != nil {
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			t.Errorf("rollback failed: %v", err)
+		}
 		t.Fatal(err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		t.Errorf("commit failed: %v", err)
 	}
 
 	if len(entryKeys) != 0 {
@@ -237,9 +282,15 @@ func Test_EntryKeyModel_Delete_Empty(t *testing.T) {
 	err = model.Delete(ctx, tx, uuid.New().String())
 
 	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			t.Errorf("rollback failed: %v", err)
+		}
 		t.Fatal(err)
 	}
 
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func Test_EntryKeyModel_SetExpire(t *testing.T) {
@@ -250,24 +301,34 @@ func Test_EntryKeyModel_SetExpire(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}()
 
 	model := &EntryKeyModel{}
 
 	uid, entryKeyUUID, err := createTestEntryKey(ctx, tx)
 	if err != nil {
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			t.Errorf("rollback failed: %v", err)
+		}
 		t.Fatal(err)
 	}
 
 	err = model.SetExpire(ctx, tx, entryKeyUUID, time.Now().Add(time.Hour))
 
 	if err != nil {
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			t.Errorf("rollback failed: %v", err)
+		}
 		t.Fatal(err)
 	}
 
-	tx.Commit()
+	if err := tx.Commit(); err != nil {
+		t.Errorf("commit failed: %v", err)
+	}
 
 	tx, err = db.Begin()
 
@@ -278,8 +339,14 @@ func Test_EntryKeyModel_SetExpire(t *testing.T) {
 	entryKeys, err := model.Get(ctx, tx, uid)
 
 	if err != nil {
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			t.Errorf("rollback failed: %v", err)
+		}
 		t.Fatal(err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		t.Errorf("rollback failed: %v", err)
 	}
 
 	if len(entryKeys) != 1 {
@@ -303,14 +370,25 @@ func Test_EntryKeyModel_SetExpire_Empty(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close failed: %v", err)
+		}
+	}()
 
 	model := &EntryKeyModel{}
 
 	err = model.SetExpire(ctx, tx, uuid.New().String(), time.Now().Add(time.Hour))
 
 	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			t.Errorf("rollback failed: %v", err)
+		}
 		t.Fatal(err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		t.Errorf("commit failed: %v", err)
 	}
 }
 
@@ -322,19 +400,34 @@ func Test_EntryKeyModel_UseTx(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close failed: %v", err)
+		}
+	}()
 
 	uid, entryKeyUUID, err := createTestEntryKey(ctx, tx)
 
 	model := &EntryKeyModel{}
 
 	if err := model.SetMaxReads(ctx, tx, entryKeyUUID, 2); err != nil {
+		if err := tx.Rollback(); err != nil {
+			t.Errorf("rollback failed: %v", err)
+		}
 		t.Fatal(err)
 	}
 
 	err = model.Use(ctx, tx, entryKeyUUID)
 
-	tx.Commit()
+	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			t.Errorf("rollback failed: %v", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		t.Errorf("commit failed: %v", err)
+	}
 
 	tx, err = db.Begin()
 
@@ -345,8 +438,14 @@ func Test_EntryKeyModel_UseTx(t *testing.T) {
 	entryKeys, err := model.Get(ctx, tx, uid)
 
 	if err != nil {
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			t.Errorf("rollback failed: %v", err)
+		}
 		t.Fatal(err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		t.Errorf("commit failed: %v", err)
 	}
 
 	if len(entryKeys) != 1 {
