@@ -51,7 +51,7 @@ func (e EntryReadView) Render(w http.ResponseWriter, r *http.Request, response E
 
 func (e EntryReadView) RenderError(w http.ResponseWriter, r *http.Request, err error) {
 	if errors.Is(err, services.ErrEntryExpired) {
-		http.Error(w, "Gone", http.StatusGone)
+		http.Error(w, "Gone", http.StatusNotFound)
 		return
 	}
 
@@ -61,7 +61,7 @@ func (e EntryReadView) RenderError(w http.ResponseWriter, r *http.Request, err e
 	}
 
 	if errors.Is(err, services.ErrEntryNoRemainingReads) {
-		http.Error(w, "Gone", http.StatusGone)
+		http.Error(w, "Gone", http.StatusNotFound)
 		return
 	}
 
