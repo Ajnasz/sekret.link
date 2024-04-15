@@ -201,10 +201,6 @@ func (e *EntryKeyManager) GetDEKTx(ctx context.Context, tx *sql.Tx, entryUUID st
 		return nil, nil, errors.New("model is nil")
 	}
 
-	if err := e.model.Use(ctx, tx, entryKeyModel.UUID); err != nil {
-		return nil, nil, err
-	}
-
 	return dek, modelEntryKeyToEntryKey(entryKeyModel), nil
 
 }

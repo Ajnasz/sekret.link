@@ -258,7 +258,6 @@ func TestEntryKeyManager_GetDEK(t *testing.T) {
 			Created:      time.Now(),
 		},
 	}, nil)
-	model.On("Use", ctx, mock.Anything, "test-uuid").Return(nil)
 
 	crypto := func(key []byte) Encrypter {
 		return encrypter
