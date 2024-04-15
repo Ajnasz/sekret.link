@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,6 +17,7 @@ import (
 	"time"
 
 	"github.com/Ajnasz/sekret.link/internal/hasher"
+	"github.com/Ajnasz/sekret.link/internal/key"
 	"github.com/Ajnasz/sekret.link/internal/models"
 	"github.com/Ajnasz/sekret.link/internal/services"
 	"github.com/Ajnasz/sekret.link/internal/test/durable"
@@ -83,7 +83,7 @@ func TestCreateEntry(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		key, err := hex.DecodeString(keyString)
+		key, err := key.FromHex(keyString)
 
 		if err != nil {
 			t.Fatal(err)
@@ -203,7 +203,7 @@ func TestCreateEntryJSON(t *testing.T) {
 		t.Error("In create response the deleteKey is empty")
 	}
 
-	key, err := hex.DecodeString(encode.Key)
+	key, err := key.FromHex(encode.Key)
 
 	if err != nil {
 		t.Fatal(err)
@@ -294,7 +294,7 @@ func TestCreateEntryForm(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	key, err := hex.DecodeString(keyString)
+	key, err := key.FromHex(keyString)
 
 	if err != nil {
 		t.Fatal(err)
@@ -401,7 +401,7 @@ func TestGetEntry(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com/%s/%s", meta.UUID, hex.EncodeToString(encKey)), nil)
+			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com/%s/%s", meta.UUID, encKey.ToHex()), nil)
 			w := httptest.NewRecorder()
 
 			mux := http.NewServeMux()
@@ -457,7 +457,7 @@ func TestGetEntryJSON(t *testing.T) {
 		t.Error(err)
 	}
 
-	req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", meta.UUID, hex.EncodeToString(encKey)), nil)
+	req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", meta.UUID, encKey.ToHex()), nil)
 	req.Header.Add("Accept", "application/json")
 	w := httptest.NewRecorder()
 
@@ -577,7 +577,7 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	decodedKey, err := hex.DecodeString(keyString)
+	decodedKey, err := key.FromHex(keyString)
 
 	if err != nil {
 		t.Fatal(err)

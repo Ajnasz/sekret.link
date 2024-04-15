@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/hex"
 	"net/http"
 
 	"github.com/Ajnasz/sekret.link/internal/parsers"
@@ -54,7 +53,7 @@ func (g GenerateEntryKeyHandler) handle(w http.ResponseWriter, r *http.Request) 
 
 	g.view.Render(w, r, views.GenerateEntryKeyResponseData{
 		UUID:   request.UUID,
-		Key:    hex.EncodeToString(entry.KEK),
+		Key:    entry.KEK,
 		Expire: entry.Expire,
 	})
 	return nil

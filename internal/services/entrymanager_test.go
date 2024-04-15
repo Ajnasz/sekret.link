@@ -58,7 +58,7 @@ func Test_EntryService_Create(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, meta)
-	assert.Equal(t, key, kek.Get())
+	assert.Equal(t, key.Get(), kek.Get())
 
 	entryModel.AssertExpectations(t)
 	keyManager.AssertExpectations(t)

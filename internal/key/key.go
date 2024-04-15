@@ -30,12 +30,8 @@ func NewGeneratedKey() (*Key, error) {
 	return k, nil
 }
 
-// Key is struct to generate and print (for example n hex) a random key
-type Key struct {
-	key []byte
-	hex string
-	b64 string
-}
+// Key is type to generate and print (for example n hex) a random key
+type Key []byte
 
 func (k Key) generateRandomBytes(size int) ([]byte, error) {
 	bytes := make([]byte, size)
@@ -49,7 +45,7 @@ func (k Key) generateRandomBytes(size int) ([]byte, error) {
 // Generate Generates creates the key, returns error if the key generation
 // failed
 func (k *Key) Generate() error {
-	if len(k.key) != 0 {
+	if len(*k) != 0 {
 		return ErrorKeyAlreadyGenerated
 	}
 	key, err := k.generateRandomBytes(SizeAES256)
@@ -57,13 +53,13 @@ func (k *Key) Generate() error {
 		return err
 	}
 
-	k.key = key
+	*k = key
 	return nil
 }
 
 // Get returns the key
 func (k *Key) Get() []byte {
-	return k.key
+	return *k
 }
 
 func (k *Key) Set(key []byte) error {
@@ -71,20 +67,20 @@ func (k *Key) Set(key []byte) error {
 		return ErrorInvalidKey
 	}
 
-	k.key = key
+	*k = key
 
 	return nil
 }
 
 // ToHex Converts the key to hex string
 func (k *Key) ToHex() string {
-	if k.hex == "" {
-		k.hex = hex.EncodeToString(k.key)
-	}
-
-	return k.hex
+	return hex.EncodeToString(*k)
 }
 
 func (k *Key) String() string {
 	return k.ToHex()
+}
+
+func FromHex(s string) ([]byte, error) {
+	return hex.DecodeString(s)
 }

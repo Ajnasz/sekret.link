@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Ajnasz/sekret.link/internal/key"
 	"github.com/Ajnasz/sekret.link/internal/parsers"
 	"github.com/Ajnasz/sekret.link/internal/services"
 	"github.com/Ajnasz/sekret.link/internal/views"
@@ -35,10 +36,17 @@ func (m *MockEntryManager) CreateEntry(
 	body []byte,
 	maxReads int,
 	expiration time.Duration,
-) (*services.EntryMeta, []byte, error) {
+) (*services.EntryMeta, *key.Key, error) {
 	args := m.Called(ctx, body, maxReads, expiration)
 
-	return args.Get(0).(*services.EntryMeta), args.Get(1).([]byte), args.Error(2)
+	if args.Get(1) == nil {
+		return args.Get(0).(*services.EntryMeta), nil, args.Error(2)
+	}
+
+	var k key.Key
+	k = args.Get(1).(key.Key)
+
+	return args.Get(0).(*services.EntryMeta), &k, args.Error(2)
 }
 
 type MockEntryView struct {
@@ -64,7 +72,7 @@ func Test_CreateEntryHandle(t *testing.T) {
 	response := httptest.NewRecorder()
 
 	parser.On("Parse", request).Return(&parsers.CreateEntryRequestData{}, nil)
-	entryManager.On("CreateEntry", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&services.EntryMeta{}, []byte("key"), nil)
+	entryManager.On("CreateEntry", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&services.EntryMeta{}, key.Key("key"), nil)
 	view.On("Render", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	handler := NewCreateHandler(10, parser, entryManager, view)
@@ -112,7 +120,7 @@ func Test_CreateEntryHandleError(t *testing.T) {
 	response := httptest.NewRecorder()
 
 	parser.On("Parse", request).Return(&parsers.CreateEntryRequestData{}, nil)
-	entryManager.On("CreateEntry", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&services.EntryMeta{}, []byte("key"), errors.New("error"))
+	entryManager.On("CreateEntry", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&services.EntryMeta{}, key.Key("key"), errors.New("error"))
 	view.On("RenderError", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	handler := NewCreateHandler(10, parser, entryManager, view)

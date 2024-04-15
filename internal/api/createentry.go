@@ -2,11 +2,11 @@ package api
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"net/http"
 	"time"
 
+	"github.com/Ajnasz/sekret.link/internal/key"
 	"github.com/Ajnasz/sekret.link/internal/parsers"
 	"github.com/Ajnasz/sekret.link/internal/services"
 	"github.com/Ajnasz/sekret.link/internal/views"
@@ -19,7 +19,7 @@ type CreateEntryParser interface {
 
 // CreateEntryManager is an interface for creating entries
 type CreateEntryManager interface {
-	CreateEntry(ctx context.Context, body []byte, maxReads int, expiration time.Duration) (*services.EntryMeta, []byte, error)
+	CreateEntry(ctx context.Context, body []byte, maxReads int, expiration time.Duration) (*services.EntryMeta, *key.Key, error)
 }
 
 // CreateEntryView is an interface for rendering the create entry response
@@ -68,7 +68,7 @@ func (c CreateHandler) handle(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	viewData := views.BuildCreatedResponse(entry, hex.EncodeToString(key))
+	viewData := views.BuildCreatedResponse(entry, key.ToHex())
 
 	c.view.Render(w, r, viewData)
 	return nil

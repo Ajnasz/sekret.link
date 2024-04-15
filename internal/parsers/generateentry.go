@@ -1,7 +1,6 @@
 package parsers
 
 import (
-	"encoding/hex"
 	"errors"
 	"net/http"
 	"time"
@@ -66,7 +65,8 @@ func (g *GenerateEntryKeyParser) Parse(r *http.Request) (GenerateEntryKeyRequest
 	if keyString == "" {
 		return reqData, ErrInvalidKey
 	}
-	key, err := hex.DecodeString(keyString)
+
+	keyByte, err := getEntryKeyByte(keyString)
 
 	if err != nil {
 		return reqData, errors.Join(ErrInvalidKey, err)
@@ -83,7 +83,7 @@ func (g *GenerateEntryKeyParser) Parse(r *http.Request) (GenerateEntryKeyRequest
 	}
 
 	reqData.UUID = UUID.String()
-	reqData.Key = key
+	reqData.Key = keyByte
 	reqData.Expiration = expiration
 	reqData.MaxReads = maxReads
 

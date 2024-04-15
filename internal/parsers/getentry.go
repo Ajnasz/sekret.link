@@ -1,7 +1,6 @@
 package parsers
 
 import (
-	"encoding/hex"
 	"errors"
 	"net/http"
 
@@ -33,10 +32,11 @@ func (g GetEntryParser) Parse(req *http.Request) (GetEntryRequestData, error) {
 	if err != nil {
 		return reqData, errors.Join(ErrInvalidUUID, err)
 	}
-	key, err := hex.DecodeString(keyString)
+
+	keyByte, err := getEntryKeyByte(keyString)
 
 	if err != nil {
 		return reqData, errors.Join(ErrInvalidKey, err)
 	}
-	return GetEntryRequestData{UUID: UUID.String(), Key: key, KeyString: keyString}, nil
+	return GetEntryRequestData{UUID: UUID.String(), Key: keyByte, KeyString: keyString}, nil
 }

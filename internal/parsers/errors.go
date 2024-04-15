@@ -23,3 +23,5 @@ var ErrInvalidUUID = errors.New("invalid UUID")
 
 // ErrInvalidKey is returned when the key is invalid
 var ErrInvalidKey = errors.New("invalid key")
+
+var ErrInvalidKeyLength = errors.New("invalid key length")

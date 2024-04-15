@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/hex"
 	"net/http"
 	"testing"
 	"time"
@@ -56,7 +55,7 @@ func TestGenerateEntryKey_Handle(t *testing.T) {
 
 	viewMock.On("Render", mock.Anything, mock.Anything, views.GenerateEntryKeyResponseData{
 		UUID:   "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb",
-		Key:    hex.EncodeToString(newKey),
+		Key:    newKey,
 		Expire: expire,
 	}).Return()
 	parserMock.On("Parse", mock.Anything).Return(parsers.GenerateEntryKeyRequestData{

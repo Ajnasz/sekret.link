@@ -66,7 +66,7 @@ func NewEntryManager(db *sql.DB, model EntryModel, crypto EncrypterFactory, keyM
 // It stores the encrypted data in the database
 // It stores the key in the key manager
 // It returns the meta data of the entry and the key
-func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingReads int, expire time.Duration) (*EntryMeta, []byte, error) {
+func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingReads int, expire time.Duration) (*EntryMeta, *key.Key, error) {
 	uid := uuid.NewUUIDString()
 
 	tx, err := e.db.Begin()
@@ -110,8 +110,9 @@ func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingRe
 		Created:        meta.Created,
 		Accessed:       meta.Accessed.Time,
 		Expire:         meta.Expire,
-	}, kek.Get(), nil
+	}, kek, nil
 }
+
 func (e *EntryManager) readEntryLegacy(ctx context.Context, key []byte, entry *models.Entry) ([]byte, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
