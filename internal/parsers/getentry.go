@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/Ajnasz/sekret.link/internal/key"
 	"github.com/google/uuid"
 )
 
@@ -16,7 +17,7 @@ func NewGetEntryParser() GetEntryParser {
 type GetEntryRequestData struct {
 	UUID      string
 	KeyString string
-	Key       []byte
+	Key       key.Key
 }
 
 func (g GetEntryParser) Parse(req *http.Request) (GetEntryRequestData, error) {
@@ -38,5 +39,5 @@ func (g GetEntryParser) Parse(req *http.Request) (GetEntryRequestData, error) {
 	if err != nil {
 		return reqData, errors.Join(ErrInvalidKey, err)
 	}
-	return GetEntryRequestData{UUID: UUID.String(), Key: keyByte, KeyString: keyString}, nil
+	return GetEntryRequestData{UUID: UUID.String(), Key: *keyByte, KeyString: keyString}, nil
 }

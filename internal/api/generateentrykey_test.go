@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Ajnasz/sekret.link/internal/key"
 	"github.com/Ajnasz/sekret.link/internal/parsers"
 	"github.com/Ajnasz/sekret.link/internal/services"
 	"github.com/Ajnasz/sekret.link/internal/views"
@@ -29,8 +30,8 @@ type MockGenerateEntryKeyManager struct {
 	mock.Mock
 }
 
-func (m *MockGenerateEntryKeyManager) GenerateEntryKey(ctx context.Context, UUID string, key []byte) (*services.EntryKeyData, error) {
-	args := m.Called(ctx, UUID, key)
+func (m *MockGenerateEntryKeyManager) GenerateEntryKey(ctx context.Context, UUID string, k key.Key) (*services.EntryKeyData, error) {
+	args := m.Called(ctx, UUID, k)
 	return args.Get(0).(*services.EntryKeyData), args.Error(2)
 }
 
@@ -50,24 +51,26 @@ func TestGenerateEntryKey_Handle(t *testing.T) {
 
 	handler := NewGenerateEntryKeyHandler(parserMock, managerMock, viewMock)
 
-	newKey := []byte{18, 18, 18, 18, 174, 173, 15}
+	newKey, err := key.NewGeneratedKey()
+	assert.NoError(t, err)
 	expire := time.Now().Add(time.Hour * 24)
 
 	viewMock.On("Render", mock.Anything, mock.Anything, views.GenerateEntryKeyResponseData{
 		UUID:   "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb",
-		Key:    newKey,
+		Key:    *newKey,
 		Expire: expire,
 	}).Return()
+
 	parserMock.On("Parse", mock.Anything).Return(parsers.GenerateEntryKeyRequestData{
 		UUID: "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb",
-		Key:  []byte{18, 18, 18, 18, 174, 173, 15},
+		Key:  *newKey,
 	}, nil)
 
-	managerMock.On("GenerateEntryKey", mock.Anything, "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb", []byte{18, 18, 18, 18, 174, 173, 15}).Return(&services.EntryKeyData{
+	managerMock.On("GenerateEntryKey", mock.Anything, "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb", *newKey).Return(&services.EntryKeyData{
 		Expire:    expire,
 		EntryUUID: "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb",
-		KEK:       newKey,
-	}, newKey, nil)
+		KEK:       *newKey,
+	}, *newKey, nil)
 
 	handler.Handle(nil, nil)
 	managerMock.AssertExpectations(t)
@@ -99,12 +102,14 @@ func TestGenerateEntryKey_HandleManagerError(t *testing.T) {
 	handler := NewGenerateEntryKeyHandler(parserMock, managerMock, viewMock)
 
 	viewMock.On("RenderError", mock.Anything, mock.Anything, mock.Anything).Return()
+	k, err := key.NewGeneratedKey()
+	assert.NoError(t, err)
 	parserMock.On("Parse", mock.Anything).Return(parsers.GenerateEntryKeyRequestData{
 		UUID: "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb",
-		Key:  []byte{18, 18, 18, 18, 174, 173, 15},
+		Key:  *k,
 	}, nil)
 
-	managerMock.On("GenerateEntryKey", mock.Anything, "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb", []byte{18, 18, 18, 18, 174, 173, 15}).Return(&services.EntryKeyData{}, []byte{}, assert.AnError)
+	managerMock.On("GenerateEntryKey", mock.Anything, "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb", *k).Return(&services.EntryKeyData{}, []byte{}, assert.AnError)
 
 	handler.Handle(nil, nil)
 	managerMock.AssertExpectations(t)

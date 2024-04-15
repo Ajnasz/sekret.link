@@ -81,6 +81,17 @@ func (k *Key) String() string {
 	return k.ToHex()
 }
 
-func FromHex(s string) ([]byte, error) {
-	return hex.DecodeString(s)
+func FromHex(s string) (*Key, error) {
+	byte, err := hex.DecodeString(s)
+
+	if err != nil {
+		return nil, err
+	}
+
+	k := NewKey()
+	if err := k.Set(byte); err != nil {
+		return nil, err
+	}
+
+	return k, nil
 }

@@ -44,14 +44,14 @@ func Test_EntryService_Create(t *testing.T) {
 
 	entryCrypto := new(MockEntryCrypto)
 	entryCrypto.On("Encrypt", data).Return(encryptedData, nil)
-	crypto := func(key []byte) Encrypter {
+	crypto := func(key key.Key) Encrypter {
 		return entryCrypto
 	}
 
 	keyManager := new(MockEntryKeyer)
 	kek := key.NewKey()
 	kek.Set([]byte("kek"))
-	keyManager.On("CreateWithTx", ctx, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&EntryKey{}, kek, nil)
+	keyManager.On("CreateWithTx", ctx, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&EntryKey{}, *kek, nil)
 
 	service := NewEntryManager(db, entryModel, crypto, keyManager)
 	meta, key, err := service.CreateEntry(ctx, data, 1, time.Minute)
@@ -106,7 +106,7 @@ func TestCreateError(t *testing.T) {
 
 	entryCrypto := new(MockEntryCrypto)
 	entryCrypto.On("Encrypt", data).Return(encryptedData, nil)
-	crypto := func(key []byte) Encrypter {
+	crypto := func(key key.Key) Encrypter {
 		return entryCrypto
 	}
 
@@ -157,23 +157,32 @@ func TestReadEntry(t *testing.T) {
 			On("Use", ctx, mock.Anything, "uuid").
 			Return(nil)
 
-		key := []byte("key")
+		k, err := key.NewGeneratedKey()
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		entryCrypto := new(MockEntryCrypto)
 		entryCrypto.On("Decrypt", []byte("encrypted")).Return([]byte("data"), nil)
 
-		crypto := func(key []byte) Encrypter {
+		crypto := func(key key.Key) Encrypter {
 			return entryCrypto
 		}
 
 		keyManager := new(MockEntryKeyer)
 
-		keyManager.On("GetDEKTx", ctx, mock.Anything, "uuid", key).Return([]byte("dek"), &EntryKey{
+		dek, err := key.NewGeneratedKey()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		keyManager.On("GetDEKTx", ctx, mock.Anything, "uuid", *k).Return(*dek, &EntryKey{
 			UUID: "entrykey uuid",
 		}, nil)
 		keyManager.On("UseTx", ctx, mock.Anything, "entrykey uuid").Return(nil)
 
 		service := NewEntryManager(db, entryModel, crypto, keyManager)
-		data, err := service.ReadEntry(ctx, "uuid", key)
+		data, err := service.ReadEntry(ctx, "uuid", *k)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, data)
@@ -209,13 +218,16 @@ func TestReadEntry(t *testing.T) {
 			Return(emptyEntry, models.ErrEntryNotFound)
 
 		entryCrypto := new(MockEntryCrypto)
-		crypto := func(key []byte) Encrypter {
+		crypto := func(key key.Key) Encrypter {
 			return entryCrypto
 		}
 		keyManager := new(MockEntryKeyer)
 
 		service := NewEntryManager(db, entryModel, crypto, keyManager)
-		data, err := service.ReadEntry(ctx, "uuid", []byte("key"))
+
+		k, err := key.NewGeneratedKey()
+		assert.NoError(t, err)
+		data, err := service.ReadEntry(ctx, "uuid", *k)
 
 		assert.Error(t, err)
 		assert.Nil(t, data)
@@ -257,17 +269,20 @@ func TestReadEntry(t *testing.T) {
 		entryCrypto := new(MockEntryCrypto)
 		entryCrypto.On("Decrypt", []byte("encrypted")).Return([]byte("decrypted"), nil)
 
-		crypto := func(key []byte) Encrypter {
+		crypto := func(key key.Key) Encrypter {
 			return entryCrypto
 		}
 
 		var emptyEntryKey *EntryKey
-		var emptyDEK []byte
+		var emptyDEK key.Key
+
+		k, err := key.NewGeneratedKey()
+		assert.NoError(t, err)
 		keyManager := new(MockEntryKeyer)
-		keyManager.On("GetDEKTx", ctx, mock.Anything, "uuid", []byte("key")).Return(emptyDEK, emptyEntryKey, ErrEntryKeyNotFound)
+		keyManager.On("GetDEKTx", ctx, mock.Anything, "uuid", *k).Return(emptyDEK, emptyEntryKey, ErrEntryKeyNotFound)
 
 		service := NewEntryManager(db, entryModel, crypto, keyManager)
-		data, err := service.ReadEntry(ctx, "uuid", []byte("key"))
+		data, err := service.ReadEntry(ctx, "uuid", *k)
 
 		assert.Nil(t, err)
 		assert.Equal(t, "decrypted", string(data.Data))
@@ -295,7 +310,7 @@ func TestReadEntryError(t *testing.T) {
 		Return(&models.Entry{}, models.ErrEntryNotFound)
 
 	entryCrypto := new(MockEntryCrypto)
-	crypto := func(key []byte) Encrypter {
+	crypto := func(key key.Key) Encrypter {
 		return entryCrypto
 	}
 	keyManager := new(MockEntryKeyer)
@@ -331,7 +346,7 @@ func TestDeleteEntry(t *testing.T) {
 		Return(nil)
 
 	entryCrypto := new(MockEntryCrypto)
-	crypto := func(key []byte) Encrypter {
+	crypto := func(key key.Key) Encrypter {
 		return entryCrypto
 	}
 	keyManager := new(MockEntryKeyer)
@@ -366,7 +381,7 @@ func TestDeleteEntryError(t *testing.T) {
 		Return(fmt.Errorf("error"))
 
 	entryCrypto := new(MockEntryCrypto)
-	crypto := func(key []byte) Encrypter {
+	crypto := func(key key.Key) Encrypter {
 		return entryCrypto
 	}
 
@@ -402,7 +417,7 @@ func TestDeleteEntryInvalidDeleteKey(t *testing.T) {
 		Return(models.ErrEntryNotFound)
 
 	entryCrypto := new(MockEntryCrypto)
-	crypto := func(key []byte) Encrypter {
+	crypto := func(key key.Key) Encrypter {
 		return entryCrypto
 	}
 
@@ -440,7 +455,7 @@ func Test_EntryManager_DeleteExpired(t *testing.T) {
 			Return(nil)
 
 		entryCrypto := new(MockEntryCrypto)
-		crypto := func(key []byte) Encrypter {
+		crypto := func(key key.Key) Encrypter {
 			return entryCrypto
 		}
 
@@ -475,7 +490,7 @@ func Test_EntryManager_DeleteExpired(t *testing.T) {
 			Return(fmt.Errorf("error"))
 
 		entryCrypto := new(MockEntryCrypto)
-		crypto := func(key []byte) Encrypter {
+		crypto := func(key key.Key) Encrypter {
 			return entryCrypto
 		}
 
@@ -497,41 +512,49 @@ func Test_EntryManager_DeleteExpired(t *testing.T) {
 func Test_EntryManager_GenerateEntryKey(t *testing.T) {
 	t.Run("call generate entry key method on the key manager", func(t *testing.T) {
 		entryUUID := "entry-uuid"
-		dek := []byte("dek")
-		kek := key.NewKey()
-		kek.Generate()
+		dek, err := key.NewGeneratedKey()
+		if err != nil {
+			t.Fatal(err)
+		}
+		kek, err := key.NewGeneratedKey()
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		keyManager := new(MockEntryKeyer)
-		keyManager.On("GenerateEncryptionKey", mock.Anything, entryUUID, dek, mock.Anything, mock.Anything).
+		keyManager.On("GenerateEncryptionKey", mock.Anything, entryUUID, *dek, mock.Anything, mock.Anything).
 			Return(&EntryKey{
 				EntryUUID:      entryUUID,
 				RemainingReads: 1,
 				Expire:         time.Now().Add(time.Minute),
-			}, kek, nil)
+			}, *kek, nil)
 
 		service := NewEntryManager(nil, nil, nil, keyManager)
 
-		entryKey, err := service.GenerateEntryKey(context.Background(), entryUUID, dek)
+		entryKey, err := service.GenerateEntryKey(context.Background(), entryUUID, *dek)
 
 		assert.NoError(t, err)
 		assert.Equal(t, entryUUID, entryKey.EntryUUID)
-		assert.Equal(t, kek.Get(), entryKey.KEK)
+		assert.Equal(t, *kek, entryKey.KEK)
 	})
 
 	t.Run("call generate entry key method on the key manager with error", func(t *testing.T) {
 		entryUUID := "entry-uuid"
-		dek := []byte("dek")
+		dek, err := key.NewGeneratedKey()
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		var emptyEntryKey *EntryKey
-		var emptyKey *key.Key
+		var emptyKey key.Key
 
 		keyManager := new(MockEntryKeyer)
-		keyManager.On("GenerateEncryptionKey", mock.Anything, entryUUID, dek, mock.Anything, mock.Anything).
+		keyManager.On("GenerateEncryptionKey", mock.Anything, entryUUID, *dek, mock.Anything, mock.Anything).
 			Return(emptyEntryKey, emptyKey, fmt.Errorf("error"))
 
 		service := NewEntryManager(nil, nil, nil, keyManager)
 
-		entryKey, err := service.GenerateEntryKey(context.Background(), entryUUID, dek)
+		entryKey, err := service.GenerateEntryKey(context.Background(), entryUUID, *dek)
 
 		assert.Error(t, err)
 		assert.Nil(t, entryKey)

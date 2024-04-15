@@ -83,19 +83,19 @@ func TestCreateEntry(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		key, err := key.FromHex(keyString)
+		k, err := key.FromHex(keyString)
 
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		encrypter := func(b []byte) services.Encrypter {
+		encrypter := func(b key.Key) services.Encrypter {
 			return services.NewAESEncrypter(b)
 		}
 		keyManager := services.NewEntryKeyManager(db, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), encrypter)
 
 		entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter, keyManager)
-		entry, err := entryManager.ReadEntry(ctx, savedUUID, key)
+		entry, err := entryManager.ReadEntry(ctx, savedUUID, *k)
 
 		if err != nil {
 			t.Fatal(err)
@@ -203,18 +203,18 @@ func TestCreateEntryJSON(t *testing.T) {
 		t.Error("In create response the deleteKey is empty")
 	}
 
-	key, err := key.FromHex(encode.Key)
+	k, err := key.FromHex(encode.Key)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	encrypter := func(b []byte) services.Encrypter {
+	encrypter := func(b key.Key) services.Encrypter {
 		return services.NewAESEncrypter(b)
 	}
 	keyManager := services.NewEntryKeyManager(db, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), encrypter)
 	entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter, keyManager)
-	entry, err := entryManager.ReadEntry(ctx, encode.UUID, key)
+	entry, err := entryManager.ReadEntry(ctx, encode.UUID, *k)
 
 	if err != nil {
 		t.Fatal(err)
@@ -294,18 +294,18 @@ func TestCreateEntryForm(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	key, err := key.FromHex(keyString)
+	k, err := key.FromHex(keyString)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	encrypter := func(b []byte) services.Encrypter {
+	encrypter := func(b key.Key) services.Encrypter {
 		return services.NewAESEncrypter(b)
 	}
 	keyManager := services.NewEntryKeyManager(db, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), encrypter)
 	entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter, keyManager)
-	entry, err := entryManager.ReadEntry(ctx, savedUUID, key)
+	entry, err := entryManager.ReadEntry(ctx, savedUUID, *k)
 
 	if err != nil {
 		t.Fatal("Getting entry", err)
@@ -389,7 +389,7 @@ func TestGetEntry(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
-			encrypter := func(b []byte) services.Encrypter {
+			encrypter := func(b key.Key) services.Encrypter {
 				return services.NewAESEncrypter(b)
 			}
 
@@ -446,7 +446,7 @@ func TestGetEntryJSON(t *testing.T) {
 		"foo",
 	}
 
-	encrypter := func(b []byte) services.Encrypter {
+	encrypter := func(b key.Key) services.Encrypter {
 		return services.NewAESEncrypter(b)
 	}
 
@@ -583,12 +583,12 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	encrypter := func(b []byte) services.Encrypter {
+	encrypter := func(b key.Key) services.Encrypter {
 		return services.NewAESEncrypter(b)
 	}
 	keyManager := services.NewEntryKeyManager(db, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), encrypter)
 	entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter, keyManager)
-	entry, err := entryManager.ReadEntry(ctx, savedUUID, decodedKey)
+	entry, err := entryManager.ReadEntry(ctx, savedUUID, *decodedKey)
 
 	if err != nil {
 		t.Fatal(err)

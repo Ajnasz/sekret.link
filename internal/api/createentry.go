@@ -19,7 +19,7 @@ type CreateEntryParser interface {
 
 // CreateEntryManager is an interface for creating entries
 type CreateEntryManager interface {
-	CreateEntry(ctx context.Context, body []byte, maxReads int, expiration time.Duration) (*services.EntryMeta, *key.Key, error)
+	CreateEntry(ctx context.Context, body []byte, maxReads int, expiration time.Duration) (*services.EntryMeta, key.Key, error)
 }
 
 // CreateEntryView is an interface for rendering the create entry response

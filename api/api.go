@@ -12,13 +12,14 @@ import (
 	"github.com/Ajnasz/sekret.link/api/middlewares"
 	"github.com/Ajnasz/sekret.link/internal/api"
 	"github.com/Ajnasz/sekret.link/internal/hasher"
+	"github.com/Ajnasz/sekret.link/internal/key"
 	"github.com/Ajnasz/sekret.link/internal/models"
 	"github.com/Ajnasz/sekret.link/internal/parsers"
 	"github.com/Ajnasz/sekret.link/internal/services"
 	"github.com/Ajnasz/sekret.link/internal/views"
 )
 
-func newAESEncrypter(b []byte) services.Encrypter {
+func newAESEncrypter(b key.Key) services.Encrypter {
 	return services.NewAESEncrypter(b)
 }
 

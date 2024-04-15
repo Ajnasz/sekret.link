@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/Ajnasz/sekret.link/internal/key"
 	"github.com/Ajnasz/sekret.link/internal/parsers"
 	"github.com/Ajnasz/sekret.link/internal/services"
 	"github.com/Ajnasz/sekret.link/internal/views"
@@ -12,7 +13,7 @@ import (
 
 // GetEntryManager is the interface for getting an entry
 type GetEntryManager interface {
-	ReadEntry(ctx context.Context, UUID string, key []byte) (*services.Entry, error)
+	ReadEntry(ctx context.Context, UUID string, k key.Key) (*services.Entry, error)
 }
 
 // GetEntryView is the interface for the view that should be implemented to render the get entry results

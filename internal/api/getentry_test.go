@@ -7,9 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Ajnasz/sekret.link/internal/key"
 	"github.com/Ajnasz/sekret.link/internal/parsers"
 	"github.com/Ajnasz/sekret.link/internal/services"
 	"github.com/Ajnasz/sekret.link/internal/views"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -38,8 +40,8 @@ type GetEntryManagerMock struct {
 	mock.Mock
 }
 
-func (g *GetEntryManagerMock) ReadEntry(ctx context.Context, UUID string, key []byte) (*services.Entry, error) {
-	args := g.Called(ctx, UUID, key)
+func (g *GetEntryManagerMock) ReadEntry(ctx context.Context, UUID string, k key.Key) (*services.Entry, error) {
+	args := g.Called(ctx, UUID, k)
 	return args.Get(0).(*services.Entry), args.Error(1)
 }
 
@@ -51,14 +53,15 @@ func TestGetHandle(t *testing.T) {
 	handler := NewGetHandler(parserMock, managerMock, viewMock)
 
 	viewMock.On("Render", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
-	// viewMock.On("RenderReadEntryError", mock.Anything, mock.Anything, mock.Anything).Return()
+	k, err := key.NewGeneratedKey()
+	assert.NoError(t, err)
 	parserMock.On("Parse", mock.Anything).Return(parsers.GetEntryRequestData{
 		UUID:      "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb",
 		KeyString: "12121212aeadf",
-		Key:       []byte{18, 18, 18, 18, 174, 173, 15},
+		Key:       *k,
 	}, nil)
 
-	managerMock.On("ReadEntry", mock.Anything, "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb", []byte{18, 18, 18, 18, 174, 173, 15}).
+	managerMock.On("ReadEntry", mock.Anything, "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb", *k).
 		Return(&services.Entry{
 			UUID:           "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb",
 			Data:           []byte{18, 18, 18, 18, 174, 173, 15},

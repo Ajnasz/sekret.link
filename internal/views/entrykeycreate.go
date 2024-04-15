@@ -17,7 +17,7 @@ type GenerateEntryKeyResponseData struct {
 	// The UUID of the entry.
 	UUID string
 	// The key decryption key
-	Key []byte
+	Key key.Key
 
 	// The time when the entry was created.
 	Expire time.Time
@@ -34,10 +34,8 @@ func NewGenerateEntryKeyView(webExternalURL *url.URL) GenerateEntryKeyView {
 
 // RenderGenerateEntryKey renders the response for the GenerateEntryKey endpoint.
 func (g GenerateEntryKeyView) Render(w http.ResponseWriter, r *http.Request, response GenerateEntryKeyResponseData) {
-	k := key.Key(response.Key)
-	keyString := k.ToHex()
 	w.Header().Add("x-entry-uuid", response.UUID)
-	w.Header().Add("x-entry-key", keyString)
+	w.Header().Add("x-entry-key", response.Key.String())
 	w.Header().Add("x-entry-expire", response.Expire.Format(time.RFC3339))
 
 	if r.Header.Get("Accept") == "application/json" {
@@ -45,7 +43,7 @@ func (g GenerateEntryKeyView) Render(w http.ResponseWriter, r *http.Request, res
 
 		json.NewEncoder(w).Encode(response)
 	} else {
-		newURL, err := uuid.GetUUIDUrlWithSecret(g.webExternalURL, response.UUID, keyString)
+		newURL, err := uuid.GetUUIDUrlWithSecret(g.webExternalURL, response.UUID, response.Key.String())
 
 		if err != nil {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)

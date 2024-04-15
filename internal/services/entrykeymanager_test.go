@@ -3,10 +3,10 @@ package services
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"testing"
 	"time"
 
+	"github.com/Ajnasz/sekret.link/internal/key"
 	"github.com/Ajnasz/sekret.link/internal/models"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
@@ -86,14 +86,15 @@ func TestEntryKeyManager_Create(t *testing.T) {
 	hasher := &MockHasher{}
 	encrypter := &EncrypterMock{}
 	entryUUID := "test-entry-uuid"
-	dek := []byte("test-dek")
+	dek, err := key.NewGeneratedKey()
+	assert.NoError(t, err)
 	encryptedKey := []byte("test-encrypted-key")
 	hash := []byte("test-hash")
 	expire := time.Now()
 	maxRead := 10
 
-	encrypter.On("Encrypt", dek).Return(encryptedKey, nil)
-	hasher.On("Hash", dek).Return(hash)
+	encrypter.On("Encrypt", dek.Get()).Return(encryptedKey, nil)
+	hasher.On("Hash", dek.Get()).Return(hash)
 	model.On("Create", ctx, mock.Anything, entryUUID, encryptedKey, hash).Return(&models.EntryKey{
 		UUID:           "test-uuid",
 		EntryUUID:      entryUUID,
@@ -106,12 +107,12 @@ func TestEntryKeyManager_Create(t *testing.T) {
 	model.On("SetExpire", ctx, mock.Anything, "test-uuid", expire).Return(nil)
 	model.On("SetMaxReads", ctx, mock.Anything, "test-uuid", maxRead).Return(nil)
 
-	crypto := func(key []byte) Encrypter {
+	crypto := func(key key.Key) Encrypter {
 		return encrypter
 	}
 
 	manager := NewEntryKeyManager(db, model, hasher, crypto)
-	entryKey, key, err := manager.Create(ctx, entryUUID, dek, &expire, &maxRead)
+	entryKey, key, err := manager.Create(ctx, entryUUID, *dek, &expire, &maxRead)
 
 	model.AssertExpectations(t)
 	encrypter.AssertExpectations(t)
@@ -141,13 +142,14 @@ func TestEntryKeyManager_Create_NoExpire(t *testing.T) {
 	model := &MockEntryKeyModel{}
 	hasher := &MockHasher{}
 	encrypter := &EncrypterMock{}
-	dek := []byte("test-dek")
+	dek, err := key.NewGeneratedKey()
+	assert.NoError(t, err)
 	entryUUID := "test-entry-uuid"
 	encryptedKey := []byte("test-encrypted-key")
 	hash := []byte("test-hash")
 
-	hasher.On("Hash", dek).Return(hash)
-	encrypter.On("Encrypt", dek).Return(encryptedKey, nil)
+	hasher.On("Hash", dek.Get()).Return(hash)
+	encrypter.On("Encrypt", dek.Get()).Return(encryptedKey, nil)
 	model.On("Create", ctx, mock.Anything, entryUUID, encryptedKey, hash).Return(&models.EntryKey{
 		UUID:           "test-uuid",
 		EntryUUID:      entryUUID,
@@ -158,11 +160,11 @@ func TestEntryKeyManager_Create_NoExpire(t *testing.T) {
 		RemainingReads: sql.NullInt16{Int16: 0, Valid: false},
 	}, nil)
 
-	crypto := func(key []byte) Encrypter {
+	crypto := func(key key.Key) Encrypter {
 		return encrypter
 	}
 	manager := NewEntryKeyManager(db, model, hasher, crypto)
-	entryKey, key, err := manager.Create(ctx, entryUUID, dek, nil, nil)
+	entryKey, key, err := manager.Create(ctx, entryUUID, *dek, nil, nil)
 
 	hasher.AssertExpectations(t)
 	encrypter.AssertExpectations(t)
@@ -172,7 +174,6 @@ func TestEntryKeyManager_Create_NoExpire(t *testing.T) {
 	}
 	assert.NoError(t, err)
 	assert.Equal(t, "test-uuid", entryKey.UUID)
-	fmt.Println("__------------------------", entryKey.Expire)
 	// assert.False(nil, entryKey.Expire)
 	assert.NotEmpty(t, key.Get())
 }
@@ -209,7 +210,7 @@ func TestEntryKeyManager_Create_NoMaxRead(t *testing.T) {
 		RemainingReads: sql.NullInt16{Int16: 0, Valid: false},
 	}, nil)
 
-	crypto := func(key []byte) Encrypter {
+	crypto := func(key key.Key) Encrypter {
 		return encrypter
 	}
 
@@ -242,13 +243,16 @@ func TestEntryKeyManager_GetDEK(t *testing.T) {
 	encrypter := &EncrypterMock{}
 	entryUUID := "test-entry-uuid"
 	encryptedKey := []byte("test-encrypted-key")
-	dek := []byte("test-dek")
+	dek, err := key.NewGeneratedKey()
+	assert.NoError(t, err)
+	kek, err := key.NewGeneratedKey()
+	assert.NoError(t, err)
 	hash := []byte("test-hash")
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectCommit()
-	hasher.On("Hash", dek).Return(hash)
-	encrypter.On("Decrypt", encryptedKey).Return(dek, nil)
+	hasher.On("Hash", dek.Get()).Return(hash)
+	encrypter.On("Decrypt", encryptedKey).Return(dek.Get(), nil)
 	model.On("Get", ctx, mock.Anything, entryUUID).Return([]models.EntryKey{
 		{
 			UUID:         "test-uuid",
@@ -259,12 +263,12 @@ func TestEntryKeyManager_GetDEK(t *testing.T) {
 		},
 	}, nil)
 
-	crypto := func(key []byte) Encrypter {
+	crypto := func(key key.Key) Encrypter {
 		return encrypter
 	}
 
 	manager := NewEntryKeyManager(db, model, hasher, crypto)
-	foundDEK, entryKey, err := manager.GetDEK(ctx, entryUUID, dek)
+	foundDEK, entryKey, err := manager.GetDEK(ctx, entryUUID, *kek)
 
 	model.AssertExpectations(t)
 	hasher.AssertExpectations(t)
@@ -273,7 +277,7 @@ func TestEntryKeyManager_GetDEK(t *testing.T) {
 		t.Errorf("there were unfulfilled expectations: %s", sqlMock.ExpectationsWereMet())
 	}
 	assert.NoError(t, err)
-	assert.Equal(t, dek, foundDEK)
+	assert.Equal(t, *dek, foundDEK)
 	assert.Equal(t, "test-uuid", entryKey.UUID)
 }
 
@@ -298,7 +302,7 @@ func TestEntryKeyManager_GetDEK_NotFound(t *testing.T) {
 	sqlMock.ExpectRollback()
 	model.On("Get", ctx, mock.Anything, entryUUID).Return([]models.EntryKey{}, nil)
 
-	crypto := func(key []byte) Encrypter {
+	crypto := func(key key.Key) Encrypter {
 		return encrypter
 	}
 
@@ -348,7 +352,7 @@ func TestEntryKeyManager_GetDEK_DecryptError(t *testing.T) {
 		},
 	}, nil)
 
-	crypto := func(key []byte) Encrypter {
+	crypto := func(key key.Key) Encrypter {
 		return encrypter
 	}
 
@@ -400,7 +404,7 @@ func TestEntryManager_InvalidDEK(t *testing.T) {
 		},
 	}, nil)
 
-	crypto := func(key []byte) Encrypter {
+	crypto := func(key key.Key) Encrypter {
 		return encrypter
 	}
 
@@ -469,7 +473,7 @@ func TestEntryKeyManager_GenerateEncryptionKey(t *testing.T) {
 	model.On("SetExpire", ctx, mock.Anything, "new-test-uuid", expire).Return(nil)
 	model.On("SetMaxReads", ctx, mock.Anything, "new-test-uuid", maxRead).Return(nil)
 
-	crypto := func(key []byte) Encrypter {
+	crypto := func(key key.Key) Encrypter {
 		return encrypter
 	}
 
@@ -509,7 +513,7 @@ func TestEntryKeyManager_UseTx(t *testing.T) {
 
 	model.On("Use", ctx, mock.Anything, "test-uuid").Return(nil)
 
-	crypto := func(key []byte) Encrypter {
+	crypto := func(key key.Key) Encrypter {
 		return encrypter
 	}
 
@@ -563,7 +567,7 @@ func Test_EntryKeyManager_GetDEKTx_NoRemainingReads(t *testing.T) {
 		},
 	}, nil)
 
-	crypto := func(key []byte) Encrypter {
+	crypto := func(key key.Key) Encrypter {
 		return encrypter
 	}
 
@@ -614,7 +618,7 @@ func Test_EntryKeyManager_GetDEKTx_Expired(t *testing.T) {
 		},
 	}, nil)
 
-	crypto := func(key []byte) Encrypter {
+	crypto := func(key key.Key) Encrypter {
 		return encrypter
 	}
 
@@ -650,7 +654,7 @@ func Test_EntryKeyManager_Delete(t *testing.T) {
 	sqlMock.ExpectCommit()
 	model.On("Delete", ctx, mock.Anything, uuid).Return(nil)
 
-	crypto := func(key []byte) Encrypter {
+	crypto := func(key key.Key) Encrypter {
 		return encrypter
 	}
 

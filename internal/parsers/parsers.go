@@ -10,7 +10,7 @@ type Parser[T any] interface {
 	Parse(r *http.Request) (T, error)
 }
 
-func getEntryKeyByte(keyString string) ([]byte, error) {
+func getEntryKeyByte(keyString string) (*key.Key, error) {
 	if len(keyString) == 64 {
 		return key.FromHex(keyString)
 	}

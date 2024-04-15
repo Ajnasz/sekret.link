@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/Ajnasz/sekret.link/internal/key"
 	"github.com/Ajnasz/sekret.link/internal/parsers"
 	"github.com/Ajnasz/sekret.link/internal/services"
 	"github.com/Ajnasz/sekret.link/internal/views"
@@ -15,7 +16,7 @@ type GenerateEntryKeyView interface {
 }
 
 type GenerateEntryKeyManager interface {
-	GenerateEntryKey(ctx context.Context, UUID string, key []byte) (*services.EntryKeyData, error)
+	GenerateEntryKey(ctx context.Context, UUID string, k key.Key) (*services.EntryKeyData, error)
 }
 
 type GenerateEntryKeyHandler struct {

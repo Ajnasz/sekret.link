@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Ajnasz/sekret.link/internal/key"
 	"github.com/Ajnasz/sekret.link/internal/parsers/expiration"
 	"github.com/Ajnasz/sekret.link/internal/parsers/maxreads"
 	"github.com/google/uuid"
@@ -13,7 +14,7 @@ import (
 // GenerateEntryKeyRequestData is the data for the GenerateEntryKey endpoint.
 type GenerateEntryKeyRequestData struct {
 	UUID       string
-	Key        []byte
+	Key        key.Key
 	Expiration time.Duration
 	MaxReads   int
 }
@@ -83,7 +84,7 @@ func (g *GenerateEntryKeyParser) Parse(r *http.Request) (GenerateEntryKeyRequest
 	}
 
 	reqData.UUID = UUID.String()
-	reqData.Key = keyByte
+	reqData.Key = *keyByte
 	reqData.Expiration = expiration
 	reqData.MaxReads = maxReads
 

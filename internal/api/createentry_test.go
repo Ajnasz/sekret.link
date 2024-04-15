@@ -36,7 +36,7 @@ func (m *MockEntryManager) CreateEntry(
 	body []byte,
 	maxReads int,
 	expiration time.Duration,
-) (*services.EntryMeta, *key.Key, error) {
+) (*services.EntryMeta, key.Key, error) {
 	args := m.Called(ctx, body, maxReads, expiration)
 
 	if args.Get(1) == nil {
@@ -46,7 +46,7 @@ func (m *MockEntryManager) CreateEntry(
 	var k key.Key
 	k = args.Get(1).(key.Key)
 
-	return args.Get(0).(*services.EntryMeta), &k, args.Error(2)
+	return args.Get(0).(*services.EntryMeta), k, args.Error(2)
 }
 
 type MockEntryView struct {
@@ -72,7 +72,12 @@ func Test_CreateEntryHandle(t *testing.T) {
 	response := httptest.NewRecorder()
 
 	parser.On("Parse", request).Return(&parsers.CreateEntryRequestData{}, nil)
-	entryManager.On("CreateEntry", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&services.EntryMeta{}, key.Key("key"), nil)
+
+	retKey, err := key.NewGeneratedKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	entryManager.On("CreateEntry", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&services.EntryMeta{}, *retKey, nil)
 	view.On("Render", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	handler := NewCreateHandler(10, parser, entryManager, view)

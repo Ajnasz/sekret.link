@@ -37,7 +37,7 @@ type Entry struct {
 
 type EntryKeyData struct {
 	EntryUUID      string
-	KEK            []byte
+	KEK            key.Key
 	RemainingReads int
 	Expire         time.Time
 }
@@ -66,7 +66,7 @@ func NewEntryManager(db *sql.DB, model EntryModel, crypto EncrypterFactory, keyM
 // It stores the encrypted data in the database
 // It stores the key in the key manager
 // It returns the meta data of the entry and the key
-func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingReads int, expire time.Duration) (*EntryMeta, *key.Key, error) {
+func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingReads int, expire time.Duration) (*EntryMeta, key.Key, error) {
 	uid := uuid.NewUUIDString()
 
 	tx, err := e.db.Begin()
@@ -113,11 +113,11 @@ func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingRe
 	}, kek, nil
 }
 
-func (e *EntryManager) readEntryLegacy(ctx context.Context, key []byte, entry *models.Entry) ([]byte, error) {
+func (e *EntryManager) readEntryLegacy(ctx context.Context, k key.Key, entry *models.Entry) ([]byte, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	crypto := e.crypto(key)
+	crypto := e.crypto(k)
 	return crypto.Decrypt(entry.Data)
 }
 
@@ -128,7 +128,7 @@ func (e *EntryManager) readEntryLegacy(ctx context.Context, key []byte, entry *m
 // It returns the decrypted data
 // It returns an error if the entry is not found or expired
 // It returns an error if the key is not found
-func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, key []byte) (*Entry, error) {
+func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, k key.Key) (*Entry, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
@@ -151,11 +151,11 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, key []byte) (
 		return nil, err
 	}
 
-	dek, entryKey, err := e.keyManager.GetDEKTx(ctx, tx, UUID, key)
+	dek, entryKey, err := e.keyManager.GetDEKTx(ctx, tx, UUID, k)
 	var decryptedData []byte
 	if err != nil {
 		if errors.Is(err, ErrEntryKeyNotFound) {
-			legacyData, legacyErr := e.readEntryLegacy(ctx, key, entry)
+			legacyData, legacyErr := e.readEntryLegacy(ctx, k, entry)
 			if legacyErr == nil {
 				decryptedData = legacyData
 			} else {
@@ -232,8 +232,8 @@ func (e *EntryManager) DeleteExpired(ctx context.Context) error {
 	return nil
 }
 
-func (e *EntryManager) GenerateEntryKey(ctx context.Context, entryUUID string, key []byte) (*EntryKeyData, error) {
-	meta, kek, err := e.keyManager.GenerateEncryptionKey(ctx, entryUUID, key, nil, nil)
+func (e *EntryManager) GenerateEntryKey(ctx context.Context, entryUUID string, k key.Key) (*EntryKeyData, error) {
+	meta, kek, err := e.keyManager.GenerateEncryptionKey(ctx, entryUUID, k, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -242,6 +242,6 @@ func (e *EntryManager) GenerateEntryKey(ctx context.Context, entryUUID string, k
 		EntryUUID:      entryUUID,
 		RemainingReads: meta.RemainingReads,
 		Expire:         meta.Expire,
-		KEK:            kek.Get(),
+		KEK:            kek,
 	}, nil
 }
