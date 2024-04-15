@@ -72,13 +72,13 @@ func (k *Key) Set(key []byte) error {
 	return nil
 }
 
-// ToHex Converts the key to hex string
-func (k *Key) ToHex() string {
+// toHex Converts the key to hex string
+func (k *Key) toHex() string {
 	return hex.EncodeToString(*k)
 }
 
 func (k *Key) String() string {
-	return k.ToHex()
+	return k.toHex()
 }
 
 func FromHex(s string) (*Key, error) {

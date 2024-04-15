@@ -401,7 +401,7 @@ func TestGetEntry(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com/%s/%s", meta.UUID, encKey.ToHex()), nil)
+			req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("http://example.com/%s/%s", meta.UUID, encKey.String()), nil)
 			w := httptest.NewRecorder()
 
 			mux := http.NewServeMux()
@@ -457,7 +457,7 @@ func TestGetEntryJSON(t *testing.T) {
 		t.Error(err)
 	}
 
-	req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", meta.UUID, encKey.ToHex()), nil)
+	req := httptest.NewRequest("GET", fmt.Sprintf("http://example.com/%s/%s", meta.UUID, encKey.String()), nil)
 	req.Header.Add("Accept", "application/json")
 	w := httptest.NewRecorder()
 

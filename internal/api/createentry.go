@@ -68,7 +68,7 @@ func (c CreateHandler) handle(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	viewData := views.BuildCreatedResponse(entry, key.ToHex())
+	viewData := views.BuildCreatedResponse(entry, key.String())
 
 	c.view.Render(w, r, viewData)
 	return nil

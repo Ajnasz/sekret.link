@@ -24,7 +24,7 @@ func TestNewKey(t *testing.T) {
 		t.Fatalf("Expected k.Get() return a 32 length byte slice")
 	}
 
-	hexStr := k.ToHex()
+	hexStr := k.toHex()
 	isHex, err := regexp.MatchString(`^[0-9a-f]{64}$`, hexStr)
 
 	if err != nil {

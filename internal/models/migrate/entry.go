@@ -85,7 +85,7 @@ func (*EntryMigration) addDeleteKey(ctx context.Context, db *sql.Tx) error {
 			return err
 		}
 
-		deleteKey := k.ToHex()
+		deleteKey := k.String()
 
 		_, err = db.ExecContext(ctx, "UPDATE entries SET delete_key=$2 WHERE uuid=$1", UUID, deleteKey)
 		if err != nil {

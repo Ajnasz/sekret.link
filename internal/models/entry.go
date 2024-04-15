@@ -46,7 +46,7 @@ func (e *EntryModel) getDeleteKey() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return k.ToHex(), nil
+	return k.String(), nil
 }
 
 // CreateEntry creates a new entry into the database

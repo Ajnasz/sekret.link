@@ -125,7 +125,9 @@ func Test_CreateEntryHandleError(t *testing.T) {
 	response := httptest.NewRecorder()
 
 	parser.On("Parse", request).Return(&parsers.CreateEntryRequestData{}, nil)
-	entryManager.On("CreateEntry", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&services.EntryMeta{}, key.Key("key"), errors.New("error"))
+	k, err := key.NewGeneratedKey()
+	assert.NoError(t, err)
+	entryManager.On("CreateEntry", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&services.EntryMeta{}, *k, errors.New("error"))
 	view.On("RenderError", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	handler := NewCreateHandler(10, parser, entryManager, view)
