@@ -22,6 +22,7 @@ import (
 	"github.com/Ajnasz/sekret.link/internal/services"
 	"github.com/Ajnasz/sekret.link/internal/test/durable"
 	"github.com/Ajnasz/sekret.link/internal/uuid"
+	"github.com/stretchr/testify/assert"
 )
 
 func NewHandlerConfig(db *sql.DB) HandlerConfig {
@@ -71,23 +72,14 @@ func TestCreateEntry(t *testing.T) {
 		t.Log("responseURL", responseURL)
 		savedUUID, keyString, err := uuid.GetUUIDAndSecretFromPath(responseURL)
 
-		if resp.Header.Get("x-entry-uuid") != savedUUID {
-			t.Errorf("Expected x-entry-uuid header to be %q, but got %q", savedUUID, resp.Header.Get("x-entry-uuid"))
-		}
+		assert.NoError(t, err)
 
-		if resp.Header.Get("x-entry-delete-key") == "" {
-			t.Error("Expected x-entry-delete-key to not be empty")
-		}
+		assert.Equal(t, resp.Header.Get("x-entry-uuid"), savedUUID, "wrong x-entry-uuid")
 
-		if err != nil {
-			t.Fatal(err)
-		}
+		assert.NotEmpty(t, resp.Header.Get("x-entry-delete-key"), "x-entry-delete-key is empty")
 
-		k, err := key.FromHex(keyString)
-
-		if err != nil {
-			t.Fatal(err)
-		}
+		k, err := key.FromString(keyString)
+		assert.NoError(t, err)
 
 		encrypter := func(b key.Key) services.Encrypter {
 			return services.NewAESEncrypter(b)
@@ -203,7 +195,7 @@ func TestCreateEntryJSON(t *testing.T) {
 		t.Error("In create response the deleteKey is empty")
 	}
 
-	k, err := key.FromHex(encode.Key)
+	k, err := key.FromString(encode.Key)
 
 	if err != nil {
 		t.Fatal(err)
@@ -294,7 +286,7 @@ func TestCreateEntryForm(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	k, err := key.FromHex(keyString)
+	k, err := key.FromString(keyString)
 
 	if err != nil {
 		t.Fatal(err)
@@ -535,13 +527,13 @@ func TestSetAndGetEntry(t *testing.T) {
 	mux.ServeHTTP(w, req)
 
 	resp = w.Result()
+
+	assert.Equal(t, 200, resp.StatusCode, "bad status code")
 	body, _ = io.ReadAll(resp.Body)
 
 	actual := string(body)
 
-	if testCase != actual {
-		t.Errorf("data not saved expected: %q, actual: %q", testCase, actual)
-	}
+	assert.Equal(t, testCase, actual, "data not saved")
 }
 
 func TestCreateEntryWithExpiration(t *testing.T) {
@@ -577,7 +569,7 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	decodedKey, err := key.FromHex(keyString)
+	decodedKey, err := key.FromString(keyString)
 
 	if err != nil {
 		t.Fatal(err)

@@ -76,9 +76,15 @@ func (k *Key) Set(key []byte) error {
 func (k *Key) toHex() string {
 	return hex.EncodeToString(*k)
 }
-
 func (k *Key) String() string {
 	return k.toHex()
+}
+
+func FromString(s string) (*Key, error) {
+	if len(s) == 64 {
+		return FromHex(s)
+	}
+	return nil, ErrorInvalidKey
 }
 
 func FromHex(s string) (*Key, error) {
