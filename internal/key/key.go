@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+
+	"github.com/eknkc/basex"
 )
 
 // ErrorKeyAlreadyGenerated Error occures when trying to generate a key on a
@@ -14,6 +16,13 @@ var ErrorInvalidKey = errors.New("invalid key")
 
 // SizeAES256 the byte size required for aes 256 encoding
 const SizeAES256 int = 32
+
+var base62Encoder *basex.Encoding
+
+func init() {
+	const alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	base62Encoder, _ = basex.NewEncoding(alphabet)
+}
 
 // NewKey creates a Key struct
 func NewKey() *Key {
@@ -85,6 +94,25 @@ func FromString(s string) (*Key, error) {
 		return FromHex(s)
 	}
 	return nil, ErrorInvalidKey
+}
+
+func (k *Key) toBase62() string {
+	return base62Encoder.Encode(*k)
+}
+
+func FromBase62(s string) (*Key, error) {
+	byte, err := base62Encoder.Decode(s)
+
+	if err != nil {
+		return nil, err
+	}
+
+	k := NewKey()
+	if err := k.Set(byte); err != nil {
+		return nil, err
+	}
+
+	return k, nil
 }
 
 func FromHex(s string) (*Key, error) {

@@ -13,6 +13,8 @@ type Parser[T any] interface {
 func getEntryKeyByte(keyString string) (*key.Key, error) {
 	if len(keyString) == 64 {
 		return key.FromHex(keyString)
+	} else if len(keyString) == 43 {
+		return key.FromBase62(keyString)
 	}
 	return nil, ErrInvalidKeyLength
 }

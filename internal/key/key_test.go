@@ -3,6 +3,8 @@ package key
 import (
 	"regexp"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewKey(t *testing.T) {
@@ -36,7 +38,14 @@ func TestNewKey(t *testing.T) {
 	}
 
 	str := k.String()
-	if str != hexStr {
-		t.Fatalf("Stringer interface expected to return hex value: %s, but got %s", hexStr, str)
-	}
+	assert.Equal(t, hexStr, str, "Stringer interface expected to return hex value")
+
+	// base62 := k.toBase62()
+
+	// isBase62, err := regexp.MatchString(`^[0-9a-zA-Z]{43}$`, base62)
+
+	// assert.NoError(t, err)
+	// if !isBase62 {
+	// 	t.Fatalf("expected %s to match base62 string regexp", base62)
+	// }
 }
