@@ -34,8 +34,12 @@ func (*EntryMigration) Create(ctx context.Context, tx *sql.Tx) error {
 }
 
 func (e *EntryMigration) Alter(ctx context.Context, tx *sql.Tx) error {
-	e.addRemainingRead(ctx, tx)
-	e.addDeleteKey(ctx, tx)
+	if err := e.addRemainingRead(ctx, tx); err != nil {
+		return err
+	}
+	if err := e.addDeleteKey(ctx, tx); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -56,8 +60,8 @@ func (*EntryMigration) addRemainingRead(ctx context.Context, tx *sql.Tx) error {
 	return nil
 }
 
-func (*EntryMigration) addDeleteKey(ctx context.Context, db *sql.Tx) error {
-	alterTable, err := db.PrepareContext(ctx, "ALTER TABLE entries ADD COLUMN IF NOT EXISTS delete_key CHAR(256);")
+func (*EntryMigration) addDeleteKey(ctx context.Context, tx *sql.Tx) error {
+	alterTable, err := tx.PrepareContext(ctx, "ALTER TABLE entries ADD COLUMN IF NOT EXISTS delete_key CHAR(256);")
 
 	if err != nil {
 		return fmt.Errorf("failed to add delete_key column: %w", err)
@@ -69,7 +73,7 @@ func (*EntryMigration) addDeleteKey(ctx context.Context, db *sql.Tx) error {
 		return fmt.Errorf("failed to add delete_key column: %w", err)
 	}
 
-	rows, err := db.QueryContext(ctx, "SELECT uuid FROM entries WHERE delete_key IS NULL;")
+	rows, err := tx.QueryContext(ctx, "SELECT uuid FROM entries WHERE delete_key IS NULL;")
 	if err != nil {
 		return err
 	}
@@ -87,12 +91,12 @@ func (*EntryMigration) addDeleteKey(ctx context.Context, db *sql.Tx) error {
 
 		deleteKey := k.String()
 
-		_, err = db.ExecContext(ctx, "UPDATE entries SET delete_key=$2 WHERE uuid=$1", UUID, deleteKey)
+		_, err = tx.ExecContext(ctx, "UPDATE entries SET delete_key=$2 WHERE uuid=$1", UUID, deleteKey)
 		if err != nil {
 			return fmt.Errorf("failed to update delete_key: %w", err)
 		}
 	}
-	_, err = db.ExecContext(ctx, "ALTER TABLE entries ALTER COLUMN delete_key SET NOT NULL;")
+	_, err = tx.ExecContext(ctx, "ALTER TABLE entries ALTER COLUMN delete_key SET NOT NULL;")
 	if err != nil {
 		return fmt.Errorf("failed to alter delete_key column: %w", err)
 	}
