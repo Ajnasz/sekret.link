@@ -118,7 +118,7 @@ func (e *EntryKeyModel) SetMaxReads(ctx context.Context, tx *sql.Tx, uuid string
 func (e *EntryKeyModel) Use(ctx context.Context, tx *sql.Tx, uuid string) error {
 	_, err := tx.ExecContext(ctx, `
 		UPDATE entry_key
-		SET remaining_reads = remaining_reads - 1
+		SET remaining_reads = remaining_reads - 1, accessed = NOW()
 		WHERE uuid = $1 AND remaining_reads IS NOT NULL
 	`, uuid)
 

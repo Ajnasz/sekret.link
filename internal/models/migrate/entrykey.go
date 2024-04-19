@@ -35,6 +35,44 @@ func (e *EntryKeyMigration) Create(ctx context.Context, tx *sql.Tx) error {
 	return nil
 }
 
+func (e *EntryKeyMigration) renameAccesedToAccessed(ctx context.Context, tx *sql.Tx) error {
+	// in postgresql db if it has a column named accesed rename it to accessed
+	hasColumnQuery := `
+	SELECT 1 as hasColumn FROM information_schema.columns
+	WHERE table_name = 'entry_key' AND column_name = 'accesed';
+	`
+
+	var hasColumn int
+	err := tx.QueryRowContext(ctx, hasColumnQuery).Scan(&hasColumn)
+
+	if err != nil {
+		if err != sql.ErrNoRows {
+			return fmt.Errorf("failed to check if column accesed exists: %w", err)
+		}
+	}
+
+	if hasColumn == 0 {
+		return nil
+	}
+
+	alterTable, err := tx.PrepareContext(ctx, "ALTER TABLE entry_key RENAME COLUMN accesed TO accessed;")
+
+	if err != nil {
+		return err
+	}
+
+	_, err = alterTable.Exec()
+
+	if err != nil {
+		return fmt.Errorf("failed to rename accesed column: %w", err)
+	}
+
+	return nil
+}
+
 func (e *EntryKeyMigration) Alter(ctx context.Context, tx *sql.Tx) error {
+	if err := e.renameAccesedToAccessed(ctx, tx); err != nil {
+		return err
+	}
 	return nil
 }
