@@ -10,14 +10,16 @@ type ExpiredEntryModel interface {
 }
 
 type ExpiredEntryManager struct {
-	db    *sql.DB
-	model ExpiredEntryModel
+	db            *sql.DB
+	entryModel    ExpiredEntryModel
+	entryKeyModel ExpiredEntryModel
 }
 
-func NewExpiredEntryManager(db *sql.DB, model ExpiredEntryModel) *ExpiredEntryManager {
+func NewExpiredEntryManager(db *sql.DB, entryModel ExpiredEntryModel, entryKeyModel ExpiredEntryModel) *ExpiredEntryManager {
 	return &ExpiredEntryManager{
-		db:    db,
-		model: model,
+		db:            db,
+		entryModel:    entryModel,
+		entryKeyModel: entryKeyModel,
 	}
 }
 
@@ -27,7 +29,12 @@ func (d *ExpiredEntryManager) DeleteExpired(ctx context.Context) error {
 		return err
 	}
 
-	if err := d.model.DeleteExpired(ctx, tx); err != nil {
+	if err := d.entryKeyModel.DeleteExpired(ctx, tx); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := d.entryModel.DeleteExpired(ctx, tx); err != nil {
 		tx.Rollback()
 		return err
 	}

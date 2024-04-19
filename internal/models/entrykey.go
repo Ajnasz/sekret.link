@@ -85,6 +85,15 @@ func (e *EntryKeyModel) Delete(ctx context.Context, tx *sql.Tx, uuid string) err
 	return err
 }
 
+func (e *EntryKeyModel) DeleteExpired(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
+		DELETE FROM entry_key
+		WHERE expire < NOW()
+	`)
+
+	return err
+}
+
 // SetExpire sets the expire time for the entry key
 func (e *EntryKeyModel) SetExpire(ctx context.Context, tx *sql.Tx, uuid string, expire time.Time) error {
 	_, err := tx.ExecContext(ctx, `
