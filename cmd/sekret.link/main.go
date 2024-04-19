@@ -52,12 +52,18 @@ func shutDown(shutdowns ...func() error) chan error {
 
 func scheduleDeleteExpired(ctx context.Context, db *sql.DB) error {
 	manager := services.NewExpiredEntryManager(db, &models.EntryModel{})
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
+			fmt.Println("Stop deleting expired entries")
 			return nil
-		case <-time.After(time.Second):
-			manager.DeleteExpired(ctx)
+		case <-ticker.C:
+			fmt.Println("Delete expired entries")
+			if err := manager.DeleteExpired(ctx); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %s", err)
+			}
 		}
 	}
 }
