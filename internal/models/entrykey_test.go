@@ -231,6 +231,12 @@ func Test_EntryKeyModel_Delete(t *testing.T) {
 	defer db.Close()
 
 	uid, entryKeyUUID, err := createTestEntryKey(ctx, tx)
+	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			t.Errorf("rollback failed: %v", err)
+		}
+		t.Fatal(err)
+	}
 
 	model := &EntryKeyModel{}
 
@@ -409,6 +415,13 @@ func Test_EntryKeyModel_UseTx(t *testing.T) {
 	}()
 
 	uid, entryKeyUUID, err := createTestEntryKey(ctx, tx)
+
+	if err != nil {
+		if err := tx.Rollback(); err != nil {
+			t.Errorf("rollback failed: %v", err)
+		}
+		t.Fatal(err)
+	}
 
 	model := &EntryKeyModel{}
 

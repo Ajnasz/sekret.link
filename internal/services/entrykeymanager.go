@@ -51,6 +51,13 @@ func (e *EntryKeyManager) Create(ctx context.Context, entryUUID string, dek key.
 
 	entryKey, k, err := e.CreateWithTx(ctx, tx, entryUUID, dek, expire, maxRead)
 
+	if err != nil {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return nil, nil, errors.Join(err, rollbackErr)
+		}
+		return nil, nil, err
+	}
+
 	if err := tx.Commit(); err != nil {
 		return nil, nil, err
 	}
