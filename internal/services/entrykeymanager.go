@@ -13,6 +13,10 @@ import (
 
 var ErrEntryKeyNotFound = errors.New("entry key not found")
 
+var ErrEntryKeyDeleteFailed = errors.New("entry key delete failed")
+var ErrEntryCreateFailed = errors.New("entry create failed")
+var ErrGetDEKFailed = errors.New("get DEK failed")
+
 type EntryKeyModel interface {
 	Create(ctx context.Context, tx *sql.Tx, entryUUID string, encryptedKey []byte, hash []byte) (*models.EntryKey, error)
 	Get(ctx context.Context, tx *sql.Tx, entryUUID string) ([]models.EntryKey, error)
@@ -24,7 +28,6 @@ type EntryKeyModel interface {
 
 type EntryKeyManager struct {
 	db        *sql.DB
-	tx        *sql.Tx
 	model     EntryKeyModel
 	hasher    hasher.Hasher
 	encrypter EncrypterFactory
@@ -81,24 +84,24 @@ func (e *EntryKeyManager) CreateWithTx(ctx context.Context, tx *sql.Tx, entryUUI
 	k, err := key.NewGeneratedKey()
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Join(ErrEntryCreateFailed, err)
 	}
 	encrypter := e.encrypter(k.Get())
 	encryptedKey, err := encrypter.Encrypt(dek)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Join(ErrEntryCreateFailed, err)
 	}
 
 	hash := e.hasher.Hash(dek.Get())
 	entryKey, err := e.model.Create(ctx, tx, entryUUID, encryptedKey, hash)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Join(ErrEntryCreateFailed, err)
 	}
 
 	if expire != nil {
 		err := e.model.SetExpire(ctx, tx, entryKey.UUID, *expire)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, errors.Join(ErrEntryCreateFailed, err)
 		}
 		entryKey.Expire = sql.NullTime{
 			Time:  *expire,
@@ -109,7 +112,7 @@ func (e *EntryKeyManager) CreateWithTx(ctx context.Context, tx *sql.Tx, entryUUI
 	if maxRead != nil {
 		err := e.model.SetMaxReads(ctx, tx, entryKey.UUID, *maxRead)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, errors.Join(ErrEntryCreateFailed, err)
 		}
 
 		entryKey.RemainingReads = sql.NullInt16{
@@ -123,15 +126,21 @@ func (e *EntryKeyManager) CreateWithTx(ctx context.Context, tx *sql.Tx, entryUUI
 func (e *EntryKeyManager) Delete(ctx context.Context, uuid string) error {
 	tx, err := e.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return errors.Join(ErrEntryKeyDeleteFailed, err)
 	}
 
 	if err := e.model.Delete(ctx, tx, uuid); err != nil {
-		tx.Rollback()
-		return err
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return errors.Join(ErrEntryKeyDeleteFailed, err, rollbackErr)
+		}
+		return errors.Join(ErrEntryKeyDeleteFailed, err)
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return errors.Join(ErrEntryKeyDeleteFailed, err)
+	}
+
+	return nil
 }
 
 func (e *EntryKeyManager) UseTx(ctx context.Context, tx *sql.Tx, entryUUID string) error {
@@ -172,7 +181,9 @@ func (e *EntryKeyManager) GetDEK(ctx context.Context, entryUUID string, key key.
 
 	dek, entryKey, err = e.GetDEKTx(ctx, tx, entryUUID, key)
 	if err != nil {
-		tx.Rollback()
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return nil, nil, errors.Join(err, rollbackErr)
+		}
 		return nil, nil, err
 	}
 
@@ -190,7 +201,7 @@ func (e *EntryKeyManager) GetDEKTx(ctx context.Context, tx *sql.Tx, entryUUID st
 	dek, entryKeyModel, err := e.findDEK(ctx, tx, entryUUID, key)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Join(ErrGetDEKFailed, err)
 	}
 
 	if err := validateEntryKey(entryKeyModel); err != nil {
@@ -215,13 +226,17 @@ func (e EntryKeyManager) GenerateEncryptionKey(ctx context.Context, entryUUID st
 	dek, _, err := e.findDEK(ctx, tx, entryUUID, existingKey)
 
 	if err != nil {
-		tx.Rollback()
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return nil, nil, errors.Join(err, rollbackErr)
+		}
 		return nil, nil, err
 	}
 
 	entryKey, k, err := e.CreateWithTx(ctx, tx, entryUUID, dek, expire, maxRead)
 	if err != nil {
-		tx.Rollback()
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return nil, nil, errors.Join(err, rollbackErr)
+		}
 		return nil, nil, err
 	}
 

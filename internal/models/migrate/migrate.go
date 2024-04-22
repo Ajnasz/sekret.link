@@ -25,12 +25,16 @@ func prepareDatabase(ctx context.Context, db *sql.DB) error {
 
 	for _, migration := range migrations {
 		if err := migration.Create(ctx, tx); err != nil {
-			tx.Rollback()
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				return fmt.Errorf("failed to create migration: %w", rollbackErr)
+			}
 			return fmt.Errorf("failed to create migration: %w", err)
 		}
 
 		if err := migration.Alter(ctx, tx); err != nil {
-			tx.Rollback()
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				return fmt.Errorf("failed to alter migration: %w", rollbackErr)
+			}
 			return fmt.Errorf("failed to alter migration: %w", err)
 		}
 	}

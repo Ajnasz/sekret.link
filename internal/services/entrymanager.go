@@ -15,6 +15,11 @@ var ErrEntryExpired = errors.New("entry expired")
 var ErrEntryNotFound = errors.New("entry not found")
 var ErrEntryNoRemainingReads = errors.New("entry has no remaining reads")
 
+var ErrCreateEntryFailed = errors.New("create entry failed")
+var ErrReadEntryFailed = errors.New("read entry failed")
+var ErrDeleteEntryFailed = errors.New("delete entry failed")
+var DeleteExpiredFailed = errors.New("delete expired failed")
+
 // EntryMeta provides the entry meta
 type EntryMeta struct {
 	UUID           string
@@ -71,37 +76,47 @@ func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingRe
 
 	tx, err := e.db.Begin()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Join(ErrCreateEntryFailed, err)
 	}
 	dek, err := key.NewGeneratedKey()
 
 	if err != nil {
-		tx.Rollback()
-		return nil, nil, err
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return nil, nil, errors.Join(ErrCreateEntryFailed, err, rollbackErr)
+		}
+		return nil, nil, errors.Join(ErrCreateEntryFailed, err)
 	}
 
 	crypto := e.crypto(dek.Get())
 
 	encryptedData, err := crypto.Encrypt(data)
 	if err != nil {
-		tx.Rollback()
-		return nil, nil, err
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return nil, nil, errors.Join(ErrCreateEntryFailed, err, rollbackErr)
+		}
+		return nil, nil, errors.Join(ErrCreateEntryFailed, err)
 	}
 	meta, err := e.model.CreateEntry(ctx, tx, uid, encryptedData, remainingReads, expire)
 	if err != nil {
-		tx.Rollback()
-		return nil, nil, err
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return nil, nil, errors.Join(ErrCreateEntryFailed, err, rollbackErr)
+		}
+		return nil, nil, errors.Join(ErrCreateEntryFailed, err)
 	}
 
 	expireAt := time.Now().Add(expire)
 	_, kek, err := e.keyManager.CreateWithTx(ctx, tx, uid, dek.Get(), &expireAt, &remainingReads)
 
 	if err != nil {
-		tx.Rollback()
-		return nil, nil, err
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return nil, nil, errors.Join(ErrCreateEntryFailed, err, rollbackErr)
+		}
+		return nil, nil, errors.Join(ErrCreateEntryFailed, err)
 	}
 
-	tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return nil, nil, errors.Join(ErrCreateEntryFailed, err)
+	}
 
 	return &EntryMeta{
 		UUID:           meta.UUID,
@@ -139,15 +154,19 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, k key.Key) (*
 
 	entry, err := e.model.ReadEntry(ctx, tx, UUID)
 	if err != nil {
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			return nil, errors.Join(err, ErrReadEntryFailed)
+		}
 		if errors.Is(err, models.ErrEntryNotFound) {
 			return nil, ErrEntryNotFound
 		}
-		return nil, err
+		return nil, errors.Join(err, ErrReadEntryFailed)
 	}
 
 	if err := validateEntry(entry); err != nil {
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			return nil, errors.Join(err, ErrReadEntryFailed)
+		}
 		return nil, err
 	}
 
@@ -159,34 +178,44 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, k key.Key) (*
 			if legacyErr == nil {
 				decryptedData = legacyData
 			} else {
-				tx.Rollback()
-				return nil, err
+				if rollbackErr := tx.Rollback(); rollbackErr != nil {
+					return nil, errors.Join(err, rollbackErr, ErrReadEntryFailed)
+				}
+				return nil, errors.Join(err, ErrReadEntryFailed)
 			}
 		} else {
-			tx.Rollback()
-			return nil, err
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				return nil, errors.Join(err, rollbackErr, ErrReadEntryFailed)
+			}
+			return nil, errors.Join(err, ErrReadEntryFailed)
 		}
 	} else {
 		crypto := e.crypto(dek)
 		decryptedData, err = crypto.Decrypt(entry.Data)
 		if err != nil {
-			tx.Rollback()
-			return nil, err
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				return nil, errors.Join(err, rollbackErr, ErrReadEntryFailed)
+			}
+			return nil, errors.Join(err, ErrReadEntryFailed)
 		}
 
 		if err := e.keyManager.UseTx(ctx, tx, entryKey.UUID); err != nil {
-			tx.Rollback()
-			return nil, err
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				return nil, errors.Join(err, rollbackErr, ErrReadEntryFailed)
+			}
+			return nil, errors.Join(err, ErrReadEntryFailed)
 		}
 	}
 
 	if err := e.model.Use(ctx, tx, UUID); err != nil {
-		tx.Rollback()
-		return nil, err
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return nil, errors.Join(err, rollbackErr, ErrReadEntryFailed)
+		}
+		return nil, errors.Join(err, ErrReadEntryFailed)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, err
+		return nil, errors.Join(err, ErrReadEntryFailed)
 	}
 
 	return &Entry{
@@ -203,32 +232,44 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, k key.Key) (*
 func (e *EntryManager) DeleteEntry(ctx context.Context, UUID string, deleteKey string) error {
 	tx, err := e.db.Begin()
 	if err != nil {
-		tx.Rollback()
-		return err
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return errors.Join(ErrDeleteEntryFailed, err, rollbackErr)
+		}
+		return errors.Join(ErrDeleteEntryFailed, err)
 	}
 
 	if err := e.model.DeleteEntry(ctx, tx, UUID, deleteKey); err != nil {
-		tx.Rollback()
-		return err
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return errors.Join(ErrDeleteEntryFailed, err, rollbackErr)
+		}
+		return errors.Join(ErrDeleteEntryFailed, err)
 	}
 
-	tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return errors.Join(ErrDeleteEntryFailed, err)
+	}
 	return nil
 }
 
 func (e *EntryManager) DeleteExpired(ctx context.Context) error {
 	tx, err := e.db.Begin()
 	if err != nil {
-		tx.Rollback()
-		return err
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return errors.Join(DeleteExpiredFailed, err, rollbackErr)
+		}
+		return errors.Join(DeleteExpiredFailed, err)
 	}
 
 	if err := e.model.DeleteExpired(ctx, tx); err != nil {
-		tx.Rollback()
-		return err
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return errors.Join(DeleteExpiredFailed, err, rollbackErr)
+		}
+		return errors.Join(DeleteExpiredFailed, err)
 	}
 
-	tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return errors.Join(DeleteExpiredFailed, err)
+	}
 	return nil
 }
 

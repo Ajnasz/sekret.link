@@ -126,7 +126,9 @@ func Test_EntryKeyModel_Get(t *testing.T) {
 	entryModel := &EntryModel{}
 	_, err = entryModel.CreateEntry(ctx, tx, uid, []byte("test data"), 2, 3600)
 	if err != nil {
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			t.Error(err)
+		}
 		t.Fatal(err)
 	}
 

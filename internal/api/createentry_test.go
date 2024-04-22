@@ -43,8 +43,7 @@ func (m *MockEntryManager) CreateEntry(
 		return args.Get(0).(*services.EntryMeta), nil, args.Error(2)
 	}
 
-	var k key.Key
-	k = args.Get(1).(key.Key)
+	k := args.Get(1).(key.Key)
 
 	return args.Get(0).(*services.EntryMeta), k, args.Error(2)
 }

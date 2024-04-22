@@ -655,14 +655,18 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 	entry, err := model.ReadEntryMeta(ctx, tx, savedUUID)
 
 	if err != nil {
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			t.Error(err)
+		}
 		t.Fatal(err)
 	}
 
-	tx.Commit()
+	if err := tx.Commit(); err != nil {
+		t.Errorf("commit failed: %v", err)
+	}
 
 	if entry.RemainingReads != 2 {
-		t.Errorf("expected max reads to be: %d, actual: %d", 2, entry.RemainingReads)
+		t.Fatalf("expected max reads to be: %d, actual: %d", 2, entry.RemainingReads)
 	}
 }
 

@@ -522,7 +522,9 @@ func TestEntryKeyManager_UseTx(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	tx.Commit()
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
 
 	err = manager.UseTx(ctx, tx, "test-uuid")
 
