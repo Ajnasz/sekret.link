@@ -52,7 +52,9 @@ func (e EntryCreateView) Render(w http.ResponseWriter, r *http.Request, entry En
 	if r.Header.Get("Accept") == "application/json" {
 		w.Header().Set("Content-Type", "application/json")
 
-		json.NewEncoder(w).Encode(entry)
+		if err := json.NewEncoder(w).Encode(entry); err != nil {
+			log.Println("JSON encode failed", err)
+		}
 	} else {
 		newURL, err := uuid.GetUUIDUrlWithSecret(e.webExternalURL, entry.UUID, entry.Key)
 		if err != nil {

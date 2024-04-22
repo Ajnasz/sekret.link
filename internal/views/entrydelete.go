@@ -22,7 +22,7 @@ func (e EntryDeleteView) Render(w http.ResponseWriter, r *http.Request, data Del
 
 func (e EntryDeleteView) RenderError(w http.ResponseWriter, r *http.Request, err error) {
 
-	if errors.Is(err, models.ErrEntryNotFound) || errors.Is(err, models.ErrEntryNotFound) {
+	if errors.Is(err, models.ErrEntryNotFound) {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"time"
@@ -41,7 +42,9 @@ func (g GenerateEntryKeyView) Render(w http.ResponseWriter, r *http.Request, res
 	if r.Header.Get("Accept") == "application/json" {
 		w.Header().Set("Content-Type", "application/json")
 
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			log.Println("JSON encode failed", err)
+		}
 	} else {
 		newURL, err := uuid.GetUUIDUrlWithSecret(g.webExternalURL, response.UUID, response.Key.String())
 
