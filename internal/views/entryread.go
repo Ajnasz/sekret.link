@@ -45,7 +45,10 @@ func (e EntryReadView) Render(w http.ResponseWriter, r *http.Request, response E
 		json.NewEncoder(w).Encode(response)
 	} else {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(response.Data))
+		_, err := w.Write([]byte(response.Data))
+		if err != nil {
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+		}
 	}
 }
 
