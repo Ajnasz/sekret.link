@@ -76,14 +76,18 @@ func (c CreateEntryParser) calculateExpiration(expire string, defaultExpire time
 
 func (c CreateEntryParser) getSecretExpiration(r *http.Request) (time.Duration, error) {
 	var expiration string
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		return 0, err
+	}
 	expiration = r.Form.Get("expire")
 
 	return c.calculateExpiration(expiration, time.Second*time.Duration(c.maxExpireSeconds))
 }
 
 func (c CreateEntryParser) getSecretMaxReads(r *http.Request) (int, error) {
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		return 0, err
+	}
 
 	reads, err := maxreads.Parse(r.Form.Get("maxReads"))
 	if err != nil {
