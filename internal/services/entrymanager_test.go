@@ -24,7 +24,6 @@ func Test_EntryService_Create(t *testing.T) {
 	defer db.Close()
 
 	sqlMock.ExpectBegin()
-	sqlMock.ExpectExec("INSERT INTO entries").WillReturnResult(sqlmock.NewResult(1, 1))
 	sqlMock.ExpectCommit()
 
 	ctx := context.Background()
@@ -49,8 +48,11 @@ func Test_EntryService_Create(t *testing.T) {
 	}
 
 	keyManager := new(MockEntryKeyer)
-	kek := key.NewKey()
-	kek.Set([]byte("kek"))
+	kek, err := key.NewGeneratedKey()
+
+	if err != nil {
+		t.Fatal(err)
+	}
 	keyManager.On("CreateWithTx", ctx, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&EntryKey{}, *kek, nil)
 
 	service := NewEntryManager(db, entryModel, crypto, keyManager)
@@ -406,7 +408,6 @@ func TestDeleteEntryInvalidDeleteKey(t *testing.T) {
 	}
 	defer db.Close()
 	sqlMock.ExpectBegin()
-	// sqlMock.ExpectExec("DELETE FROM entries WHERE uuid=(.+) AND delete_key=(.+)").WillReturnResult(sqlmock.NewResult(2, 1))
 	sqlMock.ExpectRollback()
 
 	ctx := context.Background()
@@ -427,7 +428,7 @@ func TestDeleteEntryInvalidDeleteKey(t *testing.T) {
 	err = service.DeleteEntry(ctx, "uuid", "delete_key")
 
 	assert.Error(t, err)
-	assert.Equal(t, models.ErrEntryNotFound, err)
+	assert.ErrorIs(t, err, models.ErrEntryNotFound)
 
 	entryModel.AssertExpectations(t)
 	keyManager.AssertExpectations(t)
