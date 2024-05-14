@@ -19,6 +19,7 @@ import (
 	"github.com/Ajnasz/sekret.link/api"
 	"github.com/Ajnasz/sekret.link/internal/config"
 	"github.com/Ajnasz/sekret.link/internal/durable"
+	"github.com/Ajnasz/sekret.link/internal/key"
 	"github.com/Ajnasz/sekret.link/internal/models"
 	"github.com/Ajnasz/sekret.link/internal/models/migrate"
 	"github.com/Ajnasz/sekret.link/internal/services"
@@ -123,6 +124,7 @@ func getConfig(ctx context.Context) (*api.HandlerConfig, error) {
 		postgresDB       string
 		maxDataSize      int64
 		queryVersion     bool
+		base62Encoding   bool
 	)
 	flag.StringVar(&externalURLParam, "webExternalURL", "", "Web server external url")
 	flag.StringVar(&postgresDB, "postgresDB", "", "Connection string for postgresql database backend")
@@ -130,6 +132,7 @@ func getConfig(ctx context.Context) (*api.HandlerConfig, error) {
 	flag.IntVar(&maxExpireSeconds, "maxExpireSeconds", 60*60*24*30, "Max expiration time in seconds")
 	flag.Int64Var(&maxDataSize, "maxDataSize", 1024*1024, "Max data size")
 	flag.BoolVar(&queryVersion, "version", false, "Get version information")
+	flag.BoolVar(&base62Encoding, "base62", false, "Use base62 encoding")
 	flag.Parse()
 
 	if queryVersion {
@@ -141,6 +144,10 @@ func getConfig(ctx context.Context) (*api.HandlerConfig, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	if base62Encoding {
+		key.SetEncodingType(key.Base62Encoding)
 	}
 
 	handlerConfig := api.HandlerConfig{

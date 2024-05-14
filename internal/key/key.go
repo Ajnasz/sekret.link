@@ -23,7 +23,15 @@ var ErrorInvalidKey = errors.New("invalid key")
 // SizeAES256 the byte size required for aes 256 encoding
 const SizeAES256 int = 32
 
+type encoding int
+
+const (
+	HexEncoding encoding = iota
+	Base62Encoding
+)
+
 var base62Encoder *basex.Encoding
+var encodingType encoding
 
 func init() {
 	const alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -96,6 +104,10 @@ func (k *Key) toHex() string {
 
 // String returns the key as a string
 func (k *Key) String() string {
+	if encodingType == Base62Encoding {
+		return k.toBase62()
+	}
+
 	return k.toHex()
 }
 
@@ -147,4 +159,9 @@ func FromHex(s string) (*Key, error) {
 	}
 
 	return k, nil
+}
+
+// SetEncodingType sets the encoding type
+func SetEncodingType(encoding encoding) {
+	encodingType = encoding
 }
