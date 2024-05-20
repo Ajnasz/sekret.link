@@ -10,6 +10,9 @@ all: clean linux
 run:
 	@cd cmd/sekret.link && POSTGRES_URL="postgres://postgres:password@localhost:5432/sekret_link_test?sslmode=disable" go run . -webExternalURL=/api -base62
 
+.PHONY: build
+build: build/${BINARY_NAME}.linux.amd64
+
 build/${BINARY_NAME}.linux.amd64:
 	cd cmd/sekret.link && GOARCH=amd64 GOOS=linux go build ${BUILD_ARGS} -ldflags "-w -s -X main.version=${VERSION} -X main.build=${BUILD}" -o ../../$@
 
