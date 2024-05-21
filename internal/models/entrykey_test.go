@@ -33,7 +33,7 @@ func createTestEntryKey(ctx context.Context, tx *sql.Tx) (string, string, error)
 
 	entryModel := &EntryModel{}
 
-	_, err := entryModel.CreateEntry(ctx, tx, uid, []byte("test data"), 2, 3600)
+	_, err := entryModel.CreateEntry(ctx, tx, uid, "text/plain", []byte("test data"), 2, 3600)
 
 	if err != nil {
 		return "", "", err
@@ -66,7 +66,7 @@ func Test_EntryKeyModel_Create(t *testing.T) {
 	uid := uuid.New().String()
 
 	entryModel := &EntryModel{}
-	_, err = entryModel.CreateEntry(ctx, tx, uid, []byte("test data"), 2, 3600)
+	_, err = entryModel.CreateEntry(ctx, tx, uid, "text/plain", []byte("test data"), 2, 3600)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func Test_EntryKeyModel_Get(t *testing.T) {
 	uid := uuid.New().String()
 
 	entryModel := &EntryModel{}
-	_, err = entryModel.CreateEntry(ctx, tx, uid, []byte("test data"), 2, 3600)
+	_, err = entryModel.CreateEntry(ctx, tx, uid, "text/plain", []byte("test data"), 2, 3600)
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
 			t.Error(err)

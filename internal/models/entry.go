@@ -24,6 +24,7 @@ type EntryMeta struct {
 	Created        time.Time
 	Accessed       sql.NullTime
 	Expire         time.Time
+	ContentType    string
 }
 
 // uuid uuid PRIMARY KEY,
@@ -50,14 +51,14 @@ func (e *EntryModel) getDeleteKey() (string, error) {
 }
 
 // CreateEntry creates a new entry into the database
-func (e *EntryModel) CreateEntry(ctx context.Context, tx *sql.Tx, uuid string, data []byte, remainingReads int, expire time.Duration) (*EntryMeta, error) {
+func (e *EntryModel) CreateEntry(ctx context.Context, tx *sql.Tx, uuid string, contenType string, data []byte, remainingReads int, expire time.Duration) (*EntryMeta, error) {
 	deleteKey, err := e.getDeleteKey()
 	if err != nil {
 		return nil, errors.Join(err, ErrCreateEntry)
 	}
 
 	now := time.Now()
-	res, err := tx.ExecContext(ctx, `INSERT INTO entries (uuid, data, created, expire, remaining_reads, delete_key) VALUES  ($1, $2, $3, $4, $5, $6) RETURNING uuid, delete_key;`, uuid, data, now, now.Add(expire), remainingReads, deleteKey)
+	res, err := tx.ExecContext(ctx, `INSERT INTO entries (uuid, data, created, expire, remaining_reads, delete_key, content_type) VALUES  ($1, $2, $3, $4, $5, $6, $7) RETURNING uuid, delete_key;`, uuid, data, now, now.Add(expire), remainingReads, deleteKey, contenType)
 
 	if err != nil {
 		return nil, errors.Join(err, ErrCreateEntry)
@@ -89,9 +90,9 @@ func (e *EntryModel) Use(ctx context.Context, tx *sql.Tx, uuid string) error {
 // ReadEntry reads a entry from the database
 // and updates the read count
 func (e *EntryModel) ReadEntry(ctx context.Context, tx *sql.Tx, uuid string) (*Entry, error) {
-	row := tx.QueryRow("SELECT uuid, data, remaining_reads, delete_key, created, accessed, expire FROM entries WHERE uuid=$1 AND remaining_reads > 0 LIMIT 1", uuid)
+	row := tx.QueryRow("SELECT uuid, data, remaining_reads, delete_key, created, accessed, expire, content_type FROM entries WHERE uuid=$1 AND remaining_reads > 0 LIMIT 1", uuid)
 	var s Entry
-	err := row.Scan(&s.UUID, &s.Data, &s.RemainingReads, &s.DeleteKey, &s.Created, &s.Accessed, &s.Expire)
+	err := row.Scan(&s.UUID, &s.Data, &s.RemainingReads, &s.DeleteKey, &s.Created, &s.Accessed, &s.Expire, &s.ContentType)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrEntryNotFound
@@ -103,9 +104,9 @@ func (e *EntryModel) ReadEntry(ctx context.Context, tx *sql.Tx, uuid string) (*E
 }
 
 func (e *EntryModel) ReadEntryMeta(ctx context.Context, tx *sql.Tx, uuid string) (*EntryMeta, error) {
-	row := tx.QueryRow("SELECT created, accessed, expire, remaining_reads, delete_key FROM entries WHERE uuid=$1 AND remaining_reads > 0 LIMIT 1", uuid)
+	row := tx.QueryRow("SELECT created, accessed, expire, remaining_reads, delete_key, content_type FROM entries WHERE uuid=$1 AND remaining_reads > 0 LIMIT 1", uuid)
 	var s EntryMeta
-	err := row.Scan(&s.Created, &s.Accessed, &s.Expire, &s.RemainingReads, &s.DeleteKey)
+	err := row.Scan(&s.Created, &s.Accessed, &s.Expire, &s.RemainingReads, &s.DeleteKey, &s.ContentType)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ErrEntryNotFound

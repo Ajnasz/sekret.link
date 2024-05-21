@@ -16,6 +16,7 @@ func (m *MockEntryModel) CreateEntry(
 	ctx context.Context,
 	tx *sql.Tx,
 	UUID string,
+	contentType string,
 	data []byte,
 	remainingReads int,
 	expire time.Duration) (*EntryMeta, error) {

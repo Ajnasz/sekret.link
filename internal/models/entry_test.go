@@ -31,7 +31,7 @@ func Test_EntryModel_CreateEntry(t *testing.T) {
 
 	model := &EntryModel{}
 
-	meta, err := model.CreateEntry(ctx, tx, uid, data, remainingReads, expire)
+	meta, err := model.CreateEntry(ctx, tx, uid, "text/plain", data, remainingReads, expire)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func Test_EntryModel_Use(t *testing.T) {
 
 	model := &EntryModel{}
 
-	meta, err := model.CreateEntry(ctx, tx, uid, data, remainingReads, expire)
+	meta, err := model.CreateEntry(ctx, tx, uid, "text/plain", data, remainingReads, expire)
 	if err != nil {
 		t.Fatal(err)
 	}

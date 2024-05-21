@@ -63,13 +63,15 @@ func TestGetHandle(t *testing.T) {
 
 	managerMock.On("ReadEntry", mock.Anything, "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb", *k).
 		Return(&services.Entry{
-			UUID:           "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb",
-			Data:           []byte{18, 18, 18, 18, 174, 173, 15},
-			RemainingReads: 0,
-			DeleteKey:      "12121212aeadf",
-			Created:        time.Now().Add(time.Minute * -1),
-			Accessed:       time.Now(),
-			Expire:         time.Now().Add(time.Minute * 1),
+			Data: []byte{18, 18, 18, 18, 174, 173, 15},
+			EntryMeta: services.EntryMeta{
+				UUID:           "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb",
+				RemainingReads: 0,
+				DeleteKey:      "12121212aeadf",
+				Created:        time.Now().Add(time.Minute * -1),
+				Accessed:       time.Now(),
+				Expire:         time.Now().Add(time.Minute * 1),
+			},
 		}, nil)
 
 	request := httptest.NewRequest("GET", "http://example.com/foo/a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb/12121212aeadf", nil)

@@ -41,6 +41,10 @@ func (e *EntryMigration) Alter(ctx context.Context, tx *sql.Tx) error {
 		return err
 	}
 
+	if err := e.addContentType(ctx, tx); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -99,6 +103,22 @@ func (*EntryMigration) addDeleteKey(ctx context.Context, tx *sql.Tx) error {
 	_, err = tx.ExecContext(ctx, "ALTER TABLE entries ALTER COLUMN delete_key SET NOT NULL;")
 	if err != nil {
 		return fmt.Errorf("failed to alter delete_key column: %w", err)
+	}
+
+	return nil
+}
+
+func (e *EntryMigration) addContentType(ctx context.Context, tx *sql.Tx) error {
+	alterTable, err := tx.PrepareContext(ctx, "ALTER TABLE entries ADD COLUMN IF NOT EXISTS content_type VARCHAR(256) NOT NULL DEFAULT '';")
+
+	if err != nil {
+		return fmt.Errorf("failed to add delete_key column: %w", err)
+	}
+
+	_, err = alterTable.Exec()
+
+	if err != nil {
+		return fmt.Errorf("failed to add remaining_reads column: %w", err)
 	}
 
 	return nil

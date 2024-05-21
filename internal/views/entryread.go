@@ -14,24 +14,26 @@ import (
 )
 
 type EntryReadResponse struct {
-	UUID      string
-	Key       string
-	Data      string
-	Created   time.Time
-	Accessed  time.Time
-	Expire    time.Time
-	DeleteKey string
+	UUID        string
+	Key         string
+	Data        string
+	Created     time.Time
+	Accessed    time.Time
+	Expire      time.Time
+	DeleteKey   string
+	ContentType string
 }
 
 func BuildEntryReadResponse(meta services.Entry, key string) EntryReadResponse {
 	return EntryReadResponse{
-		UUID:      meta.UUID,
-		Key:       key,
-		Created:   meta.Created,
-		Expire:    meta.Expire,
-		Accessed:  meta.Accessed,
-		DeleteKey: meta.DeleteKey,
-		Data:      string(meta.Data),
+		UUID:        meta.UUID,
+		Key:         key,
+		Created:     meta.Created,
+		Expire:      meta.Expire,
+		Accessed:    meta.Accessed,
+		DeleteKey:   meta.DeleteKey,
+		ContentType: meta.ContentType,
+		Data:        string(meta.Data),
 	}
 }
 
@@ -47,6 +49,9 @@ func (e EntryReadView) Render(w http.ResponseWriter, r *http.Request, response E
 			log.Println("JSON encode failed", err)
 		}
 	} else {
+		if response.ContentType != "" {
+			w.Header().Add("Content-Type", response.ContentType)
+		}
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(response.Data))
 		if err != nil {

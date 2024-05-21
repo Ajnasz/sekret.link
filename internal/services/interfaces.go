@@ -12,7 +12,7 @@ import (
 // EntryModel is the interface for the entry model
 // It is used to create, read and access entries
 type EntryModel interface {
-	CreateEntry(ctx context.Context, tx *sql.Tx, UUID string, data []byte, remainingReads int, expire time.Duration) (*models.EntryMeta, error)
+	CreateEntry(ctx context.Context, tx *sql.Tx, UUID string, contentType string, data []byte, remainingReads int, expire time.Duration) (*models.EntryMeta, error)
 	ReadEntry(ctx context.Context, tx *sql.Tx, UUID string) (*models.Entry, error)
 	Use(ctx context.Context, tx *sql.Tx, UUID string) error
 	DeleteEntry(ctx context.Context, tx *sql.Tx, UUID string, deleteKey string) error

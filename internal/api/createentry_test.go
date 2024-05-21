@@ -33,11 +33,12 @@ type MockEntryManager struct {
 
 func (m *MockEntryManager) CreateEntry(
 	ctx context.Context,
+	contentType string,
 	body []byte,
 	maxReads int,
 	expiration time.Duration,
 ) (*services.EntryMeta, key.Key, error) {
-	args := m.Called(ctx, body, maxReads, expiration)
+	args := m.Called(ctx, contentType, body, maxReads, expiration)
 
 	if args.Get(1) == nil {
 		return args.Get(0).(*services.EntryMeta), nil, args.Error(2)
@@ -68,6 +69,7 @@ func Test_CreateEntryHandle(t *testing.T) {
 	view := new(MockEntryView)
 
 	request := httptest.NewRequest("POST", "http://example.com/foo", data)
+	request.Header.Set("Content-Type", "text/plain")
 	response := httptest.NewRecorder()
 
 	parser.On("Parse", request).Return(&parsers.CreateEntryRequestData{}, nil)
@@ -76,7 +78,7 @@ func Test_CreateEntryHandle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	entryManager.On("CreateEntry", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&services.EntryMeta{}, *retKey, nil)
+	entryManager.On("CreateEntry", mock.Anything, "text/plain", mock.Anything, mock.Anything, mock.Anything).Return(&services.EntryMeta{}, *retKey, nil)
 	view.On("Render", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	handler := NewCreateHandler(10, parser, entryManager, view)
@@ -121,12 +123,13 @@ func Test_CreateEntryHandleError(t *testing.T) {
 	view := new(MockEntryView)
 
 	request := httptest.NewRequest("POST", "http://example.com/foo", data)
+	request.Header.Set("Content-Type", "text/plain")
 	response := httptest.NewRecorder()
 
 	parser.On("Parse", request).Return(&parsers.CreateEntryRequestData{}, nil)
 	k, err := key.NewGeneratedKey()
 	assert.NoError(t, err)
-	entryManager.On("CreateEntry", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&services.EntryMeta{}, *k, errors.New("error"))
+	entryManager.On("CreateEntry", mock.Anything, "text/plain", mock.Anything, mock.Anything, mock.Anything).Return(&services.EntryMeta{}, *k, errors.New("error"))
 	view.On("RenderError", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	handler := NewCreateHandler(10, parser, entryManager, view)

@@ -56,7 +56,7 @@ func Test_EntryService_Create(t *testing.T) {
 	keyManager.On("CreateWithTx", ctx, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&EntryKey{}, *kek, nil)
 
 	service := NewEntryManager(db, entryModel, crypto, keyManager)
-	meta, key, err := service.CreateEntry(ctx, data, 1, time.Minute)
+	meta, key, err := service.CreateEntry(ctx, "text/plain", data, 1, time.Minute)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, meta)
@@ -115,7 +115,7 @@ func TestCreateError(t *testing.T) {
 	keyManager := new(MockEntryKeyer)
 
 	service := NewEntryManager(db, entryModel, crypto, keyManager)
-	meta, key, err := service.CreateEntry(ctx, data, 1, time.Minute)
+	meta, key, err := service.CreateEntry(ctx, "text/plain", data, 1, time.Minute)
 
 	assert.Error(t, err)
 	assert.Nil(t, meta)
@@ -189,13 +189,16 @@ func TestReadEntry(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, data)
 		assert.Equal(t, Entry{
-			UUID:           entry.UUID,
-			Data:           []byte("data"),
-			RemainingReads: 0,
-			DeleteKey:      entry.DeleteKey,
-			Created:        entry.Created,
-			Accessed:       entry.Accessed.Time,
-			Expire:         entry.Expire,
+			Data: []byte("data"),
+			EntryMeta: EntryMeta{
+				UUID:           entry.UUID,
+				RemainingReads: 0,
+				DeleteKey:      entry.DeleteKey,
+				Created:        entry.Created,
+				Accessed:       entry.Accessed.Time,
+				Expire:         entry.Expire,
+				ContentType:    entry.ContentType,
+			},
 		}, *data)
 
 		entryModel.AssertExpectations(t)

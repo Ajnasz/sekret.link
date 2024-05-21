@@ -28,16 +28,12 @@ type EntryMeta struct {
 	Created        time.Time
 	Accessed       time.Time
 	Expire         time.Time
+	ContentType    string
 }
 
 type Entry struct {
-	UUID           string
-	Data           []byte
-	RemainingReads int
-	DeleteKey      string
-	Created        time.Time
-	Accessed       time.Time
-	Expire         time.Time
+	EntryMeta
+	Data []byte
 }
 
 type EntryKeyData struct {
@@ -71,7 +67,7 @@ func NewEntryManager(db *sql.DB, model EntryModel, crypto EncrypterFactory, keyM
 // It stores the encrypted data in the database
 // It stores the key in the key manager
 // It returns the meta data of the entry and the key
-func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingReads int, expire time.Duration) (*EntryMeta, key.Key, error) {
+func (e *EntryManager) CreateEntry(ctx context.Context, contentType string, data []byte, remainingReads int, expire time.Duration) (*EntryMeta, key.Key, error) {
 	uid := uuid.NewUUIDString()
 
 	tx, err := e.db.Begin()
@@ -96,7 +92,7 @@ func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingRe
 		}
 		return nil, nil, errors.Join(ErrCreateEntryFailed, err)
 	}
-	meta, err := e.model.CreateEntry(ctx, tx, uid, encryptedData, remainingReads, expire)
+	meta, err := e.model.CreateEntry(ctx, tx, uid, contentType, encryptedData, remainingReads, expire)
 	if err != nil {
 		if rollbackErr := tx.Rollback(); rollbackErr != nil {
 			return nil, nil, errors.Join(ErrCreateEntryFailed, err, rollbackErr)
@@ -125,6 +121,7 @@ func (e *EntryManager) CreateEntry(ctx context.Context, data []byte, remainingRe
 		Created:        meta.Created,
 		Accessed:       meta.Accessed.Time,
 		Expire:         meta.Expire,
+		ContentType:    meta.ContentType,
 	}, kek, nil
 }
 
@@ -219,13 +216,16 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, k key.Key) (*
 	}
 
 	return &Entry{
-		UUID:           entry.UUID,
-		Data:           decryptedData,
-		RemainingReads: entry.RemainingReads - 1,
-		DeleteKey:      entry.DeleteKey,
-		Created:        entry.Created,
-		Accessed:       entry.Accessed.Time,
-		Expire:         entry.Expire,
+		EntryMeta: EntryMeta{
+			UUID:           entry.UUID,
+			RemainingReads: entry.RemainingReads - 1,
+			DeleteKey:      entry.DeleteKey,
+			Created:        entry.Created,
+			Accessed:       entry.Accessed.Time,
+			Expire:         entry.Expire,
+			ContentType:    entry.ContentType,
+		},
+		Data: decryptedData,
 	}, nil
 }
 
