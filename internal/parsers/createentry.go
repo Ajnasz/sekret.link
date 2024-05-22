@@ -15,37 +15,41 @@ type CreateEntryParser struct {
 }
 
 type CreateEntryRequestData struct {
-	Body       []byte
-	Expiration time.Duration
-	MaxReads   int
+	ContentType string
+	Body        []byte
+	Expiration  time.Duration
+	MaxReads    int
 }
 
 func NewCreateEntryParser(maxExpireSeconds int) CreateEntryParser {
 	return CreateEntryParser{maxExpireSeconds: maxExpireSeconds}
 }
 
-func parseMultiForm(r *http.Request) ([]byte, error) {
+func parseMultiForm(r *http.Request) ([]byte, string, error) {
 	err := r.ParseMultipartForm(1024 * 1024)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	secret := r.PostForm.Get("secret")
 	if secret != "" {
 		body := []byte(secret)
-		return body, nil
+		return body, "text/plain", nil
 	}
 
-	file, _, err := r.FormFile("secret")
+	file, header, err := r.FormFile("secret")
+	contentType := header.Header.Get("Content-Type")
 
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	return io.ReadAll(file)
+	data, err := io.ReadAll(file)
+
+	return data, contentType, err
 }
 
-func getBody(r *http.Request) ([]byte, error) {
+func getContentType(r *http.Request) string {
 	ct := r.Header.Get("content-type")
 	if ct == "" {
 		ct = "application/octet-stream"
@@ -54,14 +58,20 @@ func getBody(r *http.Request) ([]byte, error) {
 	ct, _, err := mime.ParseMediaType(ct)
 
 	if err != nil {
-		return nil, err
+		return "application/octet-stream"
 	}
 
+	return ct
+}
+
+func getContent(r *http.Request) ([]byte, string, error) {
+	ct := getContentType(r)
 	switch {
 	case ct == "multipart/form-data":
 		return parseMultiForm(r)
 	default:
-		return io.ReadAll(r.Body)
+		data, err := io.ReadAll(r.Body)
+		return data, ct, err
 	}
 }
 
@@ -98,7 +108,7 @@ func (c CreateEntryParser) getSecretMaxReads(r *http.Request) (int, error) {
 }
 
 func (c CreateEntryParser) Parse(r *http.Request) (*CreateEntryRequestData, error) {
-	body, err := getBody(r)
+	body, contentType, err := getContent(r)
 
 	if err != nil {
 		return nil, err
@@ -121,9 +131,10 @@ func (c CreateEntryParser) Parse(r *http.Request) (*CreateEntryRequestData, erro
 	}
 
 	return &CreateEntryRequestData{
-		Body:       body,
-		Expiration: expiration,
-		MaxReads:   maxReads,
+		ContentType: contentType,
+		Body:        body,
+		Expiration:  expiration,
+		MaxReads:    maxReads,
 	}, nil
 
 }

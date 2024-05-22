@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -38,6 +39,7 @@ func (m *MockEntryManager) CreateEntry(
 	maxReads int,
 	expiration time.Duration,
 ) (*services.EntryMeta, key.Key, error) {
+	fmt.Println("content type", contentType)
 	args := m.Called(ctx, contentType, body, maxReads, expiration)
 
 	if args.Get(1) == nil {
@@ -72,7 +74,9 @@ func Test_CreateEntryHandle(t *testing.T) {
 	request.Header.Set("Content-Type", "text/plain")
 	response := httptest.NewRecorder()
 
-	parser.On("Parse", request).Return(&parsers.CreateEntryRequestData{}, nil)
+	parser.On("Parse", request).Return(&parsers.CreateEntryRequestData{
+		ContentType: "text/plain",
+	}, nil)
 
 	retKey, err := key.NewGeneratedKey()
 	if err != nil {
@@ -126,7 +130,9 @@ func Test_CreateEntryHandleError(t *testing.T) {
 	request.Header.Set("Content-Type", "text/plain")
 	response := httptest.NewRecorder()
 
-	parser.On("Parse", request).Return(&parsers.CreateEntryRequestData{}, nil)
+	parser.On("Parse", request).Return(&parsers.CreateEntryRequestData{
+		ContentType: "text/plain",
+	}, nil)
 	k, err := key.NewGeneratedKey()
 	assert.NoError(t, err)
 	entryManager.On("CreateEntry", mock.Anything, "text/plain", mock.Anything, mock.Anything, mock.Anything).Return(&services.EntryMeta{}, *k, errors.New("error"))

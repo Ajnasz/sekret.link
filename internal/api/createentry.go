@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 	"time"
 
@@ -60,11 +61,9 @@ func (c CreateHandler) handle(w http.ResponseWriter, r *http.Request) error {
 		return errors.Join(ErrRequestParseError, err)
 	}
 
-	contentType := r.Header.Get("Content-Type")
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	entry, key, err := c.entryManager.CreateEntry(ctx, contentType, data.Body, data.MaxReads, data.Expiration)
+	entry, key, err := c.entryManager.CreateEntry(ctx, data.ContentType, data.Body, data.MaxReads, data.Expiration)
 
 	if err != nil {
 		return err
@@ -81,6 +80,7 @@ func (c CreateHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	err := c.handle(w, r)
 
 	if err != nil {
+		log.Println("create error", err)
 		c.view.RenderError(w, r, err)
 	}
 }

@@ -43,6 +43,9 @@ POSTGRES_URL="postgres://postgres:password@localhost:5432/sekret_link_test?sslmo
 
 ### Send and receive data
 ```sh
-curl -v --data-binary @go.mod localhost:8080/api/ | xargs -I {} curl localhost:8080{}
+curl -v -H 'content-type: text/plain' --data-binary @go.mod localhost:8080/api/ | xargs -I {} curl localhost:8080{}
 ```
 
+```sh
+curl -v -F 'secret=@README.md;type=text/x-markdown' localhost:8080/api/ | xargs -I {} curl -v localhost:8080{}
+```

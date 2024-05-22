@@ -45,12 +45,17 @@ func NewEntryReadView() EntryReadView {
 
 func (e EntryReadView) Render(w http.ResponseWriter, r *http.Request, response EntryReadResponse) {
 	if r.Header.Get("Accept") == "application/json" {
+		w.Header().Add("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			log.Println("JSON encode failed", err)
 		}
 	} else {
 		if response.ContentType != "" {
-			w.Header().Add("Content-Type", response.ContentType)
+			headers := w.Header()
+			headers.Add("Content-Type", response.ContentType)
+			headers.Add("X-Frame-Options", "deny")
+			headers.Add("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; upgrade-insecure-requests; sandbox;")
+
 		}
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte(response.Data))
