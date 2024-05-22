@@ -51,7 +51,7 @@ func parseMultiForm(r *http.Request) ([]byte, string, error) {
 
 func getContentType(r *http.Request) string {
 	ct := r.Header.Get("content-type")
-	if ct == "" {
+	if ct == "" || ct == "application/x-www-form-urlencoded" {
 		ct = "application/octet-stream"
 	}
 
