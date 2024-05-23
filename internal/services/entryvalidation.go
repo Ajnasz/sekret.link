@@ -11,14 +11,6 @@ func validateEntry(entry *models.Entry) error {
 		return ErrEntryNotFound
 	}
 
-	if entry.Expire.Before(time.Now()) {
-		return ErrEntryExpired
-	}
-
-	if entry.RemainingReads <= 0 {
-		return ErrEntryExpired
-	}
-
 	return nil
 }
 

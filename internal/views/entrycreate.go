@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -68,6 +69,7 @@ func (e EntryCreateView) Render(w http.ResponseWriter, r *http.Request, entry En
 }
 
 func (e EntryCreateView) RenderError(w http.ResponseWriter, r *http.Request, err error) {
+	fmt.Fprintf(os.Stderr, "Render error: %s", err)
 	if errors.Is(err, parsers.ErrInvalidExpirationDate) {
 		http.Error(w, "Invalid expiration", http.StatusBadRequest)
 		return

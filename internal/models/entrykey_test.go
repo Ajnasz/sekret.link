@@ -33,7 +33,7 @@ func createTestEntryKey(ctx context.Context, tx *sql.Tx) (string, string, error)
 
 	entryModel := &EntryModel{}
 
-	_, err := entryModel.CreateEntry(ctx, tx, uid, "text/plain", []byte("test data"), 2, 3600)
+	_, err := entryModel.CreateEntry(ctx, tx, uid, "text/plain", []byte("test data"))
 
 	if err != nil {
 		return "", "", err
@@ -41,7 +41,7 @@ func createTestEntryKey(ctx context.Context, tx *sql.Tx) (string, string, error)
 
 	model := &EntryKeyModel{}
 
-	entryKey, err := model.Create(ctx, tx, uid, []byte("test"), []byte("hash entrykey use tx"))
+	entryKey, err := model.Create(ctx, tx, uid, []byte("test"), []byte("hash entrykey use tx"), time.Now().Add(time.Hour), 2)
 
 	if err != nil {
 		return "", "", err
@@ -66,14 +66,14 @@ func Test_EntryKeyModel_Create(t *testing.T) {
 	uid := uuid.New().String()
 
 	entryModel := &EntryModel{}
-	_, err = entryModel.CreateEntry(ctx, tx, uid, "text/plain", []byte("test data"), 2, 3600)
+	_, err = entryModel.CreateEntry(ctx, tx, uid, "text/plain", []byte("test data"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	model := &EntryKeyModel{}
 
-	entryKey, err := model.Create(ctx, tx, uid, []byte("test"), []byte("hashke"))
+	entryKey, err := model.Create(ctx, tx, uid, []byte("test"), []byte("hashke"), time.Now().Add(time.Hour), 2)
 
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
@@ -124,7 +124,7 @@ func Test_EntryKeyModel_Get(t *testing.T) {
 	uid := uuid.New().String()
 
 	entryModel := &EntryModel{}
-	_, err = entryModel.CreateEntry(ctx, tx, uid, "text/plain", []byte("test data"), 2, 3600)
+	_, err = entryModel.CreateEntry(ctx, tx, uid, "text/plain", []byte("test data"))
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
 			t.Error(err)
@@ -135,7 +135,7 @@ func Test_EntryKeyModel_Get(t *testing.T) {
 	model := &EntryKeyModel{}
 
 	for i := 0; i < 10; i++ {
-		_, err = model.Create(ctx, tx, uid, []byte("test"), []byte(fmt.Sprintf("hashke %d", i)))
+		_, err = model.Create(ctx, tx, uid, []byte("test"), []byte(fmt.Sprintf("hashke %d", i)), time.Now().Add(time.Hour), 2)
 
 		if err != nil {
 			if err := tx.Rollback(); err != nil {
@@ -156,6 +156,7 @@ func Test_EntryKeyModel_Get(t *testing.T) {
 	}
 
 	entryKeys, err := model.Get(ctx, tx, uid)
+	fmt.Println("ENTRY KEYS", entryKeys)
 
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
@@ -169,7 +170,7 @@ func Test_EntryKeyModel_Get(t *testing.T) {
 	}
 
 	if len(entryKeys) != 10 {
-		t.Fatalf("expected 1 got %d", len(entryKeys))
+		t.Fatalf("expected 10 got %d", len(entryKeys))
 	}
 
 	if entryKeys[0].EntryUUID != uid {

@@ -30,7 +30,7 @@ type MockGenerateEntryKeyManager struct {
 	mock.Mock
 }
 
-func (m *MockGenerateEntryKeyManager) GenerateEntryKey(ctx context.Context, UUID string, k key.Key) (*services.EntryKeyData, error) {
+func (m *MockGenerateEntryKeyManager) GenerateEntryKey(ctx context.Context, UUID string, k key.Key, expire time.Duration, maxReads int) (*services.EntryKeyData, error) {
 	args := m.Called(ctx, UUID, k)
 	return args.Get(0).(*services.EntryKeyData), args.Error(2)
 }

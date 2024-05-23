@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/Ajnasz/sekret.link/internal/test/durable"
 	"github.com/google/uuid"
@@ -26,18 +25,12 @@ func Test_EntryModel_CreateEntry(t *testing.T) {
 
 	uid := uuid.New().String()
 	data := []byte("test data")
-	remainingReads := 2
-	expire := time.Hour * 24
 
 	model := &EntryModel{}
 
-	meta, err := model.CreateEntry(ctx, tx, uid, "text/plain", data, remainingReads, expire)
+	meta, err := model.CreateEntry(ctx, tx, uid, "text/plain", data)
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	if meta.RemainingReads != 2 {
-		t.Errorf("expected %d got %d", remainingReads, meta.RemainingReads)
 	}
 
 	if meta.UUID != uid {
@@ -50,10 +43,6 @@ func Test_EntryModel_CreateEntry(t *testing.T) {
 
 	if meta.Created.IsZero() {
 		t.Errorf("expected created to be set")
-	}
-
-	if meta.Expire.IsZero() {
-		t.Errorf("expected expire to be set")
 	}
 
 	if meta.Accessed.Valid {
@@ -81,12 +70,10 @@ func Test_EntryModel_Use(t *testing.T) {
 
 	uid := uuid.New().String()
 	data := []byte("test data")
-	remainingReads := 2
-	expire := time.Hour * 24
 
 	model := &EntryModel{}
 
-	meta, err := model.CreateEntry(ctx, tx, uid, "text/plain", data, remainingReads, expire)
+	meta, err := model.CreateEntry(ctx, tx, uid, "text/plain", data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,10 +85,6 @@ func Test_EntryModel_Use(t *testing.T) {
 	entry, err := model.ReadEntry(ctx, tx, uid)
 	if err != nil {
 		t.Fatal(errors.Join(err, errors.New("failed to read entry")))
-	}
-
-	if entry.RemainingReads != 1 {
-		t.Errorf("expected %d got %d", 0, entry.RemainingReads)
 	}
 
 	if !entry.Accessed.Valid {

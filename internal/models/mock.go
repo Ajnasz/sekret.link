@@ -3,7 +3,6 @@ package models
 import (
 	"context"
 	"database/sql"
-	"time"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -18,9 +17,8 @@ func (m *MockEntryModel) CreateEntry(
 	UUID string,
 	contentType string,
 	data []byte,
-	remainingReads int,
-	expire time.Duration) (*EntryMeta, error) {
-	args := m.Called(ctx, tx, UUID, data, remainingReads, expire)
+) (*EntryMeta, error) {
+	args := m.Called(ctx, tx, UUID, data)
 	return args.Get(0).(*EntryMeta), args.Error(1)
 }
 

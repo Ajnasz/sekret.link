@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/Ajnasz/sekret.link/internal/key"
@@ -59,6 +60,7 @@ func (g GenerateEntryKeyView) Render(w http.ResponseWriter, r *http.Request, res
 
 // RenderGenerateEntryKeyError renders the error response for the GenerateEntryKey endpoint.
 func (v GenerateEntryKeyView) RenderError(w http.ResponseWriter, r *http.Request, err error) {
+	fmt.Fprintf(os.Stderr, "Render error: %s", err)
 	if errors.Is(err, parsers.ErrInvalidUUID) {
 		http.Error(w, "Invalid UUID", http.StatusBadRequest)
 		return

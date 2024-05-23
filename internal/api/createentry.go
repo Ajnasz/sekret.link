@@ -77,9 +77,7 @@ func (c CreateHandler) handle(w http.ResponseWriter, r *http.Request) error {
 
 // Handle handles http request to create secret
 func (c CreateHandler) Handle(w http.ResponseWriter, r *http.Request) {
-	err := c.handle(w, r)
-
-	if err != nil {
+	if err := c.handle(w, r); err != nil {
 		log.Println("create error", err)
 		c.view.RenderError(w, r, err)
 	}
