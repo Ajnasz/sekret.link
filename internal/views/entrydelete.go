@@ -2,7 +2,9 @@ package views
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/Ajnasz/sekret.link/internal/models"
 	"github.com/Ajnasz/sekret.link/internal/parsers"
@@ -21,6 +23,7 @@ func (e EntryDeleteView) Render(w http.ResponseWriter, r *http.Request, data Del
 }
 
 func (e EntryDeleteView) RenderError(w http.ResponseWriter, r *http.Request, err error) {
+	fmt.Fprintf(os.Stderr, "Render error: %s", err)
 
 	if errors.Is(err, models.ErrEntryNotFound) {
 		http.Error(w, "Not Found", http.StatusNotFound)

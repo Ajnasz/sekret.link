@@ -18,7 +18,7 @@ var ErrEntryCreateFailed = errors.New("entry create failed")
 var ErrGetDEKFailed = errors.New("get DEK failed")
 
 type EntryKeyModel interface {
-	Create(ctx context.Context, tx *sql.Tx, entryUUID string, encryptedKey []byte, hash []byte) (*models.EntryKey, error)
+	Create(ctx context.Context, tx *sql.Tx, entryUUID string, encryptedKey []byte, hash []byte, expire time.Time, remainingReads int) (*models.EntryKey, error)
 	Get(ctx context.Context, tx *sql.Tx, entryUUID string) ([]models.EntryKey, error)
 	Delete(ctx context.Context, tx *sql.Tx, uuid string) error
 	SetExpire(ctx context.Context, tx *sql.Tx, uuid string, expire time.Time) error
@@ -42,7 +42,7 @@ func NewEntryKeyManager(db *sql.DB, model EntryKeyModel, hasher hasher.Hasher, e
 	}
 }
 
-func (e *EntryKeyManager) Create(ctx context.Context, entryUUID string, dek key.Key, expire *time.Time, maxRead *int) (*EntryKey, key.Key, error) {
+func (e *EntryKeyManager) Create(ctx context.Context, entryUUID string, dek key.Key, expire time.Time, maxRead int) (*EntryKey, key.Key, error) {
 
 	tx, err := e.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -87,7 +87,7 @@ func modelEntryKeyToEntryKey(m *models.EntryKey) *EntryKey {
 	}
 }
 
-func (e *EntryKeyManager) CreateWithTx(ctx context.Context, tx *sql.Tx, entryUUID string, dek key.Key, expire *time.Time, maxRead *int) (*EntryKey, key.Key, error) {
+func (e *EntryKeyManager) CreateWithTx(ctx context.Context, tx *sql.Tx, entryUUID string, dek key.Key, expire time.Time, maxRead int) (*EntryKey, key.Key, error) {
 	k, err := key.NewGeneratedKey()
 
 	if err != nil {
@@ -100,33 +100,11 @@ func (e *EntryKeyManager) CreateWithTx(ctx context.Context, tx *sql.Tx, entryUUI
 	}
 
 	hash := e.hasher.Hash(dek.Get())
-	entryKey, err := e.model.Create(ctx, tx, entryUUID, encryptedKey, hash)
+	entryKey, err := e.model.Create(ctx, tx, entryUUID, encryptedKey, hash, expire, maxRead)
 	if err != nil {
 		return nil, nil, errors.Join(ErrEntryCreateFailed, err)
 	}
 
-	if expire != nil {
-		err := e.model.SetExpire(ctx, tx, entryKey.UUID, *expire)
-		if err != nil {
-			return nil, nil, errors.Join(ErrEntryCreateFailed, err)
-		}
-		entryKey.Expire = sql.NullTime{
-			Time:  *expire,
-			Valid: true,
-		}
-	}
-
-	if maxRead != nil {
-		err := e.model.SetMaxReads(ctx, tx, entryKey.UUID, *maxRead)
-		if err != nil {
-			return nil, nil, errors.Join(ErrEntryCreateFailed, err)
-		}
-
-		entryKey.RemainingReads = sql.NullInt16{
-			Int16: int16(*maxRead),
-			Valid: true,
-		}
-	}
 	return modelEntryKeyToEntryKey(entryKey), *k, nil
 }
 
@@ -224,7 +202,7 @@ func (e *EntryKeyManager) GetDEKTx(ctx context.Context, tx *sql.Tx, entryUUID st
 }
 
 // GenerateEncryptionKey creates a new key for the entry
-func (e EntryKeyManager) GenerateEncryptionKey(ctx context.Context, entryUUID string, existingKey key.Key, expire *time.Time, maxRead *int) (*EntryKey, key.Key, error) {
+func (e EntryKeyManager) GenerateEncryptionKey(ctx context.Context, entryUUID string, existingKey key.Key, expire time.Time, maxRead int) (*EntryKey, key.Key, error) {
 	tx, err := e.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, nil, err

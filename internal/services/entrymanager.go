@@ -92,7 +92,7 @@ func (e *EntryManager) CreateEntry(ctx context.Context, contentType string, data
 		}
 		return nil, nil, errors.Join(ErrCreateEntryFailed, err)
 	}
-	meta, err := e.model.CreateEntry(ctx, tx, uid, contentType, encryptedData, remainingReads, expire)
+	meta, err := e.model.CreateEntry(ctx, tx, uid, contentType, encryptedData)
 	if err != nil {
 		if rollbackErr := tx.Rollback(); rollbackErr != nil {
 			return nil, nil, errors.Join(ErrCreateEntryFailed, err, rollbackErr)
@@ -101,7 +101,7 @@ func (e *EntryManager) CreateEntry(ctx context.Context, contentType string, data
 	}
 
 	expireAt := time.Now().Add(expire)
-	_, kek, err := e.keyManager.CreateWithTx(ctx, tx, uid, dek.Get(), &expireAt, &remainingReads)
+	entryKey, kek, err := e.keyManager.CreateWithTx(ctx, tx, uid, dek.Get(), expireAt, remainingReads)
 
 	if err != nil {
 		if rollbackErr := tx.Rollback(); rollbackErr != nil {
@@ -116,21 +116,13 @@ func (e *EntryManager) CreateEntry(ctx context.Context, contentType string, data
 
 	return &EntryMeta{
 		UUID:           meta.UUID,
-		RemainingReads: meta.RemainingReads,
 		DeleteKey:      meta.DeleteKey,
 		Created:        meta.Created,
 		Accessed:       meta.Accessed.Time,
-		Expire:         meta.Expire,
 		ContentType:    meta.ContentType,
+		RemainingReads: entryKey.RemainingReads,
+		Expire:         entryKey.Expire,
 	}, kek, nil
-}
-
-func (e *EntryManager) readEntryLegacy(ctx context.Context, k key.Key, entry *models.Entry) ([]byte, error) {
-	if ctx.Err() != nil {
-		return nil, ctx.Err()
-	}
-	crypto := e.crypto(k)
-	return crypto.Decrypt(entry.Data)
 }
 
 // ReadEntry reads an entry
@@ -171,15 +163,10 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, k key.Key) (*
 	var decryptedData []byte
 	if err != nil {
 		if errors.Is(err, ErrEntryKeyNotFound) {
-			legacyData, legacyErr := e.readEntryLegacy(ctx, k, entry)
-			if legacyErr == nil {
-				decryptedData = legacyData
-			} else {
-				if rollbackErr := tx.Rollback(); rollbackErr != nil {
-					return nil, errors.Join(err, rollbackErr, ErrReadEntryFailed)
-				}
-				return nil, errors.Join(err, ErrReadEntryFailed)
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				return nil, errors.Join(err, rollbackErr, ErrReadEntryFailed)
 			}
+			return nil, errors.Join(err, ErrReadEntryFailed)
 		} else {
 			if rollbackErr := tx.Rollback(); rollbackErr != nil {
 				return nil, errors.Join(err, rollbackErr, ErrReadEntryFailed)
@@ -218,12 +205,12 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, k key.Key) (*
 	return &Entry{
 		EntryMeta: EntryMeta{
 			UUID:           entry.UUID,
-			RemainingReads: entry.RemainingReads - 1,
 			DeleteKey:      entry.DeleteKey,
 			Created:        entry.Created,
 			Accessed:       entry.Accessed.Time,
-			Expire:         entry.Expire,
 			ContentType:    entry.ContentType,
+			Expire:         entryKey.Expire,
+			RemainingReads: entryKey.RemainingReads,
 		},
 		Data: decryptedData,
 	}, nil
@@ -273,8 +260,8 @@ func (e *EntryManager) DeleteExpired(ctx context.Context) error {
 	return nil
 }
 
-func (e *EntryManager) GenerateEntryKey(ctx context.Context, entryUUID string, k key.Key) (*EntryKeyData, error) {
-	meta, kek, err := e.keyManager.GenerateEncryptionKey(ctx, entryUUID, k, nil, nil)
+func (e *EntryManager) GenerateEntryKey(ctx context.Context, entryUUID string, k key.Key, expire time.Duration, maxReads int) (*EntryKeyData, error) {
+	meta, kek, err := e.keyManager.GenerateEncryptionKey(ctx, entryUUID, k, time.Now().Add(expire), maxReads)
 	if err != nil {
 		return nil, err
 	}

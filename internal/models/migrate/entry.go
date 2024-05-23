@@ -45,6 +45,10 @@ func (e *EntryMigration) Alter(ctx context.Context, tx *sql.Tx) error {
 		return err
 	}
 
+	if err := e.dropKeyFields(ctx, tx); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -119,6 +123,20 @@ func (e *EntryMigration) addContentType(ctx context.Context, tx *sql.Tx) error {
 
 	if err != nil {
 		return fmt.Errorf("failed to add remaining_reads column: %w", err)
+	}
+
+	return nil
+}
+
+func (e *EntryMigration) dropKeyFields(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, "ALTER TABLE entries DROP COLUMN IF EXISTS remaining_reads;")
+	if err != nil {
+		return fmt.Errorf("failed to drop remaining_reads column: %w", err)
+	}
+
+	_, err = tx.ExecContext(ctx, "ALTER TABLE entries DROP COLUMN IF EXISTS expire;")
+	if err != nil {
+		return fmt.Errorf("failed to drop expire column: %w", err)
 	}
 
 	return nil

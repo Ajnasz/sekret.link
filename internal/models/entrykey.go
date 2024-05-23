@@ -18,13 +18,13 @@ type EntryKey struct {
 
 type EntryKeyModel struct{}
 
-func (e *EntryKeyModel) Create(ctx context.Context, tx *sql.Tx, entryUUID string, encryptedKey []byte, hash []byte) (*EntryKey, error) {
+func (e *EntryKeyModel) Create(ctx context.Context, tx *sql.Tx, entryUUID string, encryptedKey []byte, hash []byte, expire time.Time, remainingReads int) (*EntryKey, error) {
 
 	now := time.Now()
 	res := tx.QueryRowContext(ctx, `
-		INSERT INTO entry_key (uuid, entry_uuid, encrypted_key, key_hash, created)
-		VALUES (gen_random_uuid(), $1, $2, $3, $4) RETURNING uuid, created;
-	`, entryUUID, encryptedKey, hash, now)
+		INSERT INTO entry_key (uuid, entry_uuid, encrypted_key, key_hash, created, remaining_reads, expire)
+		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6) RETURNING uuid, created;
+	`, entryUUID, encryptedKey, hash, now, remainingReads, expire)
 
 	var uid string
 	var created time.Time
@@ -50,7 +50,7 @@ func (e *EntryKeyModel) Get(ctx context.Context, tx *sql.Tx, entryUUID string) (
 		SELECT uuid, entry_uuid, encrypted_key, key_hash, created, expire, remaining_reads
 		FROM entry_key
 		WHERE entry_uuid = $1
-		AND (expire IS NULL OR expire > NOW());
+		;
 	`, entryUUID)
 
 	if err != nil {

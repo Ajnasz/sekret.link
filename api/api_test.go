@@ -640,7 +640,6 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 	NewSecretHandler(NewHandlerConfig(db)).ServeHTTP(w, req)
 
 	resp := w.Result()
-	model := &models.EntryModel{}
 
 	savedUUID := resp.Header.Get("x-entry-uuid")
 
@@ -652,7 +651,8 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	entry, err := model.ReadEntryMeta(ctx, tx, savedUUID)
+	model := &models.EntryKeyModel{}
+	entries, err := model.Get(ctx, tx, savedUUID)
 
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
@@ -665,8 +665,13 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 		t.Errorf("commit failed: %v", err)
 	}
 
-	if entry.RemainingReads != 2 {
-		t.Fatalf("expected max reads to be: %d, actual: %d", 2, entry.RemainingReads)
+	if len(entries) != 1 {
+		t.Fatalf("expected to get entry key %d, got %d", 1, len(entries))
+	}
+
+	remainingReads := entries[0].RemainingReads.Int16
+	if remainingReads != 2 {
+		t.Fatalf("expected max reads to be: %d, actual: %d", 2, remainingReads)
 	}
 }
 
