@@ -8,7 +8,7 @@ BUILD_ARGS=-trimpath -ldflags '-w -s'
 all: clean linux
 
 run:
-	@cd cmd/sekret.link && POSTGRES_URL="postgres://postgres:password@localhost:5432/sekret_link_test?sslmode=disable" go run . -webExternalURL=/api
+	@cd cmd/sekret.link && POSTGRES_URL="postgres://postgres:password@localhost:5432/sekret_link_test?sslmode=disable" go run . -webExternalURL=http://localhost:8080/api
 
 .PHONY: build
 build: build/${BINARY_NAME}.linux.amd64
