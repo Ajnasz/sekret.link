@@ -183,7 +183,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error: %s", err)
 		os.Exit(1)
 	}
-	go scheduleDeleteExpired(ctx, handlerConfig.DB)
+	go func() {
+		err := scheduleDeleteExpired(ctx, handlerConfig.DB)
+		if err != nil {
+			slog.Error("Error deleting expired entries", "error", err)
+		}
+	}()
 	httpServer := listen(*handlerConfig)
 
 	termChan := make(chan os.Signal)

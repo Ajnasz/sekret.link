@@ -272,7 +272,7 @@ func TestReadEntryError(t *testing.T) {
 	service := NewEntryManager(db, entryModel, crypto, keyManager)
 	data, err := service.ReadEntry(ctx, "uuid", []byte("key"))
 
-	assert.Error(t, ErrEntryNotFound)
+	assert.Error(t, err, ErrEntryNotFound)
 	assert.Nil(t, data)
 
 	entryModel.AssertExpectations(t)
