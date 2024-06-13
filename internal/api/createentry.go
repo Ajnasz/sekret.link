@@ -20,7 +20,7 @@ type CreateEntryParser interface {
 
 // CreateEntryManager is an interface for creating entries
 type CreateEntryManager interface {
-	CreateEntry(ctx context.Context, contentType string, body []byte, maxReads int, expiration time.Duration) (*services.EntryMeta, key.Key, error)
+	CreateEntry(ctx context.Context, contentType string, body []byte, expiration *time.Duration, maxReads *int) (*services.EntryMeta, key.Key, error)
 }
 
 // CreateEntryView is an interface for rendering the create entry response
@@ -63,7 +63,7 @@ func (c CreateHandler) handle(w http.ResponseWriter, r *http.Request) error {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	entry, key, err := c.entryManager.CreateEntry(ctx, data.ContentType, data.Body, data.MaxReads, data.Expiration)
+	entry, key, err := c.entryManager.CreateEntry(ctx, data.ContentType, data.Body, &data.Expiration, &data.MaxReads)
 
 	if err != nil {
 		return err

@@ -41,7 +41,9 @@ func createTestEntryKey(ctx context.Context, tx *sql.Tx) (string, string, error)
 
 	model := &EntryKeyModel{}
 
-	entryKey, err := model.Create(ctx, tx, uid, []byte("test"), []byte("hash entrykey use tx"), time.Now().Add(time.Hour), 2)
+	expire := time.Now().Add(time.Hour)
+	maxReads := 2
+	entryKey, err := model.Create(ctx, tx, uid, []byte("test"), []byte("hash entrykey use tx"), &expire, &maxReads)
 
 	if err != nil {
 		return "", "", err
@@ -73,7 +75,9 @@ func Test_EntryKeyModel_Create(t *testing.T) {
 
 	model := &EntryKeyModel{}
 
-	entryKey, err := model.Create(ctx, tx, uid, []byte("test"), []byte("hashke"), time.Now().Add(time.Hour), 2)
+	expire := time.Now().Add(time.Hour)
+	remainingReads := 2
+	entryKey, err := model.Create(ctx, tx, uid, []byte("test"), []byte("hashke"), &expire, &remainingReads)
 
 	if err != nil {
 		if err := tx.Rollback(); err != nil {
@@ -135,7 +139,9 @@ func Test_EntryKeyModel_Get(t *testing.T) {
 	model := &EntryKeyModel{}
 
 	for i := 0; i < 10; i++ {
-		_, err = model.Create(ctx, tx, uid, []byte("test"), []byte(fmt.Sprintf("hashke %d", i)), time.Now().Add(time.Hour), 2)
+		expire := time.Now().Add(time.Hour)
+		maxReads := 2
+		_, err = model.Create(ctx, tx, uid, []byte("test"), []byte(fmt.Sprintf("hashke %d", i)), &expire, &maxReads)
 
 		if err != nil {
 			if err := tx.Rollback(); err != nil {
@@ -156,7 +162,6 @@ func Test_EntryKeyModel_Get(t *testing.T) {
 	}
 
 	entryKeys, err := model.Get(ctx, tx, uid)
-	fmt.Println("ENTRY KEYS", entryKeys)
 
 	if err != nil {
 		if err := tx.Rollback(); err != nil {

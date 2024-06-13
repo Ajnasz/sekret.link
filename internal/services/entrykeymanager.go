@@ -18,7 +18,14 @@ var ErrEntryCreateFailed = errors.New("entry create failed")
 var ErrGetDEKFailed = errors.New("get DEK failed")
 
 type EntryKeyModel interface {
-	Create(ctx context.Context, tx *sql.Tx, entryUUID string, encryptedKey []byte, hash []byte, expire time.Time, remainingReads int) (*models.EntryKey, error)
+	Create(ctx context.Context,
+		tx *sql.Tx,
+		entryUUID string,
+		encryptedKey []byte,
+		hash []byte,
+		expire *time.Time,
+		remainingReads *int,
+	) (*models.EntryKey, error)
 	Get(ctx context.Context, tx *sql.Tx, entryUUID string) ([]models.EntryKey, error)
 	Delete(ctx context.Context, tx *sql.Tx, uuid string) error
 	SetExpire(ctx context.Context, tx *sql.Tx, uuid string, expire time.Time) error
@@ -42,7 +49,12 @@ func NewEntryKeyManager(db *sql.DB, model EntryKeyModel, hasher hasher.Hasher, e
 	}
 }
 
-func (e *EntryKeyManager) Create(ctx context.Context, entryUUID string, dek key.Key, expire time.Time, maxRead int) (*EntryKey, key.Key, error) {
+func (e *EntryKeyManager) Create(ctx context.Context,
+	entryUUID string,
+	dek key.Key,
+	expire *time.Time,
+	maxRead *int,
+) (*EntryKey, key.Key, error) {
 
 	tx, err := e.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -87,7 +99,14 @@ func modelEntryKeyToEntryKey(m *models.EntryKey) *EntryKey {
 	}
 }
 
-func (e *EntryKeyManager) CreateWithTx(ctx context.Context, tx *sql.Tx, entryUUID string, dek key.Key, expire time.Time, maxRead int) (*EntryKey, key.Key, error) {
+func (e *EntryKeyManager) CreateWithTx(ctx context.Context,
+	tx *sql.Tx,
+	entryUUID string,
+	dek key.Key,
+	expire *time.Time,
+	maxRead *int,
+) (*EntryKey, key.Key,
+	error) {
 	k, err := key.NewGeneratedKey()
 
 	if err != nil {
@@ -202,7 +221,13 @@ func (e *EntryKeyManager) GetDEKTx(ctx context.Context, tx *sql.Tx, entryUUID st
 }
 
 // GenerateEncryptionKey creates a new key for the entry
-func (e EntryKeyManager) GenerateEncryptionKey(ctx context.Context, entryUUID string, existingKey key.Key, expire time.Time, maxRead int) (*EntryKey, key.Key, error) {
+func (e EntryKeyManager) GenerateEncryptionKey(
+	ctx context.Context,
+	entryUUID string,
+	existingKey key.Key,
+	expire *time.Time,
+	maxRead *int,
+) (*EntryKey, key.Key, error) {
 	tx, err := e.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, nil, err
