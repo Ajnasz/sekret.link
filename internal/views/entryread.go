@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -47,7 +47,7 @@ func (e EntryReadView) Render(w http.ResponseWriter, r *http.Request, response E
 	if r.Header.Get("Accept") == "application/json" {
 		w.Header().Add("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(response); err != nil {
-			log.Println("JSON encode failed", err)
+			slog.Error("JSON encode failed", "error", err)
 		}
 	} else {
 		if response.ContentType != "" {

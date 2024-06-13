@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -54,12 +54,12 @@ func (e EntryCreateView) Render(w http.ResponseWriter, r *http.Request, entry En
 		w.Header().Set("Content-Type", "application/json")
 
 		if err := json.NewEncoder(w).Encode(entry); err != nil {
-			log.Println("JSON encode failed", err)
+			slog.Error("JSON encode failed", "error", err)
 		}
 	} else {
 		newURL, err := uuid.GetUUIDUrlWithSecret(e.webExternalURL, entry.UUID, entry.Key)
 		if err != nil {
-			log.Println("Get UUID URL with secret failed", err)
+			slog.Error("Get UUID URL with secret failed", "error", err)
 			http.Error(w, "Internal error", http.StatusInternalServerError)
 			return
 		}

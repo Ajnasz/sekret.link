@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
+	"log/slog"
 
 	_ "github.com/lib/pq"
 
@@ -32,6 +32,6 @@ func prepareDatabase(ctx context.Context) error {
 
 func main() {
 	if err := prepareDatabase(context.Background()); err != nil {
-		fmt.Println(err)
+		slog.Error("Failed to prepare database", "error", err)
 	}
 }

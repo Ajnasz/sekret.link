@@ -3,7 +3,7 @@ package api
 import (
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
@@ -58,7 +58,7 @@ func NewSecretHandler(config HandlerConfig) SecretHandler {
 func (s SecretHandler) Post(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" && r.URL.Path != "" {
 		http.Error(w, "Not found", http.StatusNotFound)
-		log.Println("Not found", r.URL.Path)
+		slog.Info("Not found", "url", r.URL.Path)
 		return
 	}
 
@@ -168,6 +168,7 @@ func (s SecretHandler) RegisterHandlers(mux *http.ServeMux, apiRoot string) {
 		http.StripPrefix(
 			apiRoot,
 			middlewares.SetupLogging(
+				false,
 				middlewares.SetupHeaders(http.HandlerFunc(s.Get)),
 			),
 		),
@@ -177,6 +178,7 @@ func (s SecretHandler) RegisterHandlers(mux *http.ServeMux, apiRoot string) {
 		http.StripPrefix(
 			path.Join("/", apiRoot),
 			middlewares.SetupLogging(
+				true,
 				middlewares.SetupHeaders(http.HandlerFunc(s.Post)),
 			),
 		),
@@ -187,6 +189,7 @@ func (s SecretHandler) RegisterHandlers(mux *http.ServeMux, apiRoot string) {
 		http.StripPrefix(
 			apiRoot,
 			middlewares.SetupLogging(
+				false,
 				middlewares.SetupHeaders(http.HandlerFunc(s.Delete)),
 			),
 		),
@@ -197,6 +200,7 @@ func (s SecretHandler) RegisterHandlers(mux *http.ServeMux, apiRoot string) {
 		http.StripPrefix(
 			apiRoot,
 			middlewares.SetupLogging(
+				false,
 				middlewares.SetupHeaders(http.HandlerFunc(s.Options)),
 			),
 		),
@@ -208,11 +212,12 @@ func (s SecretHandler) RegisterHandlers(mux *http.ServeMux, apiRoot string) {
 		http.StripPrefix(
 			apiRoot,
 			middlewares.SetupLogging(
+				false,
 				middlewares.SetupHeaders(http.HandlerFunc(s.GenerateEncryptionKey)),
 			),
 		),
 	)
 
-	mux.Handle("/", middlewares.SetupLogging(middlewares.SetupHeaders(http.HandlerFunc(s.NotFound))))
+	mux.Handle("/", middlewares.SetupLogging(true, middlewares.SetupHeaders(http.HandlerFunc(s.NotFound))))
 
 }

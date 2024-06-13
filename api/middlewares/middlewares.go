@@ -1,17 +1,16 @@
 package middlewares
 
 import (
-	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 )
 
-func SetupLogging(h http.Handler) http.Handler {
+func SetupLogging(withPath bool, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet || r.Method == http.MethodDelete || r.Method == http.MethodOptions {
-			log.Println(fmt.Sprintf("%s: %s", r.Method, "/***"))
+		if withPath {
+			slog.Info("handle", "method", r.Method, "path", r.URL.Path)
 		} else {
-			log.Println(fmt.Sprintf("%s: %s", r.Method, r.URL.Path))
+			slog.Info("handle", "method", r.Method)
 		}
 		h.ServeHTTP(w, r)
 	})

@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -58,7 +59,7 @@ func scheduleDeleteExpired(ctx context.Context, db *sql.DB) error {
 	for {
 		select {
 		case <-ctx.Done():
-			fmt.Println("Stop deleting expired entries")
+			slog.Info("Stop deleting expired entries")
 			return nil
 		case <-ticker.C:
 			if err := manager.DeleteExpired(ctx); err != nil {
@@ -84,7 +85,7 @@ func listen(handlerConfig api.HandlerConfig) *http.Server {
 	}
 
 	go func() {
-		fmt.Println("Handle Path: ", apiRoot)
+		slog.Info("Start listening", "address", httpServer.Addr, "path", apiRoot)
 		if err := httpServer.ListenAndServe(); err != nil {
 			if err.Error() != "http: Server closed" {
 				fmt.Fprintf(os.Stderr, "error: %s", err)

@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -78,7 +78,7 @@ func (c CreateHandler) handle(w http.ResponseWriter, r *http.Request) error {
 // Handle handles http request to create secret
 func (c CreateHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	if err := c.handle(w, r); err != nil {
-		log.Println("create error", err)
+		slog.Error("create error", "error", err)
 		c.view.RenderError(w, r, err)
 	}
 }
