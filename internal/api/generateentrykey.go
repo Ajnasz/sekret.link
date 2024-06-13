@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -18,7 +17,7 @@ type GenerateEntryKeyView interface {
 }
 
 type GenerateEntryKeyManager interface {
-	GenerateEntryKey(ctx context.Context, UUID string, k key.Key, expire time.Duration, maxReads int) (*services.EntryKeyData, error)
+	GenerateEntryKey(ctx context.Context, UUID string, k key.Key, expire *time.Duration, maxReads *int) (*services.EntryKeyData, error)
 }
 
 type GenerateEntryKeyHandler struct {
@@ -46,12 +45,10 @@ func (g GenerateEntryKeyHandler) handle(w http.ResponseWriter, r *http.Request) 
 		return err
 	}
 
-	fmt.Println(request)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	entry, err := g.entryManager.GenerateEntryKey(ctx, request.UUID, request.Key, request.Expiration, request.MaxReads)
+	entry, err := g.entryManager.GenerateEntryKey(ctx, request.UUID, request.Key, &request.Expiration, &request.MaxReads)
 	if err != nil {
 		return err
 	}

@@ -57,7 +57,9 @@ func Test_EntryService_Create(t *testing.T) {
 	}, *kek, nil)
 
 	service := NewEntryManager(db, entryModel, crypto, keyManager)
-	meta, key, err := service.CreateEntry(ctx, "text/plain", data, 1, time.Minute)
+	expire := time.Minute
+	maxReads := 1
+	meta, key, err := service.CreateEntry(ctx, "text/plain", data, &expire, &maxReads)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, meta)
@@ -116,7 +118,9 @@ func TestCreateError(t *testing.T) {
 	keyManager := new(MockEntryKeyer)
 
 	service := NewEntryManager(db, entryModel, crypto, keyManager)
-	meta, key, err := service.CreateEntry(ctx, "text/plain", data, 1, time.Minute)
+	expire := time.Minute
+	maxReads := 1
+	meta, key, err := service.CreateEntry(ctx, "text/plain", data, &expire, &maxReads)
 
 	assert.Error(t, err)
 	assert.Nil(t, meta)
@@ -483,7 +487,7 @@ func Test_EntryManager_GenerateEntryKey(t *testing.T) {
 
 		service := NewEntryManager(nil, nil, nil, keyManager)
 
-		entryKey, err := service.GenerateEntryKey(context.Background(), entryUUID, *dek, expire, remainingReads)
+		entryKey, err := service.GenerateEntryKey(context.Background(), entryUUID, *dek, &expire, &remainingReads)
 
 		assert.NoError(t, err)
 		assert.Equal(t, entryUUID, entryKey.EntryUUID)
@@ -509,7 +513,7 @@ func Test_EntryManager_GenerateEntryKey(t *testing.T) {
 
 		service := NewEntryManager(nil, nil, nil, keyManager)
 
-		entryKey, err := service.GenerateEntryKey(context.Background(), entryUUID, *dek, expire, remainingReads)
+		entryKey, err := service.GenerateEntryKey(context.Background(), entryUUID, *dek, &expire, &remainingReads)
 
 		assert.Error(t, err)
 		assert.Nil(t, entryKey)

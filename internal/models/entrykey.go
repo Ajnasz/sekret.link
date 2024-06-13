@@ -18,7 +18,14 @@ type EntryKey struct {
 
 type EntryKeyModel struct{}
 
-func (e *EntryKeyModel) Create(ctx context.Context, tx *sql.Tx, entryUUID string, encryptedKey []byte, hash []byte, expire time.Time, remainingReads int) (*EntryKey, error) {
+func (e *EntryKeyModel) Create(ctx context.Context,
+	tx *sql.Tx,
+	entryUUID string,
+	encryptedKey []byte,
+	hash []byte,
+	expire *time.Time,
+	remainingReads *int,
+) (*EntryKey, error) {
 
 	now := time.Now()
 	res := tx.QueryRowContext(ctx, `

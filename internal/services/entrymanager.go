@@ -67,7 +67,7 @@ func NewEntryManager(db *sql.DB, model EntryModel, crypto EncrypterFactory, keyM
 // It stores the encrypted data in the database
 // It stores the key in the key manager
 // It returns the meta data of the entry and the key
-func (e *EntryManager) CreateEntry(ctx context.Context, contentType string, data []byte, remainingReads int, expire time.Duration) (*EntryMeta, key.Key, error) {
+func (e *EntryManager) CreateEntry(ctx context.Context, contentType string, data []byte, expire *time.Duration, remainingReads *int) (*EntryMeta, key.Key, error) {
 	uid := uuid.NewUUIDString()
 
 	tx, err := e.db.Begin()
@@ -100,7 +100,13 @@ func (e *EntryManager) CreateEntry(ctx context.Context, contentType string, data
 		return nil, nil, errors.Join(ErrCreateEntryFailed, err)
 	}
 
-	expireAt := time.Now().Add(expire)
+	var expireAt *time.Time
+
+	if expire != nil {
+		fromNow := time.Now().Add(*expire)
+		expireAt = &fromNow
+	}
+
 	entryKey, kek, err := e.keyManager.CreateWithTx(ctx, tx, uid, dek.Get(), expireAt, remainingReads)
 
 	if err != nil {
@@ -260,8 +266,15 @@ func (e *EntryManager) DeleteExpired(ctx context.Context) error {
 	return nil
 }
 
-func (e *EntryManager) GenerateEntryKey(ctx context.Context, entryUUID string, k key.Key, expire time.Duration, maxReads int) (*EntryKeyData, error) {
-	meta, kek, err := e.keyManager.GenerateEncryptionKey(ctx, entryUUID, k, time.Now().Add(expire), maxReads)
+func (e *EntryManager) GenerateEntryKey(ctx context.Context, entryUUID string, k key.Key, expire *time.Duration, maxReads *int) (*EntryKeyData, error) {
+	var expireAt *time.Time
+
+	if expire != nil {
+		fromNow := time.Now().Add(*expire)
+		expireAt = &fromNow
+	}
+
+	meta, kek, err := e.keyManager.GenerateEncryptionKey(ctx, entryUUID, k, expireAt, maxReads)
 	if err != nil {
 		return nil, err
 	}

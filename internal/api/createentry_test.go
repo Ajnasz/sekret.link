@@ -36,10 +36,9 @@ func (m *MockEntryManager) CreateEntry(
 	ctx context.Context,
 	contentType string,
 	body []byte,
-	maxReads int,
-	expiration time.Duration,
+	expiration *time.Duration,
+	maxReads *int,
 ) (*services.EntryMeta, key.Key, error) {
-	fmt.Println("content type", contentType)
 	args := m.Called(ctx, contentType, body, maxReads, expiration)
 
 	if args.Get(1) == nil {

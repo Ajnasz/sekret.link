@@ -387,7 +387,9 @@ func TestGetEntry(t *testing.T) {
 
 			keyManager := services.NewEntryKeyManager(db, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), encrypter)
 			entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter, keyManager)
-			meta, encKey, err := entryManager.CreateEntry(ctx, "text/plain", []byte(testCase.Value), 1, time.Second*10)
+			expire := time.Second * 10
+			maxReads := 1
+			meta, encKey, err := entryManager.CreateEntry(ctx, "text/plain", []byte(testCase.Value), &expire, &maxReads)
 
 			if err != nil {
 				t.Fatal(err)
@@ -444,7 +446,9 @@ func TestGetEntryJSON(t *testing.T) {
 
 	keyManager := services.NewEntryKeyManager(db, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), encrypter)
 	entryManager := services.NewEntryManager(db, &models.EntryModel{}, encrypter, keyManager)
-	meta, encKey, err := entryManager.CreateEntry(ctx, "text/plain", []byte(testCase.Value), 1, time.Second*10)
+	expire := time.Second * 10
+	maxReads := 1
+	meta, encKey, err := entryManager.CreateEntry(ctx, "text/plain", []byte(testCase.Value), &expire, &maxReads)
 	if err != nil {
 		t.Error(err)
 	}
