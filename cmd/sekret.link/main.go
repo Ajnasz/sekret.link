@@ -28,6 +28,7 @@ import (
 
 var (
 	version string
+	build   string
 )
 
 func shutDown(shutdowns ...func() error) chan error {
@@ -137,7 +138,8 @@ func getConfig(ctx context.Context) (*api.HandlerConfig, error) {
 	flag.Parse()
 
 	if queryVersion {
-		fmt.Println(version)
+		fmt.Printf("%s %s", version, build)
+		fmt.Println()
 		os.Exit(0)
 	}
 
