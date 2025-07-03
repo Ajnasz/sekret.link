@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 var ErrEntryNotFound = errors.New("entry not found")
 var ErrInvalidKey = errors.New("invalid key")
 var ErrCreateEntry = errors.New("failed to create entry")
+var ErrDeleteExpiredFailed = errors.New("failed to delete expired entries")
 
 type EntryMeta struct {
 	UUID        string
@@ -153,6 +155,20 @@ func (e *EntryModel) DeleteEntry(ctx context.Context, tx *sql.Tx, uuid string, d
 func (e *EntryModel) DeleteExpired(ctx context.Context, tx *sql.Tx) error {
 	// TODO join with entry_keys table and delete if no living entry found
 	// _, err := tx.ExecContext(ctx, "DELETE FROM entries WHERE expire < NOW()")
+	ret, err := tx.ExecContext(ctx, "DELETE FROM entries WHERE uuid IN(SELECT e.uuid FROM entries e WHERE NOT EXISTS(select 1 FROM entry_key ek WHERE ek.entry_uuid = e.uuid) ORDER BY e.created LIMIT 1000)")
+
+	if err != nil {
+		return errors.Join(err, ErrDeleteExpiredFailed)
+	}
+
+	rows, err := ret.RowsAffected()
+	if err != nil {
+		return errors.Join(err, ErrDeleteExpiredFailed)
+	}
+
+	if rows != 0 {
+		slog.Info("Deleted expired entries", "count", rows)
+	}
 
 	return nil
 }
