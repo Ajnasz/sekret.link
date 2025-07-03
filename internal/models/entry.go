@@ -153,6 +153,7 @@ func (e *EntryModel) DeleteEntry(ctx context.Context, tx *sql.Tx, uuid string, d
 }
 
 func (e *EntryModel) DeleteExpired(ctx context.Context, tx *sql.Tx) error {
+	now := time.Now()
 	// TODO join with entry_keys table and delete if no living entry found
 	// _, err := tx.ExecContext(ctx, "DELETE FROM entries WHERE expire < NOW()")
 	ret, err := tx.ExecContext(ctx, "DELETE FROM entries WHERE uuid IN(SELECT e.uuid FROM entries e WHERE NOT EXISTS(select 1 FROM entry_key ek WHERE ek.entry_uuid = e.uuid) ORDER BY e.created LIMIT 1000)")
@@ -167,7 +168,7 @@ func (e *EntryModel) DeleteExpired(ctx context.Context, tx *sql.Tx) error {
 	}
 
 	if rows != 0 {
-		slog.Info("Deleted expired entries", "count", rows)
+		slog.Info("Deleted expired entries", "count", rows, "duration", time.Since(now).String())
 	}
 
 	return nil
