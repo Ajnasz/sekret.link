@@ -138,10 +138,10 @@ func Test_EntryKeyModel_Get(t *testing.T) {
 
 	model := &EntryKeyModel{}
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		expire := time.Now().Add(time.Hour)
 		maxReads := 2
-		_, err = model.Create(ctx, tx, uid, []byte("test"), []byte(fmt.Sprintf("hashke %d", i)), &expire, &maxReads)
+		_, err = model.Create(ctx, tx, uid, []byte("test"), fmt.Appendf(nil, "hashke %d", i), &expire, &maxReads)
 
 		if err != nil {
 			if err := tx.Rollback(); err != nil {
