@@ -144,16 +144,19 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, k key.Key) (*
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	tx, err := e.db.Begin()
+	// context-aware transaction and safe rollback pattern
+	tx, err := e.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(ErrReadEntryFailed, err)
 	}
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback()
+		}
+	}()
 
 	entry, err := e.model.ReadEntry(ctx, tx, UUID)
 	if err != nil {
-		if err := tx.Rollback(); err != nil {
-			return nil, errors.Join(err, ErrReadEntryFailed)
-		}
 		if errors.Is(err, models.ErrEntryNotFound) {
 			return nil, ErrEntryNotFound
 		}
@@ -161,54 +164,41 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, k key.Key) (*
 	}
 
 	if err := validateEntry(entry); err != nil {
-		if err := tx.Rollback(); err != nil {
-			return nil, errors.Join(err, ErrReadEntryFailed)
-		}
 		return nil, err
 	}
 
 	dek, entryKey, err := e.keyManager.GetDEKTx(ctx, tx, UUID, k)
 	var decryptedData []byte
 	if err != nil {
+		// map key-manager errors to service-level errors consistently
 		if errors.Is(err, ErrEntryKeyNotFound) {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				return nil, errors.Join(err, rollbackErr, ErrReadEntryFailed)
-			}
-			return nil, errors.Join(err, ErrReadEntryFailed)
-		} else {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				return nil, errors.Join(err, rollbackErr, ErrReadEntryFailed)
-			}
-			return nil, errors.Join(err, ErrReadEntryFailed)
+			return nil, ErrEntryNoRemainingReads
 		}
+		return nil, errors.Join(err, ErrReadEntryFailed)
 	} else {
 		crypto := e.crypto(dek)
 		decryptedData, err = crypto.Decrypt(entry.Data)
+		// try to zero dek as soon as we've used it
+		if z, ok := any(dek).(interface{ Wipe() }); ok {
+			z.Wipe()
+		}
 		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				return nil, errors.Join(err, rollbackErr, ErrReadEntryFailed)
-			}
 			return nil, errors.Join(err, ErrReadEntryFailed)
 		}
 
 		if err := e.keyManager.UseTx(ctx, tx, entryKey.UUID); err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				return nil, errors.Join(err, rollbackErr, ErrReadEntryFailed)
-			}
 			return nil, errors.Join(err, ErrReadEntryFailed)
 		}
 	}
 
 	if err := e.model.Use(ctx, tx, UUID); err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return nil, errors.Join(err, rollbackErr, ErrReadEntryFailed)
-		}
 		return nil, errors.Join(err, ErrReadEntryFailed)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, errors.Join(err, ErrReadEntryFailed)
+		return nil, errors.Join(ErrReadEntryFailed, err)
 	}
+	tx = nil
 
 	return &Entry{
 		EntryMeta: EntryMeta{
