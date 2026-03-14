@@ -70,16 +70,20 @@ func NewEntryManager(db *sql.DB, model EntryModel, crypto EncrypterFactory, keyM
 func (e *EntryManager) CreateEntry(ctx context.Context, contentType string, data []byte, expire *time.Duration, remainingReads *int) (*EntryMeta, key.Key, error) {
 	uid := uuid.NewUUIDString()
 
-	tx, err := e.db.Begin()
+	// use context-aware begin and ensure rollback on all early exits
+	tx, err := e.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, nil, errors.Join(ErrCreateEntryFailed, err)
 	}
-	dek, err := key.NewGeneratedKey()
-
-	if err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return nil, nil, errors.Join(ErrCreateEntryFailed, err, rollbackErr)
+	// ensure tx is rolled back unless committed; setting tx = nil prevents rollback
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback()
 		}
+	}()
+
+	dek, err := key.NewGeneratedKey()
+	if err != nil {
 		return nil, nil, errors.Join(ErrCreateEntryFailed, err)
 	}
 
@@ -87,16 +91,10 @@ func (e *EntryManager) CreateEntry(ctx context.Context, contentType string, data
 
 	encryptedData, err := crypto.Encrypt(data)
 	if err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return nil, nil, errors.Join(ErrCreateEntryFailed, err, rollbackErr)
-		}
 		return nil, nil, errors.Join(ErrCreateEntryFailed, err)
 	}
 	meta, err := e.model.CreateEntry(ctx, tx, uid, contentType, encryptedData)
 	if err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return nil, nil, errors.Join(ErrCreateEntryFailed, err, rollbackErr)
-		}
 		return nil, nil, errors.Join(ErrCreateEntryFailed, err)
 	}
 
@@ -110,15 +108,19 @@ func (e *EntryManager) CreateEntry(ctx context.Context, contentType string, data
 	entryKey, kek, err := e.keyManager.CreateWithTx(ctx, tx, uid, dek.Get(), expireAt, remainingReads)
 
 	if err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return nil, nil, errors.Join(ErrCreateEntryFailed, err, rollbackErr)
-		}
 		return nil, nil, errors.Join(ErrCreateEntryFailed, err)
 	}
 
+	// try to zero sensitive key material if the key implementation supports it
+	if z, ok := any(dek).(interface{ Wipe() }); ok {
+		z.Wipe()
+	}
+
+	// commit the transaction and disable deferred rollback on success
 	if err := tx.Commit(); err != nil {
 		return nil, nil, errors.Join(ErrCreateEntryFailed, err)
 	}
+	tx = nil
 
 	return &EntryMeta{
 		UUID:           meta.UUID,
