@@ -215,46 +215,46 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, k key.Key) (*
 }
 
 func (e *EntryManager) DeleteEntry(ctx context.Context, UUID string, deleteKey string) error {
-	tx, err := e.db.Begin()
+	tx, err := e.db.BeginTx(ctx, nil)
 	if err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return errors.Join(ErrDeleteEntryFailed, err, rollbackErr)
-		}
 		return errors.Join(ErrDeleteEntryFailed, err)
 	}
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback()
+		}
+	}()
 
 	if err := e.model.DeleteEntry(ctx, tx, UUID, deleteKey); err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return errors.Join(ErrDeleteEntryFailed, err, rollbackErr)
-		}
 		return errors.Join(ErrDeleteEntryFailed, err)
 	}
 
 	if err := tx.Commit(); err != nil {
 		return errors.Join(ErrDeleteEntryFailed, err)
 	}
+	tx = nil
 	return nil
 }
 
 func (e *EntryManager) DeleteExpired(ctx context.Context) error {
-	tx, err := e.db.Begin()
+	tx, err := e.db.BeginTx(ctx, nil)
 	if err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return errors.Join(DeleteExpiredFailed, err, rollbackErr)
-		}
 		return errors.Join(DeleteExpiredFailed, err)
 	}
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback()
+		}
+	}()
 
 	if err := e.model.DeleteExpired(ctx, tx); err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return errors.Join(DeleteExpiredFailed, err, rollbackErr)
-		}
 		return errors.Join(DeleteExpiredFailed, err)
 	}
 
 	if err := tx.Commit(); err != nil {
 		return errors.Join(DeleteExpiredFailed, err)
 	}
+	tx = nil
 	return nil
 }
 
