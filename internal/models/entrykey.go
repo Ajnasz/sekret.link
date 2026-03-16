@@ -30,13 +30,14 @@ func (e *EntryKeyModel) Create(ctx context.Context,
 	now := time.Now()
 	res := tx.QueryRowContext(ctx, `
 		INSERT INTO entry_key (uuid, entry_uuid, encrypted_key, key_hash, created, remaining_reads, expire)
-		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6) RETURNING uuid, created;
+		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6) RETURNING uuid, created, expire;
 	`, entryUUID, encryptedKey, hash, now, remainingReads, expire)
 
 	var uid string
 	var created time.Time
+	var expireResult sql.NullTime
 
-	err := res.Scan(&uid, &created)
+	err := res.Scan(&uid, &created, &expireResult)
 
 	if err != nil {
 		return nil, err
@@ -49,6 +50,7 @@ func (e *EntryKeyModel) Create(ctx context.Context,
 		EncryptedKey: encryptedKey,
 		KeyHash:      hash,
 		Created:      now,
+		Expire:       expireResult,
 	}, err
 }
 
