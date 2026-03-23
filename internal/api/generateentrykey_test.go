@@ -77,7 +77,8 @@ func TestGenerateEntryKey_Handle(t *testing.T) {
 		KEK:       *newKey,
 	}, *newKey, nil)
 
-	handler.Handle(nil, nil)
+	ctx := context.TODO()
+	handler.Handle(ctx, nil, nil)
 	managerMock.AssertExpectations(t)
 	parserMock.AssertExpectations(t)
 	viewMock.AssertExpectations(t)
@@ -93,7 +94,8 @@ func TestGenerateEntryKey_HandleParseError(t *testing.T) {
 	parserMock.On("Parse", mock.Anything).Return(parsers.GenerateEntryKeyRequestData{}, assert.AnError)
 
 	viewMock.On("RenderError", mock.Anything, mock.Anything, mock.Anything).Return()
-	handler.Handle(nil, nil)
+	ctx := context.TODO()
+	handler.Handle(ctx, nil, nil)
 	managerMock.AssertExpectations(t)
 	parserMock.AssertExpectations(t)
 	viewMock.AssertExpectations(t)
@@ -116,7 +118,8 @@ func TestGenerateEntryKey_HandleManagerError(t *testing.T) {
 
 	managerMock.On("GenerateEntryKey", mock.Anything, "a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb", *k).Return(&services.EntryKeyData{}, []byte{}, assert.AnError)
 
-	handler.Handle(nil, nil)
+	ctx := context.TODO()
+	handler.Handle(ctx, nil, nil)
 	managerMock.AssertExpectations(t)
 	parserMock.AssertExpectations(t)
 	viewMock.AssertExpectations(t)

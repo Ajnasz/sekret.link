@@ -85,7 +85,8 @@ func Test_CreateEntryHandle(t *testing.T) {
 
 	handler := NewCreateHandler(10, parser, entryManager, view)
 
-	handler.Handle(response, request)
+	ctx := context.TODO()
+	handler.Handle(ctx, response, request)
 
 	assert.Equal(t, http.StatusOK, response.Code)
 	parser.AssertExpectations(t)
@@ -109,7 +110,8 @@ func Test_CreateEntryHandleParserError(t *testing.T) {
 
 	handler := NewCreateHandler(10, parser, entryManager, view)
 
-	handler.Handle(response, request)
+	ctx := context.TODO()
+	handler.Handle(ctx, response, request)
 
 	parser.AssertExpectations(t)
 	entryManager.AssertExpectations(t)
@@ -138,7 +140,8 @@ func Test_CreateEntryHandleError(t *testing.T) {
 
 	handler := NewCreateHandler(10, parser, entryManager, view)
 
-	handler.Handle(response, request)
+	ctx := context.TODO()
+	handler.Handle(ctx, response, request)
 
 	parser.AssertExpectations(t)
 	entryManager.AssertExpectations(t)

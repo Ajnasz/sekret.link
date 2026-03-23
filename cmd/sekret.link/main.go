@@ -70,13 +70,13 @@ func scheduleDeleteExpired(ctx context.Context, db *sql.DB) error {
 	}
 }
 
-func listen(handlerConfig api.HandlerConfig) *http.Server {
+func listen(ctx context.Context, handlerConfig api.HandlerConfig) *http.Server {
 	mux := http.NewServeMux()
 
 	apiRoot := getAPIRoot(handlerConfig.WebExternalURL)
 
 	secretHandler := api.NewSecretHandler(handlerConfig)
-	secretHandler.RegisterHandlers(mux, apiRoot)
+	secretHandler.RegisterHandlers(ctx, mux, apiRoot)
 
 	httpServer := &http.Server{
 		Addr:         ":8080",
@@ -178,7 +178,8 @@ func getConfig(ctx context.Context) (*api.HandlerConfig, error) {
 }
 
 func main() {
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
 	handlerConfig, err := getConfig(ctx)
 
 	if err != nil {
@@ -191,10 +192,7 @@ func main() {
 			slog.Error("Error deleting expired entries", "error", err)
 		}
 	}()
-	httpServer := listen(*handlerConfig)
-
-	ctx, stop := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
-	defer stop()
+	httpServer := listen(ctx, *handlerConfig)
 
 	<-ctx.Done()
 

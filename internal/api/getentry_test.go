@@ -77,6 +77,7 @@ func TestGetHandle(t *testing.T) {
 	request := httptest.NewRequest("GET", "http://example.com/foo/a6a9d8cc-db7f-11ee-8f4f-3b41146b31eb/12121212aeadf", nil)
 	response := httptest.NewRecorder()
 
-	handler.Handle(response, request)
+	ctx := context.TODO()
+	handler.Handle(ctx, response, request)
 	viewMock.AssertExpectations(t)
 }

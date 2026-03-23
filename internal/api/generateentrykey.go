@@ -61,8 +61,8 @@ func (g GenerateEntryKeyHandler) handle(ctx context.Context, w http.ResponseWrit
 	return nil
 }
 
-func (g GenerateEntryKeyHandler) Handle(w http.ResponseWriter, r *http.Request) {
-	if err := g.handle(context.TODO(), w, r); err != nil {
+func (g GenerateEntryKeyHandler) Handle(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	if err := g.handle(ctx, w, r); err != nil {
 		g.view.RenderError(w, r, err)
 	}
 }

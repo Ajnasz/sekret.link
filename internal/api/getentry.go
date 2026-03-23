@@ -66,8 +66,8 @@ func (g GetHandler) handle(ctx context.Context, w http.ResponseWriter, r *http.R
 }
 
 // Handle handles http request to get secret
-func (g GetHandler) Handle(w http.ResponseWriter, r *http.Request) {
-	err := g.handle(context.TODO(), w, r)
+func (g GetHandler) Handle(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	err := g.handle(ctx, w, r)
 	if err != nil {
 		g.view.RenderError(w, r, err)
 	}

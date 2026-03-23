@@ -76,7 +76,7 @@ func (c CreateHandler) handle(ctx context.Context, w http.ResponseWriter, r *htt
 }
 
 // Handle handles http request to create secret
-func (c CreateHandler) Handle(w http.ResponseWriter, r *http.Request) {
+func (c CreateHandler) Handle(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	if err := c.handle(context.TODO(), w, r); err != nil {
 		slog.Error("create error", "error", err)
 		c.view.RenderError(w, r, err)
