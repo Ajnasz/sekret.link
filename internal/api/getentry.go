@@ -45,14 +45,14 @@ func NewGetHandler(
 	}
 }
 
-func (g GetHandler) handle(w http.ResponseWriter, r *http.Request) error {
+func (g GetHandler) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	request, err := g.parser.Parse(r)
 
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	entry, err := g.entryManager.ReadEntry(ctx, request.UUID, request.Key)
@@ -67,7 +67,7 @@ func (g GetHandler) handle(w http.ResponseWriter, r *http.Request) error {
 
 // Handle handles http request to get secret
 func (g GetHandler) Handle(w http.ResponseWriter, r *http.Request) {
-	err := g.handle(w, r)
+	err := g.handle(context.TODO(), w, r)
 	if err != nil {
 		g.view.RenderError(w, r, err)
 	}

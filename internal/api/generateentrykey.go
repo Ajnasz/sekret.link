@@ -38,14 +38,14 @@ func NewGenerateEntryKeyHandler(
 	}
 }
 
-func (g GenerateEntryKeyHandler) handle(w http.ResponseWriter, r *http.Request) error {
+func (g GenerateEntryKeyHandler) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	request, err := g.parser.Parse(r)
 
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	entry, err := g.entryManager.GenerateEntryKey(ctx, request.UUID, request.Key, &request.Expiration, &request.MaxReads)
@@ -62,7 +62,7 @@ func (g GenerateEntryKeyHandler) handle(w http.ResponseWriter, r *http.Request) 
 }
 
 func (g GenerateEntryKeyHandler) Handle(w http.ResponseWriter, r *http.Request) {
-	if err := g.handle(w, r); err != nil {
+	if err := g.handle(context.TODO(), w, r); err != nil {
 		g.view.RenderError(w, r, err)
 	}
 }

@@ -17,7 +17,7 @@ func prepareDatabase(ctx context.Context) error {
 	flag.StringVar(&postgresDB, "postgresDB", "", "Connection string for postgresql database backend")
 	flag.Parse()
 
-	db, err := durable.OpenDatabaseClient(context.Background(), config.GetConnectionString(postgresDB))
+	db, err := durable.OpenDatabaseClient(ctx, config.GetConnectionString(postgresDB))
 	if err != nil {
 		return err
 	}

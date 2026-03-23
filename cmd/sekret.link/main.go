@@ -164,7 +164,7 @@ func getConfig(ctx context.Context) (*api.HandlerConfig, error) {
 	}
 	handlerConfig.WebExternalURL = extURL
 
-	db, err := durable.OpenDatabaseClient(context.Background(), config.GetConnectionString(postgresDB))
+	db, err := durable.OpenDatabaseClient(ctx, config.GetConnectionString(postgresDB))
 
 	if err != nil {
 		return nil, err
@@ -178,7 +178,7 @@ func getConfig(ctx context.Context) (*api.HandlerConfig, error) {
 }
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := context.Background()
 	handlerConfig, err := getConfig(ctx)
 
 	if err != nil {
@@ -193,15 +193,16 @@ func main() {
 	}()
 	httpServer := listen(*handlerConfig)
 
-	termChan := make(chan os.Signal)
-	signal.Notify(termChan, syscall.SIGTERM, syscall.SIGINT)
+	ctx, stop := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
 
-	defer close(termChan)
-	<-termChan
-	cancel()
+	<-ctx.Done()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
 
 	shutdownErrors := shutDown(func() error {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 		defer cancel()
 		return httpServer.Shutdown(ctx)
 	}, func() error {
