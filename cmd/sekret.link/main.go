@@ -119,9 +119,30 @@ func getAPIRoot(webExternalURL *url.URL) string {
 	return apiRoot
 }
 
+func getCORSOrigins(list string) []string {
+	if list == "" {
+		return []string{}
+	}
+
+	listSlice := strings.Split(list, ",")
+	out := make([]string, 0, len(listSlice))
+
+	for _, origin := range listSlice {
+		url, err := url.Parse(origin)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: invalid CORS origin: %s", origin)
+			continue
+		}
+		out = append(out, url.String())
+	}
+
+	return out
+}
+
 func getConfig(ctx context.Context) (*api.HandlerConfig, error) {
 	var (
 		externalURLParam string
+		corsOriginsParam string
 		expireSeconds    int
 		maxExpireSeconds int
 		postgresDB       string
@@ -130,6 +151,7 @@ func getConfig(ctx context.Context) (*api.HandlerConfig, error) {
 		base62Encoding   bool
 	)
 	flag.StringVar(&externalURLParam, "webExternalURL", "", "Web server external url")
+	flag.StringVar(&corsOriginsParam, "corsOrigins", "", "Comma separated list of allowed CORS origins")
 	flag.StringVar(&postgresDB, "postgresDB", "", "Connection string for postgresql database backend")
 	flag.IntVar(&expireSeconds, "expireSeconds", 60*60*24*7, "Default expiration time in seconds")
 	flag.IntVar(&maxExpireSeconds, "maxExpireSeconds", 60*60*24*30, "Max expiration time in seconds")
@@ -174,6 +196,7 @@ func getConfig(ctx context.Context) (*api.HandlerConfig, error) {
 		return nil, err
 	}
 	handlerConfig.DB = db
+	handlerConfig.CORSOrigins = getCORSOrigins(corsOriginsParam)
 
 	return &handlerConfig, nil
 }

@@ -31,6 +31,7 @@ type HandlerConfig struct {
 	MaxDataSize      int64
 	WebExternalURL   *url.URL
 	DB               *sql.DB
+	CORSOrigins      []string
 }
 
 // SecretHandler is an http.Handler implementation which handles requests to
@@ -180,7 +181,7 @@ func (s SecretHandler) RegisterHandlers(ctx context.Context, mux *http.ServeMux,
 			apiRoot,
 			middlewares.SetupLogging(
 				false,
-				middlewares.SetupHeaders(http.HandlerFunc(s.Get(ctx))),
+				middlewares.SetupHeaders(s.config.CORSOrigins, http.HandlerFunc(s.Get(ctx))),
 			),
 		),
 	)
@@ -190,7 +191,7 @@ func (s SecretHandler) RegisterHandlers(ctx context.Context, mux *http.ServeMux,
 			path.Join("/", apiRoot),
 			middlewares.SetupLogging(
 				true,
-				middlewares.SetupHeaders(http.HandlerFunc(s.Post(ctx))),
+				middlewares.SetupHeaders(s.config.CORSOrigins, http.HandlerFunc(s.Post(ctx))),
 			),
 		),
 	)
@@ -201,7 +202,7 @@ func (s SecretHandler) RegisterHandlers(ctx context.Context, mux *http.ServeMux,
 			apiRoot,
 			middlewares.SetupLogging(
 				false,
-				middlewares.SetupHeaders(http.HandlerFunc(s.Delete(ctx))),
+				middlewares.SetupHeaders(s.config.CORSOrigins, http.HandlerFunc(s.Delete(ctx))),
 			),
 		),
 	)
@@ -212,7 +213,7 @@ func (s SecretHandler) RegisterHandlers(ctx context.Context, mux *http.ServeMux,
 			apiRoot,
 			middlewares.SetupLogging(
 				false,
-				middlewares.SetupHeaders(http.HandlerFunc(s.Options(ctx))),
+				middlewares.SetupHeaders(s.config.CORSOrigins, http.HandlerFunc(s.Options(ctx))),
 			),
 		),
 	)
@@ -224,11 +225,11 @@ func (s SecretHandler) RegisterHandlers(ctx context.Context, mux *http.ServeMux,
 			apiRoot,
 			middlewares.SetupLogging(
 				false,
-				middlewares.SetupHeaders(http.HandlerFunc(s.GenerateEncryptionKey(ctx))),
+				middlewares.SetupHeaders(s.config.CORSOrigins, http.HandlerFunc(s.GenerateEncryptionKey(ctx))),
 			),
 		),
 	)
 
-	mux.Handle("/", middlewares.SetupLogging(true, middlewares.SetupHeaders(http.HandlerFunc(s.NotFound))))
+	mux.Handle("/", middlewares.SetupLogging(true, middlewares.SetupHeaders(s.config.CORSOrigins, http.HandlerFunc(s.NotFound))))
 
 }
