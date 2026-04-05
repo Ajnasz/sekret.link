@@ -21,7 +21,7 @@ import (
 )
 
 func newAESEncrypter(b key.Key) services.Encrypter {
-	return services.NewAESEncrypter(b)
+	return services.NewAESEncrypter([]byte(b))
 }
 
 // HandlerConfig configuration for http handlers
