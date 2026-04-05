@@ -83,6 +83,7 @@ func listen(ctx context.Context, handlerConfig api.HandlerConfig) *http.Server {
 		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
 	go func() {
