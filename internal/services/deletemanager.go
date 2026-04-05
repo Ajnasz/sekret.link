@@ -27,7 +27,7 @@ func NewExpiredEntryManager(db *sql.DB, entryModel ExpiredEntryModel, entryKeyMo
 }
 
 func (d *ExpiredEntryManager) DeleteExpired(ctx context.Context) error {
-	tx, err := d.db.Begin()
+	tx, err := d.db.BeginTx(ctx, nil)
 	if err != nil {
 		return errors.Join(ErrDeleteExpiredFailed, err)
 	}
