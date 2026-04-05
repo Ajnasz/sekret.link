@@ -56,7 +56,7 @@ func (e *EntryModel) CreateEntry(ctx context.Context, tx *sql.Tx, uuid string, c
 	}
 
 	now := time.Now()
-	res, err := tx.ExecContext(ctx, `INSERT INTO entries (uuid, data, created, delete_key, content_type) VALUES  ($1, $2, $3, $4, $5) RETURNING uuid, delete_key;`, uuid, data, now, deleteKey, contenType)
+	res, err := tx.ExecContext(ctx, `INSERT INTO entries (uuid, data, created, delete_key, content_type) VALUES  ($1, $2, $3, $4, $5);`, uuid, data, now, deleteKey, contenType)
 
 	if err != nil {
 		return nil, errors.Join(err, ErrCreateEntry)
