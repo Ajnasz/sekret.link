@@ -55,7 +55,7 @@ func shutDown(shutdowns ...func() error) chan error {
 
 func scheduleDeleteExpired(ctx context.Context, db *sql.DB) error {
 	manager := services.NewExpiredEntryManager(db, &models.EntryModel{}, &models.EntryKeyModel{})
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 	for {
 		select {
