@@ -1,6 +1,9 @@
 package hasher
 
-import "crypto/sha256"
+import (
+	"crypto/sha256"
+	"crypto/subtle"
+)
 
 type Hasher interface {
 	Hash(data []byte) []byte
@@ -19,13 +22,5 @@ func (h *Sha256Hasher) Hash(data []byte) []byte {
 }
 
 func Compare(k, k2 []byte) bool {
-	if len(k) != len(k2) {
-		return false
-	}
-	for i := range k {
-		if k[i] != k2[i] {
-			return false
-		}
-	}
-	return true
+	return subtle.ConstantTimeCompare(k, k2) == 1
 }
