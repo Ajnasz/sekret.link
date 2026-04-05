@@ -60,6 +60,7 @@ func (e *EntryKeyMigration) renameAccesedToAccessed(ctx context.Context, tx *sql
 	if err != nil {
 		return err
 	}
+	defer alterTable.Close()
 
 	_, err = alterTable.Exec()
 
