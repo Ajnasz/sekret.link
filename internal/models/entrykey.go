@@ -80,6 +80,10 @@ func (e *EntryKeyModel) Get(ctx context.Context, tx *sql.Tx, entryUUID string) (
 		entryKeys = append(entryKeys, ek)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return entryKeys, nil
 
 }
