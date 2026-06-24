@@ -206,6 +206,60 @@ func TestReadEntry(t *testing.T) {
 		entryModel.AssertExpectations(t)
 	})
 
+	t.Run("UseTx exhausted returns ErrEntryNoRemainingReads", func(t *testing.T) {
+		db, sqlMock, err := sqlmock.New()
+		if err != nil {
+			t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+		}
+		defer func() {
+			if err := db.Close(); err != nil {
+				t.Logf("db.Close: %v", err)
+			}
+		}()
+
+		sqlMock.ExpectBegin()
+		sqlMock.ExpectRollback()
+
+		ctx := context.Background()
+
+		entry := models.Entry{
+			EntryMeta: models.EntryMeta{
+				UUID:      "uuid",
+				DeleteKey: "delete_key",
+				Created:   timenow,
+				Accessed:  sql.NullTime{Time: timenow, Valid: true},
+			},
+			Data: []byte("encrypted"),
+		}
+
+		entryModel := new(models.MockEntryModel)
+		entryModel.On("ReadEntry", ctx, mock.Anything, "uuid").Return(&entry, nil)
+
+		k, err := key.NewGeneratedKey()
+		assert.NoError(t, err)
+
+		dek, err := key.NewGeneratedKey()
+		assert.NoError(t, err)
+
+		keyManager := new(MockEntryKeyer)
+		keyManager.On("GetDEKTx", ctx, mock.Anything, "uuid", *k).Return(*dek, &EntryKey{
+			UUID: "entrykey uuid",
+		}, nil)
+		keyManager.On("UseTx", ctx, mock.Anything, "entrykey uuid").Return(models.ErrEntryKeyExhausted)
+
+		entryCrypto := new(MockEntryCrypto)
+		crypto := func(k key.Key) Encrypter { return entryCrypto }
+
+		service := NewEntryManager(db, entryModel, crypto, keyManager)
+		data, err := service.ReadEntry(ctx, "uuid", *k)
+
+		assert.ErrorIs(t, err, ErrEntryNoRemainingReads)
+		assert.Nil(t, data)
+		entryCrypto.AssertNumberOfCalls(t, "Decrypt", 0)
+		entryModel.AssertExpectations(t)
+		keyManager.AssertExpectations(t)
+	})
+
 	t.Run("should return notfound error when entry not found", func(t *testing.T) {
 		db, sqlMock, err := sqlmock.New()
 		if err != nil {

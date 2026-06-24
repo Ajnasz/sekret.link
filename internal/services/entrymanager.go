@@ -167,27 +167,32 @@ func (e *EntryManager) ReadEntry(ctx context.Context, UUID string, k key.Key) (*
 	}
 
 	dek, entryKey, err := e.keyManager.GetDEKTx(ctx, tx, UUID, k)
-	var decryptedData []byte
 	if err != nil {
 		// map key-manager errors to service-level errors consistently
 		if errors.Is(err, ErrEntryKeyNotFound) {
 			return nil, ErrEntryNoRemainingReads
 		}
 		return nil, errors.Join(err, ErrReadEntryFailed)
-	} else {
-		crypto := e.crypto(dek)
-		decryptedData, err = crypto.Decrypt(entry.Data)
-		// try to zero dek as soon as we've used it
-		if z, ok := any(dek).(interface{ Wipe() }); ok {
-			z.Wipe()
-		}
-		if err != nil {
-			return nil, errors.Join(err, ErrReadEntryFailed)
-		}
+	}
 
-		if err := e.keyManager.UseTx(ctx, tx, entryKey.UUID); err != nil {
-			return nil, errors.Join(err, ErrReadEntryFailed)
+	// Consume the read slot BEFORE decrypting — prevents double-decrypt under concurrent load.
+	// PostgreSQL READ COMMITTED ensures the second racer's UPDATE sees remaining_reads=0 after
+	// the first committer's UPDATE, yielding 0 rows affected and ErrEntryKeyExhausted.
+	if err := e.keyManager.UseTx(ctx, tx, entryKey.UUID); err != nil {
+		if errors.Is(err, models.ErrEntryKeyExhausted) {
+			return nil, ErrEntryNoRemainingReads
 		}
+		return nil, errors.Join(err, ErrReadEntryFailed)
+	}
+
+	crypto := e.crypto(dek)
+	decryptedData, err := crypto.Decrypt(entry.Data)
+	// try to zero dek as soon as we've used it
+	if z, ok := any(dek).(interface{ Wipe() }); ok {
+		z.Wipe()
+	}
+	if err != nil {
+		return nil, errors.Join(err, ErrReadEntryFailed)
 	}
 
 	if err := e.model.Use(ctx, tx, UUID); err != nil {

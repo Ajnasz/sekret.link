@@ -3,7 +3,9 @@ package models
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -475,5 +477,143 @@ func Test_EntryKeyModel_UseTx(t *testing.T) {
 
 	if entryKeys[0].RemainingReads.Int16 != 1 {
 		t.Errorf("expected 1 got %d", entryKeys[0].RemainingReads.Int16)
+	}
+}
+
+func Test_EntryKeyModel_Use_Exhausted(t *testing.T) {
+	ctx := context.Background()
+	db, tx, err := getTestDbTx(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close failed: %v", err)
+		}
+	}()
+
+	_, entryKeyUUID, err := createTestEntryKey(ctx, tx)
+	if err != nil {
+		_ = tx.Rollback()
+		t.Fatal(err)
+	}
+
+	model := &EntryKeyModel{}
+	if err := model.SetMaxReads(ctx, tx, entryKeyUUID, 1); err != nil {
+		_ = tx.Rollback()
+		t.Fatal(err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	// First Use: should succeed (1 → 0)
+	tx, err = db.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := model.Use(ctx, tx, entryKeyUUID); err != nil {
+		_ = tx.Rollback()
+		t.Fatalf("first Use should succeed: %v", err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Second Use: remaining_reads=0, must return ErrEntryKeyExhausted
+	tx, err = db.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = model.Use(ctx, tx, entryKeyUUID)
+	_ = tx.Rollback()
+	if !errors.Is(err, ErrEntryKeyExhausted) {
+		t.Errorf("expected ErrEntryKeyExhausted, got %v", err)
+	}
+}
+
+func Test_EntryKeyModel_Use_Concurrent(t *testing.T) {
+	ctx := context.Background()
+	db, err := durable.TestConnection(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close failed: %v", err)
+		}
+	}()
+
+	setupTx, err := db.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, entryKeyUUID, err := createTestEntryKey(ctx, setupTx)
+	if err != nil {
+		_ = setupTx.Rollback()
+		t.Fatal(err)
+	}
+	model := &EntryKeyModel{}
+	if err := model.SetMaxReads(ctx, setupTx, entryKeyUUID, 1); err != nil {
+		_ = setupTx.Rollback()
+		t.Fatal(err)
+	}
+	if err := setupTx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Both goroutines open a transaction, then both call Use() simultaneously.
+	// Exactly one must succeed; the other must get ErrEntryKeyExhausted.
+	var (
+		wg      sync.WaitGroup
+		mu      sync.Mutex
+		results []error
+		ready   = make(chan struct{})
+	)
+
+	for range 2 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			tx, err := db.Begin()
+			if err != nil {
+				mu.Lock()
+				results = append(results, err)
+				mu.Unlock()
+				return
+			}
+			<-ready
+			useErr := model.Use(ctx, tx, entryKeyUUID)
+			if useErr != nil {
+				_ = tx.Rollback()
+			} else {
+				_ = tx.Commit()
+			}
+			mu.Lock()
+			results = append(results, useErr)
+			mu.Unlock()
+		}()
+	}
+
+	close(ready)
+	wg.Wait()
+
+	var successes, exhausted int
+	for _, err := range results {
+		switch {
+		case err == nil:
+			successes++
+		case errors.Is(err, ErrEntryKeyExhausted):
+			exhausted++
+		default:
+			t.Errorf("unexpected error: %v", err)
+		}
+	}
+
+	if successes != 1 {
+		t.Errorf("expected 1 success, got %d", successes)
+	}
+	if exhausted != 1 {
+		t.Errorf("expected 1 ErrEntryKeyExhausted, got %d", exhausted)
 	}
 }

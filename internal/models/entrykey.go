@@ -3,9 +3,12 @@ package models
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"log/slog"
 	"time"
 )
+
+var ErrEntryKeyExhausted = errors.New("entry key exhausted")
 
 type EntryKey struct {
 	UUID           string
@@ -134,11 +137,20 @@ func (e *EntryKeyModel) SetMaxReads(ctx context.Context, tx *sql.Tx, uuid string
 }
 
 func (e *EntryKeyModel) Use(ctx context.Context, tx *sql.Tx, uuid string) error {
-	_, err := tx.ExecContext(ctx, `
+	result, err := tx.ExecContext(ctx, `
 		UPDATE entry_key
 		SET remaining_reads = remaining_reads - 1, accessed = NOW()
-		WHERE uuid = $1 AND remaining_reads IS NOT NULL
+		WHERE uuid = $1 AND (remaining_reads IS NULL OR remaining_reads > 0)
 	`, uuid)
-
-	return err
+	if err != nil {
+		return err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrEntryKeyExhausted
+	}
+	return nil
 }
