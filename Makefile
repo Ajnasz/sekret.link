@@ -24,8 +24,16 @@ clean:
 dbcreate:
 	@cd cmd/prepare && go run .
 
+.PHONY: pg dbcreate-test
+pg:
+	@docker run --name postgres -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_DB=sekret_link_test -d postgres:13-alpine
+
 dbcreate-test:
 	@cd cmd/prepare && go run . -postgresDB "postgres://postgres:password@localhost:5432/sekret_link_test?sslmode=disable"
+
+.PHONY: lint
+lint:
+	@golangci-lint run ./...
 
 .PHONY: test
 test: dbcreate-test
