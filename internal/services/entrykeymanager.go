@@ -233,9 +233,16 @@ func (e EntryKeyManager) GenerateEncryptionKey(
 		return nil, nil, err
 	}
 
-	dek, _, err := e.findDEK(ctx, tx, entryUUID, existingKey)
+	dek, entryKeyModel, err := e.findDEK(ctx, tx, entryUUID, existingKey)
 
 	if err != nil {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return nil, nil, errors.Join(err, rollbackErr)
+		}
+		return nil, nil, err
+	}
+
+	if err := validateEntryKey(entryKeyModel); err != nil {
 		if rollbackErr := tx.Rollback(); rollbackErr != nil {
 			return nil, nil, errors.Join(err, rollbackErr)
 		}
