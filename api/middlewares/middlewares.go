@@ -1,7 +1,6 @@
 package middlewares
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
 	"slices"
@@ -27,7 +26,6 @@ func SetupHeaders(origins []string, h http.Handler) http.Handler {
 
 func setCORSHeaders(origins []string) func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
-		fmt.Printf("ORIGIN: %s\n", req.Header.Get("ORIGIN"))
 		if req.Header.Get("ORIGIN") != "" {
 			if slices.Contains(origins, req.Header.Get("ORIGIN")) {
 				(w).Header().Set("Access-Control-Allow-Origin", req.Header.Get("ORIGIN"))
