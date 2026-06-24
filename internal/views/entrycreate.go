@@ -64,7 +64,9 @@ func (e EntryCreateView) Render(w http.ResponseWriter, r *http.Request, entry En
 			return
 		}
 
-		fmt.Fprintf(w, "%s", newURL.String())
+		if _, err := fmt.Fprintf(w, "%s", newURL.String()); err != nil {
+			slog.Warn("failed to write response", "error", err)
+		}
 	}
 }
 

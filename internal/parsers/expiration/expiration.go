@@ -7,7 +7,7 @@ import (
 
 // ErrInvalidExpirationDate request parse error happens when the user set
 // expiration date is larger than the system maximum expiration date
-var ErrInvalidExpirationDate = errors.New("Invalid expiration date")
+var ErrInvalidExpirationDate = errors.New("invalid expiration date")
 
 func Parse(expire string, defaultExpire time.Duration, maxExpireSeconds int) (time.Duration, error) {
 	if expire == "" {

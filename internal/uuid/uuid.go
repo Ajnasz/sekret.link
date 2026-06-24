@@ -24,7 +24,7 @@ func GetUUIDAndSecretFromPath(urlPath string) (string, string, error) {
 	// delete key is the last item from the path
 	pathDir, key := path.Split(urlPath)
 	if len(pathDir) < 1 {
-		return "", "", fmt.Errorf("Invalid URL %q", urlPath)
+		return "", "", fmt.Errorf("invalid URL %q", urlPath)
 	}
 	_, uuidFromPath := path.Split(pathDir[0 : len(pathDir)-1])
 	UUID, err := uuid.Parse(uuidFromPath)

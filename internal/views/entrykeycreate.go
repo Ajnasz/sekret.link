@@ -54,7 +54,9 @@ func (g GenerateEntryKeyView) Render(w http.ResponseWriter, r *http.Request, res
 			return
 		}
 
-		fmt.Fprint(w, newURL.String())
+		if _, err := fmt.Fprint(w, newURL.String()); err != nil {
+			slog.Warn("failed to write response", "error", err)
+		}
 	}
 }
 

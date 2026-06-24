@@ -21,7 +21,7 @@ func Test_EntryService_Create(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectCommit()
@@ -93,7 +93,7 @@ func TestCreateError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectExec("INSERT INTO entries").WillReturnError(fmt.Errorf("error"))
@@ -137,7 +137,7 @@ func TestReadEntry(t *testing.T) {
 		if err != nil {
 			t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 		}
-		defer db.Close()
+		defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 		sqlMock.ExpectBegin()
 		sqlMock.ExpectCommit()
@@ -211,7 +211,7 @@ func TestReadEntry(t *testing.T) {
 		if err != nil {
 			t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 		}
-		defer db.Close()
+		defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 		sqlMock.ExpectBegin()
 		sqlMock.ExpectRollback()
@@ -251,7 +251,7 @@ func TestReadEntryError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectRollback()
@@ -287,7 +287,7 @@ func TestDeleteEntry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectCommit()
@@ -322,7 +322,7 @@ func TestDeleteEntryError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectRollback()
@@ -358,7 +358,7 @@ func TestDeleteEntryInvalidDeleteKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectRollback()
 
@@ -396,7 +396,7 @@ func Test_EntryManager_DeleteExpired(t *testing.T) {
 		if err != nil {
 			t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 		}
-		defer db.Close()
+		defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 		sqlMock.ExpectBegin()
 		sqlMock.ExpectCommit()
 
@@ -431,7 +431,7 @@ func Test_EntryManager_DeleteExpired(t *testing.T) {
 		if err != nil {
 			t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 		}
-		defer db.Close()
+		defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 		sqlMock.ExpectBegin()
 		sqlMock.ExpectRollback()
 

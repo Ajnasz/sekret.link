@@ -83,7 +83,7 @@ func TestEntryKeyManager_Create(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectCommit()
@@ -140,7 +140,7 @@ func TestEntryKeyManager_Create_NoExpire(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectCommit()
@@ -193,7 +193,7 @@ func TestEntryKeyManager_Create_NoMaxRead(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	sqlMock.ExpectBegin()
 	sqlMock.ExpectCommit()
@@ -247,7 +247,7 @@ func TestEntryKeyManager_GetDEK(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	ctx := context.Background()
 	model := &MockEntryKeyModel{}
@@ -301,7 +301,7 @@ func TestEntryKeyManager_GetDEK_NotFound(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	ctx := context.Background()
 	model := &MockEntryKeyModel{}
@@ -338,7 +338,7 @@ func TestEntryKeyManager_GetDEK_DecryptError(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	ctx := context.Background()
 	model := &MockEntryKeyModel{}
@@ -388,7 +388,7 @@ func TestEntryManager_InvalidDEK(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	ctx := context.Background()
 	model := &MockEntryKeyModel{}
@@ -442,7 +442,7 @@ func TestEntryKeyManager_GenerateEncryptionKey(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	ctx := context.Background()
 	model := &MockEntryKeyModel{}
@@ -513,7 +513,7 @@ func TestEntryKeyManager_UseTx(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	ctx := context.Background()
 	model := &MockEntryKeyModel{}
@@ -555,7 +555,7 @@ func Test_EntryKeyManager_GetDEKTx_NoRemainingReads(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	ctx := context.Background()
 	model := &MockEntryKeyModel{}
@@ -605,7 +605,7 @@ func Test_EntryKeyManager_GetDEKTx_Expired(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	ctx := context.Background()
 	model := &MockEntryKeyModel{}
@@ -656,7 +656,7 @@ func Test_EntryKeyManager_Delete(t *testing.T) {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
 
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	ctx := context.Background()
 	model := &MockEntryKeyModel{}

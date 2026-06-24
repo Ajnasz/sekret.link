@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"time"
 )
 
@@ -66,7 +67,11 @@ func (e *EntryKeyModel) Get(ctx context.Context, tx *sql.Tx, entryUUID string) (
 		return nil, err
 	}
 
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			slog.Warn("failed to close rows", "error", err)
+		}
+	}()
 
 	var entryKeys []EntryKey
 

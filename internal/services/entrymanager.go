@@ -18,7 +18,6 @@ var ErrEntryNoRemainingReads = errors.New("entry has no remaining reads")
 var ErrCreateEntryFailed = errors.New("create entry failed")
 var ErrReadEntryFailed = errors.New("read entry failed")
 var ErrDeleteEntryFailed = errors.New("delete entry failed")
-var DeleteExpiredFailed = errors.New("delete expired failed")
 
 // EntryMeta provides the entry meta
 type EntryMeta struct {
@@ -239,7 +238,7 @@ func (e *EntryManager) DeleteEntry(ctx context.Context, UUID string, deleteKey s
 func (e *EntryManager) DeleteExpired(ctx context.Context) error {
 	tx, err := e.db.BeginTx(ctx, nil)
 	if err != nil {
-		return errors.Join(DeleteExpiredFailed, err)
+		return errors.Join(ErrDeleteExpiredFailed, err)
 	}
 	defer func() {
 		if tx != nil {
@@ -248,11 +247,11 @@ func (e *EntryManager) DeleteExpired(ctx context.Context) error {
 	}()
 
 	if err := e.model.DeleteExpired(ctx, tx); err != nil {
-		return errors.Join(DeleteExpiredFailed, err)
+		return errors.Join(ErrDeleteExpiredFailed, err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return errors.Join(DeleteExpiredFailed, err)
+		return errors.Join(ErrDeleteExpiredFailed, err)
 	}
 	tx = nil
 	return nil

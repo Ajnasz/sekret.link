@@ -16,7 +16,7 @@ func Test_EntryModel_CreateEntry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -61,7 +61,7 @@ func Test_EntryModel_Use(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	tx, err := db.Begin()
 	if err != nil {

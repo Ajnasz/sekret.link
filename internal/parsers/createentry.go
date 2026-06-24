@@ -66,8 +66,8 @@ func getContentType(r *http.Request) string {
 
 func getContent(r *http.Request) ([]byte, string, error) {
 	ct := getContentType(r)
-	switch {
-	case ct == "multipart/form-data":
+	switch ct {
+	case "multipart/form-data":
 		return parseMultiForm(r)
 	default:
 		data, err := io.ReadAll(r.Body)

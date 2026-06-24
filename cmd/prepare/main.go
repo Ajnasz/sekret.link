@@ -22,7 +22,11 @@ func prepareDatabase(ctx context.Context) error {
 		return err
 	}
 
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			slog.Warn("failed to close database connection", "error", err)
+		}
+	}()
 	if err := migrate.PrepareDatabase(ctx, db); err != nil {
 		return err
 	}

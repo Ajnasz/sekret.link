@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 )
 
 type EntryKeyMigration struct{}
@@ -60,7 +61,11 @@ func (e *EntryKeyMigration) renameAccesedToAccessed(ctx context.Context, tx *sql
 	if err != nil {
 		return err
 	}
-	defer alterTable.Close()
+	defer func() {
+		if err := alterTable.Close(); err != nil {
+			slog.Warn("failed to close statement", "error", err)
+		}
+	}()
 
 	_, err = alterTable.Exec()
 

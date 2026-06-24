@@ -7,7 +7,7 @@ import (
 
 // ErrInvalidMaxRead request parse error happens when the user maximum read
 // number is greater than the system maximum read number
-var ErrInvalidMaxRead = errors.New("Invalid max read")
+var ErrInvalidMaxRead = errors.New("invalid max read")
 
 // Parse returns the maximum number of reads for a secret.
 func Parse(val string) (int, error) {

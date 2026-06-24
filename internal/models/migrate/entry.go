@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 
 	"github.com/Ajnasz/sekret.link/internal/key"
 )
@@ -58,7 +59,11 @@ func (*EntryMigration) addRemainingRead(ctx context.Context, tx *sql.Tx) error {
 	if err != nil {
 		return err
 	}
-	defer alterTable.Close()
+	defer func() {
+		if err := alterTable.Close(); err != nil {
+			slog.Warn("failed to close statement", "error", err)
+		}
+	}()
 
 	_, err = alterTable.Exec()
 
@@ -75,7 +80,11 @@ func (*EntryMigration) addDeleteKey(ctx context.Context, tx *sql.Tx) error {
 	if err != nil {
 		return fmt.Errorf("failed to add delete_key column: %w", err)
 	}
-	defer alterTable.Close()
+	defer func() {
+		if err := alterTable.Close(); err != nil {
+			slog.Warn("failed to close statement", "error", err)
+		}
+	}()
 
 	_, err = alterTable.ExecContext(ctx)
 
@@ -120,7 +129,11 @@ func (e *EntryMigration) addContentType(ctx context.Context, tx *sql.Tx) error {
 	if err != nil {
 		return fmt.Errorf("failed to add delete_key column: %w", err)
 	}
-	defer alterTable.Close()
+	defer func() {
+		if err := alterTable.Close(); err != nil {
+			slog.Warn("failed to close statement", "error", err)
+		}
+	}()
 
 	_, err = alterTable.Exec()
 

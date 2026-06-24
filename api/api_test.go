@@ -46,7 +46,7 @@ func TestCreateEntry(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		db.Close()
+		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
 	})
 
 	t.Run("happy path", func(t *testing.T) {
@@ -167,7 +167,7 @@ func TestCreateEntryJSON(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		db.Close()
+		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
 	})
 
 	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(value)))
@@ -243,7 +243,9 @@ func createMultipart(values map[string]io.Reader) (*bytes.Buffer, *multipart.Wri
 		}
 	}
 
-	w.Close()
+	if err := w.Close(); err != nil {
+		return nil, nil, err
+	}
 
 	return &b, w, nil
 }
@@ -258,7 +260,7 @@ func TestCreateEntryForm(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		db.Close()
+		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
 	})
 
 	data, multi, err := createMultipart(map[string]io.Reader{
@@ -339,7 +341,7 @@ func TestRequestPathsCreateEntry(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		db.Close()
+		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
 	})
 
 	for _, testCase := range testCases {
@@ -378,7 +380,7 @@ func TestGetEntry(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		db.Close()
+		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
 	})
 
 	for _, testCase := range testCases {
@@ -431,7 +433,7 @@ func TestGetEntryJSON(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		defer db.Close()
+		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
 	})
 	testCase := struct {
 		Name  string
@@ -502,7 +504,7 @@ func TestSetAndGetEntry(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		db.Close()
+		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
 	})
 
 	req := httptest.NewRequest("POST", "http://example.com/", bytes.NewReader([]byte(testCase)))
@@ -551,7 +553,7 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		db.Close()
+		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
 	})
 	testCase := "foo"
 
@@ -609,7 +611,7 @@ func TestCreateEntrySizeLimit(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		db.Close()
+		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
 	})
 	testCase := "ff"
 
@@ -638,7 +640,7 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		db.Close()
+		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
 	})
 
 	req := httptest.NewRequest("POST", "http://example.com?maxReads=2", bytes.NewReader([]byte(value)))
@@ -690,7 +692,7 @@ func Test_DeleteEntry(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		db.Close()
+		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
 	})
 
 	t.Run("correct key", func(t *testing.T) {
@@ -781,7 +783,9 @@ func FuzzSetAndGetEntry(f *testing.F) {
 	}
 
 	f.Cleanup(func() {
-		defer db.Close()
+		if err := db.Close(); err != nil {
+			f.Logf("db.Close: %v", err)
+		}
 	})
 
 	f.Fuzz(func(t *testing.T, testCase string) {

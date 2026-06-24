@@ -21,7 +21,7 @@ func getTestDbTx(ctx context.Context) (*sql.DB, *sql.Tx, error) {
 	tx, err := db.Begin()
 
 	if err != nil {
-		defer db.Close()
+		_ = db.Close()
 		return nil, nil, err
 	}
 
@@ -234,7 +234,7 @@ func Test_EntryKeyModel_Delete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	uid, entryKeyUUID, err := createTestEntryKey(ctx, tx)
 	if err != nil {
@@ -290,7 +290,7 @@ func Test_EntryKeyModel_Delete_Empty(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	defer func() { if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) } }()
 
 	model := &EntryKeyModel{}
 	err = model.Delete(ctx, tx, uuid.New().String())
