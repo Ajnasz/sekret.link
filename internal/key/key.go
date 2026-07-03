@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"sync/atomic"
 
 	"github.com/eknkc/basex"
 )
@@ -31,7 +32,7 @@ const (
 )
 
 var base62Encoder *basex.Encoding
-var encodingType encoding
+var encodingType atomic.Int32
 
 func init() {
 	const alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -104,7 +105,7 @@ func (k *Key) toHex() string {
 
 // String returns the key as a string
 func (k *Key) String() string {
-	if encodingType == Base62Encoding {
+	if encoding(encodingType.Load()) == Base62Encoding {
 		return k.toBase62()
 	}
 
@@ -162,6 +163,6 @@ func FromHex(s string) (*Key, error) {
 }
 
 // SetEncodingType sets the encoding type
-func SetEncodingType(encoding encoding) {
-	encodingType = encoding
+func SetEncodingType(e encoding) {
+	encodingType.Store(int32(e))
 }
