@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"crypto/subtle"
 	"database/sql"
 	"errors"
 	"log/slog"
@@ -129,7 +130,7 @@ func (e *EntryModel) DeleteEntry(ctx context.Context, tx *sql.Tx, uuid string, d
 	}
 
 	// TODO check how come the storeDeleteKey has a new line
-	if strings.TrimSpace(storedDeleteKey) != deleteKey {
+	if subtle.ConstantTimeCompare([]byte(strings.TrimSpace(storedDeleteKey)), []byte(deleteKey)) != 1 {
 		return ErrInvalidKey
 	}
 
