@@ -53,7 +53,7 @@ func (d DeleteHandler) handle(ctx context.Context, w http.ResponseWriter, r *htt
 
 // Handle handles the delete request
 func (d DeleteHandler) Handle(w http.ResponseWriter, r *http.Request) {
-	if err := d.handle(context.TODO(), w, r); err != nil {
+	if err := d.handle(r.Context(), w, r); err != nil {
 		d.view.RenderError(w, r, err)
 	}
 }
