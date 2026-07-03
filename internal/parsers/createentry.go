@@ -14,6 +14,30 @@ type CreateEntryParser struct {
 	maxExpireSeconds int
 }
 
+// allowedContentTypes are the only Content-Type values stored verbatim and
+// echoed back on read. Anything else is coerced to application/octet-stream
+// so a secret can't be crafted to make a browser render it as HTML/XML/SVG.
+var allowedContentTypes = map[string]bool{
+	"text/plain":               true,
+	"application/octet-stream": true,
+	"application/json":         true,
+	"application/pdf":          true,
+	"image/png":                true,
+	"image/jpeg":               true,
+	"image/gif":                true,
+	"image/webp":               true,
+	"text/csv":                 true,
+	"text/markdown":            true,
+	"application/zip":          true,
+}
+
+func sanitizeContentType(ct string) string {
+	if !allowedContentTypes[ct] {
+		return "application/octet-stream"
+	}
+	return ct
+}
+
 type CreateEntryRequestData struct {
 	ContentType string
 	Body        []byte
@@ -38,11 +62,15 @@ func parseMultiForm(r *http.Request) ([]byte, string, error) {
 	}
 
 	file, header, err := r.FormFile("secret")
-	contentType := header.Header.Get("Content-Type")
-
 	if err != nil {
 		return nil, "", err
 	}
+
+	contentType, _, err := mime.ParseMediaType(header.Header.Get("Content-Type"))
+	if err != nil {
+		contentType = "application/octet-stream"
+	}
+	contentType = sanitizeContentType(contentType)
 
 	data, err := io.ReadAll(file)
 
@@ -71,7 +99,7 @@ func getContent(r *http.Request) ([]byte, string, error) {
 		return parseMultiForm(r)
 	default:
 		data, err := io.ReadAll(r.Body)
-		return data, ct, err
+		return data, sanitizeContentType(ct), err
 	}
 }
 
