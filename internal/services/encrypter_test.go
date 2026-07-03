@@ -56,3 +56,14 @@ func Test_Encrypter_Decrypt(t *testing.T) {
 		t.Errorf("Decryption failed, expected %q, got %s", testData, actual)
 	}
 }
+
+func Test_Encrypter_Decrypt_ShortCiphertext(t *testing.T) {
+	encKey := []byte("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	encrypter := NewAESEncrypter(encKey)
+
+	_, err := encrypter.Decrypt([]byte("short"))
+
+	if err != ErrCiphertextTooShort {
+		t.Errorf("expected ErrCiphertextTooShort, got %v", err)
+	}
+}

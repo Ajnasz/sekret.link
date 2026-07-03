@@ -4,8 +4,11 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"errors"
 	"io"
 )
+
+var ErrCiphertextTooShort = errors.New("ciphertext too short")
 
 type Encrypter interface {
 	Encrypt(data []byte) ([]byte, error)
@@ -60,6 +63,10 @@ func (e *AESEncrypter) Decrypt(data []byte) ([]byte, error) {
 	}
 
 	nonceSize := aesGCM.NonceSize()
+
+	if len(data) < nonceSize {
+		return nil, ErrCiphertextTooShort
+	}
 
 	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
 
