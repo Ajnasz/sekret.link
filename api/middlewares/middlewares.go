@@ -19,9 +19,20 @@ func SetupLogging(withPath bool, h http.Handler) http.Handler {
 
 func SetupHeaders(origins []string, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		setSecurityHeaders(w)
 		setCORSHeaders(origins)(w, r)
 		h.ServeHTTP(w, r)
 	})
+}
+
+// setSecurityHeaders sets headers that should apply to every response:
+// secrets and their URLs must never be cached or leaked via Referer, and
+// responses must never be MIME-sniffed into something else.
+func setSecurityHeaders(w http.ResponseWriter) {
+	h := w.Header()
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("Cache-Control", "no-store")
+	h.Set("Referrer-Policy", "no-referrer")
 }
 
 func setCORSHeaders(origins []string) func(w http.ResponseWriter, req *http.Request) {
