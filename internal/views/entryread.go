@@ -20,7 +20,6 @@ type EntryReadResponse struct {
 	Created     time.Time
 	Accessed    time.Time
 	Expire      time.Time
-	DeleteKey   string
 	ContentType string
 }
 
@@ -31,7 +30,6 @@ func BuildEntryReadResponse(meta services.Entry, key string) EntryReadResponse {
 		Created:     meta.Created,
 		Expire:      meta.Expire,
 		Accessed:    meta.Accessed,
-		DeleteKey:   meta.DeleteKey,
 		ContentType: meta.ContentType,
 		Data:        string(meta.Data),
 	}
