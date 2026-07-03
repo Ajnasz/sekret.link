@@ -12,6 +12,9 @@ var ErrInvalidMaxRead = errors.New("invalid max read")
 // Parse returns the maximum number of reads for a secret.
 func Parse(val string) (int, error) {
 	const minMaxReadCount int = 1
+	// remaining_reads is stored in a SMALLINT column (max 32767); anything
+	// above that would fail the INSERT and surface as a 500.
+	const maxMaxReadCount int = 32767
 	if val == "" {
 		return minMaxReadCount, nil
 	}
@@ -25,7 +28,7 @@ func Parse(val string) (int, error) {
 		return 0, err
 	}
 
-	if maxReads < minMaxReadCount {
+	if maxReads < minMaxReadCount || maxReads > maxMaxReadCount {
 		return 0, ErrInvalidMaxRead
 	}
 
