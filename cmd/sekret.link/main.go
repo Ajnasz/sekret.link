@@ -79,13 +79,16 @@ func removeSocketFile(unixSocket string) {
 
 	stat, err := os.Stat(unixSocket)
 	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			slog.Error("Failed to stat unix socket", "error", err)
-			os.Exit(1)
+		if errors.Is(err, os.ErrNotExist) {
+			// Nothing to clean up: first run, or the previous shutdown
+			// already unlinked the socket.
+			return
 		}
+		slog.Error("Failed to stat unix socket", "error", err)
+		os.Exit(1)
 	}
 
-	if stat != nil && stat.Mode()&os.ModeSocket == 0 {
+	if stat.Mode()&os.ModeSocket == 0 {
 		slog.Error("Unix socket path exists but is not a socket", "path", unixSocket)
 		os.Exit(1)
 	}
