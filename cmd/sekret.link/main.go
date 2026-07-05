@@ -4,9 +4,11 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -70,7 +72,33 @@ func scheduleDeleteExpired(ctx context.Context, db *sql.DB) error {
 	}
 }
 
-func listen(ctx context.Context, handlerConfig api.HandlerConfig) *http.Server {
+func removeSocketFile(unixSocket string) {
+	if unixSocket == "" {
+		return
+	}
+
+	stat, err := os.Stat(unixSocket)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			slog.Error("Failed to stat unix socket", "error", err)
+			os.Exit(1)
+		}
+	}
+
+	if stat != nil && stat.Mode()&os.ModeSocket == 0 {
+		slog.Error("Unix socket path exists but is not a socket", "path", unixSocket)
+		os.Exit(1)
+	}
+
+	// Remove a socket file left behind by a previous run/crash; net.Listen
+	// fails with "address already in use" otherwise.
+	if err := os.Remove(unixSocket); err != nil {
+		slog.Error("Failed to remove unix socket", "error", err)
+		os.Exit(1)
+	}
+}
+
+func listen(ctx context.Context, handlerConfig api.HandlerConfig, unixSocket string) *http.Server {
 	mux := http.NewServeMux()
 
 	apiRoot := getAPIRoot(handlerConfig.WebExternalURL)
@@ -85,12 +113,37 @@ func listen(ctx context.Context, handlerConfig api.HandlerConfig) *http.Server {
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
+	network, address := "tcp", httpServer.Addr
+	if unixSocket != "" {
+		network, address = "unix", unixSocket
+	}
 
 	go func() {
-		slog.Info("Start listening", "address", httpServer.Addr, "path", apiRoot)
-		if err := httpServer.ListenAndServe(); err != nil {
-			if err.Error() != "http: Server closed" {
-				fmt.Fprintf(os.Stderr, "error: %s", err)
+		slog.Info("Start listening", "network", network, "address", address, "path", apiRoot)
+
+		if network == "unix" {
+			removeSocketFile(address)
+		}
+
+		ln, err := net.Listen(network, address)
+		if err != nil {
+			slog.Error("Failed to listen", "error", err)
+			os.Exit(1)
+		}
+
+		if network == "unix" {
+			// A reverse proxy (e.g. nginx, running as a different user) needs to
+			// connect to this socket; net.Listen creates it with permissions
+			// derived from umask, which usually excludes other users.
+			if err := os.Chmod(address, 0660); err != nil {
+				slog.Error("Failed to chmod unix socket", "error", err)
+				os.Exit(1)
+			}
+		}
+
+		if err := httpServer.Serve(ln); err != nil {
+			if !errors.Is(err, http.ErrServerClosed) {
+				slog.Error("Failed to serve", "error", err)
 				os.Exit(1)
 			}
 		}
@@ -139,7 +192,7 @@ func getCORSOrigins(list string) []string {
 	return out
 }
 
-func getConfig(ctx context.Context) (*api.HandlerConfig, error) {
+func getConfig(ctx context.Context) (*api.HandlerConfig, string, error) {
 	var (
 		externalURLParam string
 		corsOriginsParam string
@@ -149,6 +202,7 @@ func getConfig(ctx context.Context) (*api.HandlerConfig, error) {
 		maxDataSize      int64
 		queryVersion     bool
 		base62Encoding   bool
+		unixSocket       string
 	)
 	flag.StringVar(&externalURLParam, "webExternalURL", "", "Web server external url")
 	flag.StringVar(&corsOriginsParam, "corsOrigins", "", "Comma separated list of allowed CORS origins")
@@ -158,6 +212,7 @@ func getConfig(ctx context.Context) (*api.HandlerConfig, error) {
 	flag.Int64Var(&maxDataSize, "maxDataSize", 1024*1024, "Max data size")
 	flag.BoolVar(&queryVersion, "version", false, "Get version information")
 	flag.BoolVar(&base62Encoding, "base62", false, "Use base62 encoding")
+	flag.StringVar(&unixSocket, "unixSocket", "", "Listen on this Unix domain socket path instead of TCP :8080 (for use behind a reverse proxy on the same host)")
 	flag.Parse()
 
 	if queryVersion {
@@ -169,7 +224,7 @@ func getConfig(ctx context.Context) (*api.HandlerConfig, error) {
 	extURL, err := url.Parse(externalURLParam)
 
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	if base62Encoding {
@@ -183,28 +238,28 @@ func getConfig(ctx context.Context) (*api.HandlerConfig, error) {
 	}
 
 	if maxExpireSeconds < expireSeconds {
-		return nil, fmt.Errorf("`expireSeconds` must be less or equal then `maxExpireSeconds`")
+		return nil, "", fmt.Errorf("`expireSeconds` must be less or equal then `maxExpireSeconds`")
 	}
 	handlerConfig.WebExternalURL = extURL
 
 	db, err := durable.OpenDatabaseClient(ctx, config.GetConnectionString(postgresDB))
 
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if err := migrate.PrepareDatabase(ctx, db); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	handlerConfig.DB = db
 	handlerConfig.CORSOrigins = getCORSOrigins(corsOriginsParam)
 
-	return &handlerConfig, nil
+	return &handlerConfig, unixSocket, nil
 }
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
-	handlerConfig, err := getConfig(ctx)
+	handlerConfig, unixSocket, err := getConfig(ctx)
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %s", err)
@@ -216,7 +271,7 @@ func main() {
 			slog.Error("Error deleting expired entries", "error", err)
 		}
 	}()
-	httpServer := listen(ctx, *handlerConfig)
+	httpServer := listen(ctx, *handlerConfig, unixSocket)
 
 	<-ctx.Done()
 
