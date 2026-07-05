@@ -33,7 +33,7 @@ func NewDeleteHandler(entryManager DeleteEntryManager, view views.View[views.Del
 	}
 }
 
-func (d DeleteHandler) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (d DeleteHandler) handle(w http.ResponseWriter, r *http.Request) error {
 	// TODO move parsing into the parsers package
 	UUID, _, deleteKey, err := parsers.ParseDeleteEntryPath(r.URL.Path)
 
@@ -41,9 +41,7 @@ func (d DeleteHandler) handle(ctx context.Context, w http.ResponseWriter, r *htt
 		return err
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	if err := d.entryManager.DeleteEntry(ctx, UUID, deleteKey); err != nil {
+	if err := d.entryManager.DeleteEntry(r.Context(), UUID, deleteKey); err != nil {
 		return err
 	}
 
@@ -53,7 +51,7 @@ func (d DeleteHandler) handle(ctx context.Context, w http.ResponseWriter, r *htt
 
 // Handle handles the delete request
 func (d DeleteHandler) Handle(w http.ResponseWriter, r *http.Request) {
-	if err := d.handle(r.Context(), w, r); err != nil {
+	if err := d.handle(w, r); err != nil {
 		d.view.RenderError(w, r, err)
 	}
 }

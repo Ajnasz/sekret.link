@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
@@ -57,61 +56,53 @@ func NewSecretHandler(config HandlerConfig) SecretHandler {
 // response: 400 Bad Request
 // response: 500 Internal Server Error
 // response: 413 Payload Too Large
-func (s SecretHandler) Post(ctx context.Context) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" && r.URL.Path != "" {
-			http.Error(w, "Not found", http.StatusNotFound)
-			slog.Info("Not found", "url", r.URL.Path)
-			return
-		}
-
-		parser := parsers.NewCreateEntryParser(s.config.MaxExpireSeconds)
-		keyManager := services.NewEntryKeyManager(s.config.DB, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), newAESEncrypter)
-		entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, newAESEncrypter, keyManager)
-		view := views.NewEntryCreateView(s.config.WebExternalURL)
-
-		createHandler := api.NewCreateHandler(
-			s.config.MaxDataSize,
-			parser,
-			entryManager,
-			view,
-		)
-		createHandler.Handle(ctx, w, r)
+func (s SecretHandler) Post(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" && r.URL.Path != "" {
+		http.Error(w, "Not found", http.StatusNotFound)
+		slog.Info("Not found", "url", r.URL.Path)
+		return
 	}
+
+	parser := parsers.NewCreateEntryParser(s.config.MaxExpireSeconds)
+	keyManager := services.NewEntryKeyManager(s.config.DB, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), newAESEncrypter)
+	entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, newAESEncrypter, keyManager)
+	view := views.NewEntryCreateView(s.config.WebExternalURL)
+
+	createHandler := api.NewCreateHandler(
+		s.config.MaxDataSize,
+		parser,
+		entryManager,
+		view,
+	)
+	createHandler.Handle(w, r)
 }
 
 // GET method handler
-func (s SecretHandler) Get(ctx context.Context) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		view := views.NewEntryReadView()
-		parser := parsers.NewGetEntryParser()
-		keyManager := services.NewEntryKeyManager(s.config.DB, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), newAESEncrypter)
-		entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, newAESEncrypter, keyManager)
-		getHandler := api.NewGetHandler(
-			parser,
-			entryManager,
-			view,
-		)
-		getHandler.Handle(ctx, w, r)
-	}
+func (s SecretHandler) Get(w http.ResponseWriter, r *http.Request) {
+	view := views.NewEntryReadView()
+	parser := parsers.NewGetEntryParser()
+	keyManager := services.NewEntryKeyManager(s.config.DB, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), newAESEncrypter)
+	entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, newAESEncrypter, keyManager)
+	getHandler := api.NewGetHandler(
+		parser,
+		entryManager,
+		view,
+	)
+	getHandler.Handle(w, r)
 }
 
 // DELETE method handler
-func (s SecretHandler) Delete(ctx context.Context) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		keyManager := services.NewEntryKeyManager(s.config.DB, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), newAESEncrypter)
-		entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, newAESEncrypter, keyManager)
-		view := views.NewEntryDeleteView()
-		deleteHandler := api.NewDeleteHandler(entryManager, view)
-		deleteHandler.Handle(w, r)
-	}
+func (s SecretHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	keyManager := services.NewEntryKeyManager(s.config.DB, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), newAESEncrypter)
+	entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, newAESEncrypter, keyManager)
+	view := views.NewEntryDeleteView()
+	deleteHandler := api.NewDeleteHandler(entryManager, view)
+	deleteHandler.Handle(w, r)
 }
 
 // OPTIONS method handler
-func (s SecretHandler) Options(ctx context.Context) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}
+func (s SecretHandler) Options(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 }
 
 // GenerateEncryptionKey provides a way to generate a new encryption key for an existing entry
@@ -125,7 +116,7 @@ func (s SecretHandler) Options(ctx context.Context) func(w http.ResponseWriter, 
 //
 // method: GET
 // response: 200 OK
-func (s SecretHandler) GenerateEncryptionKey(ctx context.Context) func(w http.ResponseWriter, r *http.Request) {
+func (s SecretHandler) GenerateEncryptionKey() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		keyManager := services.NewEntryKeyManager(s.config.DB, &models.EntryKeyModel{}, hasher.NewSHA256Hasher(), newAESEncrypter)
 		entryManager := services.NewEntryManager(s.config.DB, &models.EntryModel{}, newAESEncrypter, keyManager)
@@ -137,7 +128,7 @@ func (s SecretHandler) GenerateEncryptionKey(ctx context.Context) func(w http.Re
 			view,
 		)
 
-		getHandler.Handle(ctx, w, r)
+		getHandler.Handle(r.Context(), w, r)
 	}
 }
 
@@ -146,20 +137,18 @@ func (s SecretHandler) NotFound(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Not found", http.StatusNotFound)
 }
 
-func (s SecretHandler) ServeHTTP(ctx context.Context) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodPost:
-			s.Post(ctx)(w, r)
-		case http.MethodGet:
-			s.Get(ctx)(w, r)
-		case http.MethodDelete:
-			s.Delete(ctx)(w, r)
-		case http.MethodOptions:
-			s.Options(ctx)(w, r)
-		default:
-			http.Error(w, "Not found", http.StatusNotFound)
-		}
+func (s SecretHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodPost:
+		s.Post(w, r)
+	case http.MethodGet:
+		s.Get(w, r)
+	case http.MethodDelete:
+		s.Delete(w, r)
+	case http.MethodOptions:
+		s.Options(w, r)
+	default:
+		http.Error(w, "Not found", http.StatusNotFound)
 	}
 }
 
@@ -173,7 +162,7 @@ func clearApiRoot(apiRoot string) string {
 	return apiRoot + "/"
 }
 
-func (s SecretHandler) RegisterHandlers(ctx context.Context, mux *http.ServeMux, apiRoot string) {
+func (s SecretHandler) RegisterHandlers(mux *http.ServeMux, apiRoot string) {
 	apiRoot = clearApiRoot(apiRoot)
 	mux.Handle(
 		fmt.Sprintf("GET %s", path.Join("/", apiRoot, "{uuid}", "{key}")),
@@ -181,7 +170,7 @@ func (s SecretHandler) RegisterHandlers(ctx context.Context, mux *http.ServeMux,
 			apiRoot,
 			middlewares.SetupLogging(
 				false,
-				middlewares.SetupHeaders(s.config.CORSOrigins, http.HandlerFunc(s.Get(ctx))),
+				middlewares.SetupHeaders(s.config.CORSOrigins, http.HandlerFunc(s.Get)),
 			),
 		),
 	)
@@ -191,7 +180,7 @@ func (s SecretHandler) RegisterHandlers(ctx context.Context, mux *http.ServeMux,
 			path.Join("/", apiRoot),
 			middlewares.SetupLogging(
 				true,
-				middlewares.SetupHeaders(s.config.CORSOrigins, http.HandlerFunc(s.Post(ctx))),
+				middlewares.SetupHeaders(s.config.CORSOrigins, http.HandlerFunc(s.Post)),
 			),
 		),
 	)
@@ -202,7 +191,7 @@ func (s SecretHandler) RegisterHandlers(ctx context.Context, mux *http.ServeMux,
 			apiRoot,
 			middlewares.SetupLogging(
 				false,
-				middlewares.SetupHeaders(s.config.CORSOrigins, http.HandlerFunc(s.Delete(ctx))),
+				middlewares.SetupHeaders(s.config.CORSOrigins, http.HandlerFunc(s.Delete)),
 			),
 		),
 	)
@@ -213,7 +202,7 @@ func (s SecretHandler) RegisterHandlers(ctx context.Context, mux *http.ServeMux,
 			apiRoot,
 			middlewares.SetupLogging(
 				false,
-				middlewares.SetupHeaders(s.config.CORSOrigins, http.HandlerFunc(s.Options(ctx))),
+				middlewares.SetupHeaders(s.config.CORSOrigins, http.HandlerFunc(s.Options)),
 			),
 		),
 	)
@@ -225,7 +214,7 @@ func (s SecretHandler) RegisterHandlers(ctx context.Context, mux *http.ServeMux,
 			apiRoot,
 			middlewares.SetupLogging(
 				false,
-				middlewares.SetupHeaders(s.config.CORSOrigins, http.HandlerFunc(s.GenerateEncryptionKey(ctx))),
+				middlewares.SetupHeaders(s.config.CORSOrigins, http.HandlerFunc(s.GenerateEncryptionKey())),
 			),
 		),
 	)

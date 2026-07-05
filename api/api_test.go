@@ -46,7 +46,9 @@ func TestCreateEntry(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
+		if err := db.Close(); err != nil {
+			t.Logf("db.Close: %v", err)
+		}
 	})
 
 	t.Run("happy path", func(t *testing.T) {
@@ -55,7 +57,7 @@ func TestCreateEntry(t *testing.T) {
 		w := httptest.NewRecorder()
 		handlerConfig := NewHandlerConfig(db)
 		h := NewSecretHandler(handlerConfig)
-		h.ServeHTTP(ctx)(w, req)
+		h.ServeHTTP(w, req)
 
 		if w.Code != http.StatusOK {
 			t.Logf("response: %s", w.Body.String())
@@ -138,14 +140,13 @@ func TestCreateEntry(t *testing.T) {
 				body:       "",
 			},
 		}
-		ctx := context.TODO()
 		for _, testCase := range testCases {
 			req := httptest.NewRequest("POST", "http://example.com?"+testCase.qs, bytes.NewReader([]byte(testCase.body)))
 			w := httptest.NewRecorder()
 			handlerConfig := NewHandlerConfig(db)
 			handlerConfig.MaxExpireSeconds = 120
 			h := NewSecretHandler(handlerConfig)
-			h.ServeHTTP(ctx)(w, req)
+			h.ServeHTTP(w, req)
 
 			resp := w.Result()
 
@@ -167,13 +168,15 @@ func TestCreateEntryJSON(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
+		if err := db.Close(); err != nil {
+			t.Logf("db.Close: %v", err)
+		}
 	})
 
 	req := httptest.NewRequest("POST", "http://example.com", bytes.NewReader([]byte(value)))
 	req.Header.Add("Accept", "application/json")
 	w := httptest.NewRecorder()
-	NewSecretHandler(NewHandlerConfig(db)).ServeHTTP(ctx)(w, req)
+	NewSecretHandler(NewHandlerConfig(db)).ServeHTTP(w, req)
 
 	resp := w.Result()
 
@@ -260,7 +263,9 @@ func TestCreateEntryForm(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
+		if err := db.Close(); err != nil {
+			t.Logf("db.Close: %v", err)
+		}
 	})
 
 	data, multi, err := createMultipart(map[string]io.Reader{
@@ -277,7 +282,7 @@ func TestCreateEntryForm(t *testing.T) {
 
 	w := httptest.NewRecorder()
 
-	NewSecretHandler(handlerConfig).ServeHTTP(ctx)(w, req)
+	NewSecretHandler(handlerConfig).ServeHTTP(w, req)
 
 	resp := w.Result()
 	body, _ := io.ReadAll(resp.Body)
@@ -341,14 +346,16 @@ func TestRequestPathsCreateEntry(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
+		if err := db.Close(); err != nil {
+			t.Logf("db.Close: %v", err)
+		}
 	})
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Name, func(t *testing.T) {
 			req := httptest.NewRequest("POST", fmt.Sprintf("http://example.com%s", testCase.Path), bytes.NewReader([]byte("ASDF")))
 			w := httptest.NewRecorder()
-			NewSecretHandler(NewHandlerConfig(db)).ServeHTTP(ctx)(w, req)
+			NewSecretHandler(NewHandlerConfig(db)).ServeHTTP(w, req)
 
 			resp := w.Result()
 
@@ -380,7 +387,9 @@ func TestGetEntry(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
+		if err := db.Close(); err != nil {
+			t.Logf("db.Close: %v", err)
+		}
 	})
 
 	for _, testCase := range testCases {
@@ -404,7 +413,7 @@ func TestGetEntry(t *testing.T) {
 
 			mux := http.NewServeMux()
 			secretHandler := NewSecretHandler(NewHandlerConfig(db))
-			secretHandler.RegisterHandlers(ctx, mux, "")
+			secretHandler.RegisterHandlers(mux, "")
 
 			mux.ServeHTTP(w, req)
 
@@ -433,7 +442,9 @@ func TestGetEntryJSON(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
+		if err := db.Close(); err != nil {
+			t.Logf("db.Close: %v", err)
+		}
 	})
 	testCase := struct {
 		Name  string
@@ -463,7 +474,7 @@ func TestGetEntryJSON(t *testing.T) {
 
 	mux := http.NewServeMux()
 	secretHandler := NewSecretHandler(NewHandlerConfig(db))
-	secretHandler.RegisterHandlers(ctx, mux, "")
+	secretHandler.RegisterHandlers(mux, "")
 	mux.ServeHTTP(w, req)
 
 	resp := w.Result()
@@ -504,7 +515,9 @@ func TestSetAndGetEntry(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
+		if err := db.Close(); err != nil {
+			t.Logf("db.Close: %v", err)
+		}
 	})
 
 	req := httptest.NewRequest("POST", "http://example.com/", bytes.NewReader([]byte(testCase)))
@@ -512,7 +525,7 @@ func TestSetAndGetEntry(t *testing.T) {
 
 	mux := http.NewServeMux()
 	secretHandler := NewSecretHandler(NewHandlerConfig(db))
-	secretHandler.RegisterHandlers(ctx, mux, "")
+	secretHandler.RegisterHandlers(mux, "")
 	mux.ServeHTTP(w, req)
 
 	resp := w.Result()
@@ -553,7 +566,9 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
+		if err := db.Close(); err != nil {
+			t.Logf("db.Close: %v", err)
+		}
 	})
 	testCase := "foo"
 
@@ -561,7 +576,7 @@ func TestCreateEntryWithExpiration(t *testing.T) {
 	w := httptest.NewRecorder()
 	handlerConfig := NewHandlerConfig(db)
 	handlerConfig.MaxExpireSeconds = 120
-	NewSecretHandler(handlerConfig).ServeHTTP(ctx)(w, req)
+	NewSecretHandler(handlerConfig).ServeHTTP(w, req)
 
 	resp := w.Result()
 	body, _ := io.ReadAll(resp.Body)
@@ -611,7 +626,9 @@ func TestCreateEntrySizeLimit(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
+		if err := db.Close(); err != nil {
+			t.Logf("db.Close: %v", err)
+		}
 	})
 	testCase := "ff"
 
@@ -620,7 +637,7 @@ func TestCreateEntrySizeLimit(t *testing.T) {
 	handlerConfig := NewHandlerConfig(db)
 	handlerConfig.MaxDataSize = 1
 	handlerConfig.MaxExpireSeconds = 120
-	NewSecretHandler(handlerConfig).ServeHTTP(ctx)(w, req)
+	NewSecretHandler(handlerConfig).ServeHTTP(w, req)
 
 	resp := w.Result()
 
@@ -640,20 +657,18 @@ func TestCreateEntryWithMaxReads(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
+		if err := db.Close(); err != nil {
+			t.Logf("db.Close: %v", err)
+		}
 	})
 
 	req := httptest.NewRequest("POST", "http://example.com?maxReads=2", bytes.NewReader([]byte(value)))
 	w := httptest.NewRecorder()
-	NewSecretHandler(NewHandlerConfig(db)).ServeHTTP(ctx)(w, req)
+	NewSecretHandler(NewHandlerConfig(db)).ServeHTTP(w, req)
 
 	resp := w.Result()
 
 	savedUUID := resp.Header.Get("x-entry-uuid")
-
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -692,14 +707,16 @@ func Test_DeleteEntry(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		if err := db.Close(); err != nil { t.Logf("db.Close: %v", err) }
+		if err := db.Close(); err != nil {
+			t.Logf("db.Close: %v", err)
+		}
 	})
 
 	t.Run("correct key", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "http://example.com", bytes.NewReader([]byte("foobarbaz")))
 		w := httptest.NewRecorder()
 		handler := NewSecretHandler(NewHandlerConfig(db))
-		handler.ServeHTTP(ctx)(w, req)
+		handler.ServeHTTP(w, req)
 
 		resp := w.Result()
 
@@ -711,7 +728,7 @@ func Test_DeleteEntry(t *testing.T) {
 
 		req = httptest.NewRequest(http.MethodDelete, url, nil)
 		w = httptest.NewRecorder()
-		handler.ServeHTTP(ctx)(w, req)
+		handler.ServeHTTP(w, req)
 
 		resp = w.Result()
 
@@ -724,7 +741,7 @@ func Test_DeleteEntry(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "http://example.com", bytes.NewReader([]byte("foobarbaz")))
 		w := httptest.NewRecorder()
 		handler := NewSecretHandler(NewHandlerConfig(db))
-		handler.ServeHTTP(ctx)(w, req)
+		handler.ServeHTTP(w, req)
 
 		resp := w.Result()
 
@@ -736,7 +753,7 @@ func Test_DeleteEntry(t *testing.T) {
 
 		req = httptest.NewRequest(http.MethodDelete, url, nil)
 		w = httptest.NewRecorder()
-		handler.ServeHTTP(ctx)(w, req)
+		handler.ServeHTTP(w, req)
 
 		resp = w.Result()
 
@@ -748,7 +765,7 @@ func Test_DeleteEntry(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "http://example.com", bytes.NewReader([]byte("foobarbaz")))
 		w := httptest.NewRecorder()
 		handler := NewSecretHandler(NewHandlerConfig(db))
-		handler.ServeHTTP(ctx)(w, req)
+		handler.ServeHTTP(w, req)
 
 		resp := w.Result()
 
@@ -760,7 +777,7 @@ func Test_DeleteEntry(t *testing.T) {
 
 		req = httptest.NewRequest(http.MethodDelete, url, nil)
 		w = httptest.NewRecorder()
-		handler.ServeHTTP(ctx)(w, req)
+		handler.ServeHTTP(w, req)
 
 		resp = w.Result()
 
@@ -796,7 +813,7 @@ func FuzzSetAndGetEntry(f *testing.F) {
 
 		mux := http.NewServeMux()
 		secretHandler := NewSecretHandler(NewHandlerConfig(db))
-		secretHandler.RegisterHandlers(ctx, mux, "")
+		secretHandler.RegisterHandlers(mux, "")
 
 		req := httptest.NewRequest("POST", "http://example.com/", bytes.NewReader([]byte(testCase)))
 		w := httptest.NewRecorder()

@@ -52,7 +52,7 @@ func NewCreateHandler(
 	}
 }
 
-func (c CreateHandler) handle(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (c CreateHandler) handle(w http.ResponseWriter, r *http.Request) error {
 	r.Body = http.MaxBytesReader(w, r.Body, c.maxDataSize)
 
 	data, err := c.parser.Parse(r)
@@ -61,9 +61,7 @@ func (c CreateHandler) handle(ctx context.Context, w http.ResponseWriter, r *htt
 		return errors.Join(ErrRequestParseError, err)
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	entry, key, err := c.entryManager.CreateEntry(ctx, data.ContentType, data.Body, &data.Expiration, &data.MaxReads)
+	entry, key, err := c.entryManager.CreateEntry(r.Context(), data.ContentType, data.Body, &data.Expiration, &data.MaxReads)
 
 	if err != nil {
 		return err
@@ -76,8 +74,8 @@ func (c CreateHandler) handle(ctx context.Context, w http.ResponseWriter, r *htt
 }
 
 // Handle handles http request to create secret
-func (c CreateHandler) Handle(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	if err := c.handle(r.Context(), w, r); err != nil {
+func (c CreateHandler) Handle(w http.ResponseWriter, r *http.Request) {
+	if err := c.handle(w, r); err != nil {
 		slog.Error("create error", "error", err)
 		c.view.RenderError(w, r, err)
 	}

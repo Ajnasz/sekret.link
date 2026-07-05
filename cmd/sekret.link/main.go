@@ -107,7 +107,7 @@ func listen(ctx context.Context, handlerConfig api.HandlerConfig, unixSocket str
 	apiRoot := getAPIRoot(handlerConfig.WebExternalURL)
 
 	secretHandler := api.NewSecretHandler(handlerConfig)
-	secretHandler.RegisterHandlers(ctx, mux, apiRoot)
+	secretHandler.RegisterHandlers(mux, apiRoot)
 
 	httpServer := &http.Server{
 		Addr:         ":8080",
@@ -115,6 +115,9 @@ func listen(ctx context.Context, handlerConfig api.HandlerConfig, unixSocket str
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  60 * time.Second,
+		BaseContext: func(_ net.Listener) context.Context {
+			return ctx
+		},
 	}
 	network, address := "tcp", httpServer.Addr
 	if unixSocket != "" {
@@ -262,6 +265,14 @@ func getConfig(ctx context.Context) (*api.HandlerConfig, string, error) {
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
+
+	// Base context for in-flight requests. Deliberately not the signal
+	// context: requests must survive SIGTERM through Shutdown's drain window
+	// (a one-time read canceled mid-flight burns the secret), so this is only
+	// canceled once the drain is over.
+	serverCtx, serverCancel := context.WithCancel(context.Background())
+	defer serverCancel()
+
 	handlerConfig, unixSocket, err := getConfig(ctx)
 
 	if err != nil {
@@ -274,7 +285,7 @@ func main() {
 			slog.Error("Error deleting expired entries", "error", err)
 		}
 	}()
-	httpServer := listen(ctx, *handlerConfig, unixSocket)
+	httpServer := listen(serverCtx, *handlerConfig, unixSocket)
 
 	<-ctx.Done()
 
@@ -284,7 +295,11 @@ func main() {
 	shutdownErrors := shutDown(func() error {
 		ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 		defer cancel()
-		return httpServer.Shutdown(ctx)
+		err := httpServer.Shutdown(ctx)
+		// Drain finished or timed out: abort any request still running so it
+		// can't outlive the server.
+		serverCancel()
+		return err
 	}, func() error {
 		return handlerConfig.DB.Close()
 	})
