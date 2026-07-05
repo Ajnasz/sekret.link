@@ -4,15 +4,32 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
+	"strings"
 )
 
-func SetupLogging(withPath bool, h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if withPath {
-			slog.Info("handle", "method", r.Method, "path", r.URL.Path)
-		} else {
-			slog.Info("handle", "method", r.Method)
+// safeSegments are the only path segment literals that may appear in a log
+// verbatim. Everything else is redacted by default, so a segment carrying a
+// secret (UUID, key, delete key) can never leak even from a route added
+// later or a malformed near-miss request.
+var safeSegments = []string{"key"}
+
+// RedactPath masks every path segment except known-safe literals, keeping
+// the request's shape (segment count and safe literals) visible for
+// debugging.
+func RedactPath(path string) string {
+	segments := strings.Split(path, "/")
+	for i, segment := range segments {
+		if segment == "" || slices.Contains(safeSegments, segment) {
+			continue
 		}
+		segments[i] = ":redacted"
+	}
+	return strings.Join(segments, "/")
+}
+
+func SetupLogging(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		slog.Info("handle", "method", r.Method, "path", RedactPath(r.URL.Path))
 		h.ServeHTTP(w, r)
 	})
 }
