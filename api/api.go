@@ -214,7 +214,7 @@ func (s SecretHandler) RegisterHandlers(mux *http.ServeMux, apiRoot string) {
 	)
 
 	mux.Handle(
-		"GET /health",
+		fmt.Sprintf("GET %s", fmt.Sprintf("%s%s", apiRoot, "health")),
 		http.StripPrefix(
 			apiRoot,
 			middlewares.SetupLogging(
