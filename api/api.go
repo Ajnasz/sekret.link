@@ -203,13 +203,27 @@ func (s SecretHandler) RegisterHandlers(mux *http.ServeMux, apiRoot string) {
 		),
 	)
 
-	// TODO
 	mux.Handle(
 		fmt.Sprintf("GET %s", path.Join(apiRoot, "key", "{uuid}", "{key}")),
 		http.StripPrefix(
 			apiRoot,
 			middlewares.SetupLogging(
 				middlewares.SetupHeaders(s.config.CORSOrigins, http.HandlerFunc(s.GenerateEncryptionKey())),
+			),
+		),
+	)
+
+	mux.Handle(
+		"GET /health",
+		http.StripPrefix(
+			apiRoot,
+			middlewares.SetupLogging(
+				middlewares.SetupHeaders(s.config.CORSOrigins, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusOK)
+					if _, err := w.Write([]byte("OK")); err != nil {
+						slog.Error("health check write failed", "error", err)
+					}
+				})),
 			),
 		),
 	)
