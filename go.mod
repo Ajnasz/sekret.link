@@ -1,6 +1,6 @@
 module github.com/Ajnasz/sekret.link
 
-go 1.22
+go 1.27
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
